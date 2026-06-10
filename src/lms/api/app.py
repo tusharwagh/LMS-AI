@@ -1,14 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
+from lms.api.auth_router import router as auth_router
+from lms.api.domain_api import domain_api_router
 from lms.api.errors import register_exception_handlers
 from lms.api.health import router as health_router
 from lms.api.middleware import CorrelationIdMiddleware
-from lms.shared.logging import configure_logging
-from lms.catalog.api.router import router as catalog_router
+from lms.api.openapi import configure_openapi
 from lms.config import get_settings
-from lms.loan.api.router import router as loan_router
-from lms.reference.api.router import router as reference_router
+from lms.shared.logging import configure_logging
+from lms.staff.router import router as staff_router, staff_static_directory
 
 
 def create_app() -> FastAPI:
@@ -18,8 +20,15 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="LMS API",
         version="0.1.0",
-        description="K-12 Library Management — MVP",
+        description=(
+            "K-12 Library Management — MVP. "
+            "Click **Authorize**, paste a JWT from `POST /api/v1/auth/token`, "
+            "then try domain endpoints."
+        ),
+        swagger_ui_parameters={"persistAuthorization": True},
     )
+
+    configure_openapi(app)
 
     app.add_middleware(CorrelationIdMiddleware)
     app.add_middleware(
@@ -33,8 +42,13 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
 
     app.include_router(health_router)
-    app.include_router(reference_router, prefix="/api/v1/reference", tags=["reference"])
-    app.include_router(catalog_router, prefix="/api/v1/catalog", tags=["catalog"])
-    app.include_router(loan_router, prefix="/api/v1/loan", tags=["loan"])
+    app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+    app.include_router(domain_api_router)
+    app.mount(
+        "/staff/static",
+        StaticFiles(directory=staff_static_directory()),
+        name="staff-static",
+    )
+    app.include_router(staff_router, prefix="/staff")
 
     return app

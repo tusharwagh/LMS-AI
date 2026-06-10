@@ -8,6 +8,19 @@ from lms.shared.db.base import Base
 
 # Import models so Alembic autogenerate sees metadata (expand per phase).
 from lms.shared.idempotency.store import IdempotencyRecord  # noqa: F401
+from lms.reference.infrastructure.models.models import (  # noqa: F401
+    ClassSectionModel,
+    PatronBlockModel,
+    PatronModel,
+    PatronTypeModel,
+)
+from lms.catalog.infrastructure.models.models import CatalogModel, HoldingModel  # noqa: F401
+from lms.loan.infrastructure.models.models import (  # noqa: F401
+    CirculationFulfillmentModel,
+    LoanModel,
+    LoanRuleSetModel,
+)
+from lms.shared.infrastructure.models.api_user import ApiUserModel  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

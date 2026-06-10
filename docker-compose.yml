@@ -6,14 +6,39 @@ services:
       POSTGRES_PASSWORD: lms
       POSTGRES_DB: lms
     ports:
-      - "5432:5432"
+      - "${LMS_DB_PORT:-5432}:5432"
     volumes:
       - lms_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U lms -d lms"]
       interval: 5s
       timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${LMS_API_PORT:-8000}:8000"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_SECRET_KEY: ${APP_SECRET_KEY:-change-me-in-production}
+      DATABASE_URL: postgresql+psycopg://lms:lms@db:5432/lms
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      LIBRARY_TIMEZONE: ${LIBRARY_TIMEZONE:-Asia/Kolkata}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 15s
 
 volumes:
   lms_pgdata:

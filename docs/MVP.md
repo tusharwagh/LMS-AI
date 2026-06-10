@@ -2,13 +2,13 @@
 
 This document collects **MVP / minimal-scope** behavior across the three bounded contexts. Authoritative rules, entities, APIs, and diagrams remain in **[reference.md](reference.md)**, **[catalog.md](catalog.md)**, and **[loan.md](loan.md)**.
 
-**Knowledge graph (ontology layers)** for the MVP slice → **§7**. **Architecture, design decisions, and traceability** → **§8–§10**. **Phased implementation plan** → **[plan-mvp.md](plan-mvp.md)**. **Discovery conversation and user intent** → **[research.md](research.md)**.
+**Staff desk workflows** (search & issue, return, optional delivery/pick-up) → **§2.1**. **Knowledge graph (ontology layers)** for the MVP slice → **§7**. **Architecture, design decisions, and traceability** → **§8–§10**. **Phased implementation plan** → **[plan-mvp.md](plan-mvp.md)**. **Discovery conversation and user intent** → **[research.md](research.md)**.
 
 ---
 
 ## 1. Purpose
 
-The MVP is the smallest **coherent** product slice: enough **Reference** master data to borrow, enough **Catalog** metadata and holdings to lend physical items, and enough **Loan** configuration and circulation to issue and return—plus **staff discovery** of titles and **basic overdue visibility**.
+The MVP is the smallest **coherent** product slice: enough **Reference** master data to borrow, enough **Catalog** metadata and holdings to lend physical items, and enough **Loan** configuration and circulation to issue and return—plus **staff discovery** of titles, **basic overdue visibility**, and **orchestrated desk workflows** so librarians can search, issue, and return with optional **delivery / pick-up** fulfillment (§2.1).
 
 **Out of scope for this MVP list** (unless noted in domain docs): guardian portals, fines ledger, bulk class issue, renewals, procurement integration, full OPAC polish.
 
@@ -26,6 +26,63 @@ The MVP is the smallest **coherent** product slice: enough **Reference** master 
 | 6 | **Checkout** (`patronId` + `holdingId`) | [loan.md](loan.md) |
 | 7 | **Return** | [loan.md](loan.md) |
 | 8 | **Staff catalog search**; **list open loans / overdue** (queries) | [catalog.md](catalog.md) · [loan.md](loan.md) |
+
+### 2.1 Staff desk workflows
+
+Two primary **librarian workflows** compose existing domain commands and queries. They are **application processes** (ADR-021), not new aggregates in the Reference, Catalog, or Loan kernels. Cross-context writes still flow only through **`CirculationOrchestrator`** (ADR-002).
+
+#### WF-01 — Search and issue a book
+
+| Step | Action | Type | Domain rules validated |
+|------|--------|------|------------------------|
+| 1 | Identify patron (card / admission no. / **name**) | Query | Patron exists |
+| 2 | Pre-flight eligibility preview | Query via ports | REF-P6, REF-B2, LN-R1, LN-R2 |
+| 3 | Search catalog (title / ISBN / call no.) | Query | CAT-5, XCAT-1 (published only for issue UI) |
+| 4 | Select copy / scan barcode | Query | LN-H1, HLD-4, HLD-5 (`AVAILABLE`, `circulating`) |
+| 5 | Choose fulfillment mode | Input | `DESK` / `DELIVERY` / `PICKUP_POINT` |
+| 6 | Commit issue | Command | Full LN-X1 via `CirculationOrchestrator` |
+| 7 | Fulfillment follow-up (if not desk) | Command | `CirculationFulfillment` lifecycle (§5.1) |
+
+```mermaid
+sequenceDiagram
+  participant Lib as Librarian
+  participant WF as SearchAndIssueWorkflow
+  participant Orch as CirculationOrchestrator
+  participant FF as CirculationFulfillment
+
+  Lib->>WF: patron + holding + mode
+  alt DeskIssue
+    WF->>Orch: CheckoutHolding
+  else DeliveryOrPickup
+    WF->>Orch: CheckoutHolding
+    WF->>FF: Create fulfillment REQUESTED
+    WF->>FF: READY / IN_TRANSIT / COMPLETED
+  end
+```
+
+**Custody policy (ADR-023):** Loan clock and `Holding.ON_LOAN` follow **library custody**—checkout runs when the item leaves library control (desk: immediately; delivery: when dispatched per policy).
+
+#### WF-02 — Return a book
+
+| Step | Action | Rules |
+|------|--------|-------|
+| 1 | Resolve by holding barcode or loan id | Open loan exists (LN-X2) |
+| 2 | Show context (patron, title, due, overdue) | LN-T1 |
+| 3 | Choose desk return vs pick-up collection | Logistics only for pick-up |
+| 4 | Commit desk return | LN-X2 idempotent close + `AVAILABLE` |
+| 5 | Confirm pick-up receipt (async path) | `ReturnHolding` only when library has custody |
+
+**Pick-up return:** loan stays **open** until `ConfirmReturnReceived`; do not call `ReturnHolding` when the patron only requests collection.
+
+#### Rule validation contract (REQ-29)
+
+- Workflows expose **`ValidationReport`** — a list of `{rule_id, message}` on preview and before commit.
+- Authoritative checks remain in domain ports and the orchestrator; the workflow aggregates failures for desk UX.
+- Rule IDs map to existing catalogs: REF-P*, REF-B*, CAT-*, XCAT-*, LN-P*, LN-H*, LN-R*, LN-X*.
+
+**Planned API surface:** `POST /api/v1/workflows/issue/start`, `.../issue/search-patrons`, `.../issue/back`, `.../issue/cancel`, `.../issue/commit`, `POST /api/v1/workflows/return/...` (see [plan-mvp.md](plan-mvp.md) Phase 5A/5B).
+
+**Rollback:** Before commit, **`POST .../issue/back`** returns the desk to an earlier wizard step (client-held state). After commit, **`POST .../issue/cancel`** reverses the loan via `ReturnHolding` and cancels open ISSUE fulfillments (orchestrator only).
 
 ---
 
@@ -119,6 +176,28 @@ Illustrative mapping from loan states to use cases and commands (detail in [loan
 | Overdue (derived) | L-UC05 | `ListOverdueLoans` (read; no state change) |
 | Policy before checkout | L-UC01 | `ConfigureLoanRuleSet` / `UpdateLoanRuleSet` |
 
+### 5.1 Circulation fulfillment (delivery / pick-up)
+
+Supporting aggregate for optional physical handoff (ADR-022). Lives in the Loan module (`loan/`); does not replace the circulation kernel.
+
+**Aggregate:** `CirculationFulfillment`
+
+| Field / VO | Purpose |
+|------------|---------|
+| `loan_id`, `holding_id` | Links to circulation fact |
+| `direction` | `ISSUE` \| `RETURN` |
+| `mode` | `DESK` \| `DELIVERY` \| `PICKUP_POINT` |
+| `status` | `NOT_REQUIRED` \| `REQUESTED` \| `READY` \| `IN_TRANSIT` \| `COMPLETED` \| `CANCELLED` |
+| `destination` | Class section, room, contact notes (value object) |
+
+**Invariants:**
+
+- Cannot complete issue fulfillment without an open `Loan`.
+- Cannot complete return pick-up fulfillment without a linked open `Loan`.
+- `DESK` mode may omit a fulfillment row (`NOT_REQUIRED`).
+
+**Commands:** `CreateIssueFulfillment`, `CompleteIssueFulfillment`, `InitiateReturnPickup`, `ConfirmReturnReceived`.
+
 ---
 
 ## 6. Cross-domain MVP dependencies
@@ -126,6 +205,12 @@ Illustrative mapping from loan states to use cases and commands (detail in [loan
 - **Checkout** requires **`Catalog`** suitable for lending ([catalog.md](catalog.md) publish/checkout gate) and an **`AVAILABLE`** **`Holding`**.
 - **Loan** stores **`patronId`** and **`holdingId`** only; eligibility comes from **Reference** and **Catalog** at runtime.
 - **PatronType → LoanRuleSet** mapping must be configured before rule-based limits apply ([reference.md](reference.md), [loan.md](loan.md)).
+
+### 6.1 Fulfillment dependencies
+
+- **WF-01** with `mode != DESK` creates a `CirculationFulfillment` row after `CheckoutHolding` succeeds.
+- **WF-02** pick-up return uses a two-phase path: `InitiateReturnPickup` (loan stays open) → `ConfirmReturnReceived` → `ReturnHolding`.
+- Fulfillment references `Loan` and `Holding` by FK; it does not store patron eligibility or lendability rules.
 
 ---
 
@@ -164,6 +249,7 @@ flowchart TB
   subgraph aggL["Loan agg"]
     LRS[("LoanRuleSet")]
     LN[("Loan")]
+    FF[("CirculationFulfillment")]
     RL[["Loan reads overdue / open"]]
   end
 
@@ -194,6 +280,10 @@ flowchart TB
     CK["CheckoutHolding"]
     RT["ReturnHolding"]
     LQ["ListOpenLoansByPatron ListOverdueLoans"]
+    WFI["SearchAndIssueWorkflow"]
+    WFR["ReturnBookWorkflow"]
+    CIF["CreateIssueFulfillment CompleteIssueFulfillment"]
+    CRP["InitiateReturnPickup ConfirmReturnReceived"]
   end
 
   subgraph wfMVP["MVP journey wf — aligns with §2"]
@@ -202,9 +292,16 @@ flowchart TB
     S3["3 Configure LoanRuleSet"]
     S4["4–5 Publish Catalog + Holding"]
     S5["6 Checkout"]
+    S5a["WF-01 Search and issue"]
     S6["7 Return"]
+    S6a["WF-02 Return book"]
+    S6b["Fulfillment delivery pick-up"]
     S7["8 Staff search + overdue"]
   end
+
+  S5a --> UL2 & UC4
+  S6a --> UL3
+  S6b --> FF
 
   S1 --> UR1 & UR3 & UR4
   S2 --> UR2
@@ -241,9 +338,14 @@ flowchart TB
   RT ==> LN
   RT ==> HLD
   LQ ==> RL & LN
+  WFI -.-> CK & CQ
+  WFR -.-> RT
+  CIF ==> FF & LN
+  CRP ==> FF & LN
+  FF ==> LN & HLD
 ```
 
-*Notes:* **`MapPatronTypeToLoanRuleSet`** is omitted as a label but implied between **`PatronType`** and **`LoanRuleSet`**. **`MergeCatalogRecords`**, OPAC search, renewals, and fines are **out of MVP** or phase 2 and are not drawn. Patron **`ACTIVE`** / block checks occur **inside** **`CheckoutHolding`** (`integrates_with` Reference).
+*Notes:* **`MapPatronTypeToLoanRuleSet`** is omitted as a label but implied between **`PatronType`** and **`LoanRuleSet`**. **`MergeCatalogRecords`**, OPAC search, renewals, and fines are **out of MVP** or phase 2 and are not drawn. Patron **`ACTIVE`** / block checks occur **inside** **`CheckoutHolding`** (`integrates_with` Reference). Staff workflows (**§2.1**) compose queries and orchestrator calls; **`CirculationFulfillment`** is optional per transaction.
 
 ### 7.3 Integration slice (who borrows what, under which policy)
 
@@ -295,6 +397,8 @@ flowchart TB
 
   subgraph app["Application layer"]
     ORCH[Circulation orchestrator]
+    WFI[SearchAndIssueWorkflow]
+    WFR[ReturnBookWorkflow]
     REFH[Reference command handlers]
     CATH[Catalog command handlers]
     LOANH[Loan command handlers]
@@ -314,7 +418,10 @@ flowchart TB
   end
 
   UI --> API
+  API --> WFI & WFR
   API --> REFH & CATH & LOANH & QRY
+  WFI --> ORCH
+  WFR --> ORCH
   API --> ORCH
   ORCH --> PORTS
   PORTS --> REF & CAT
@@ -386,6 +493,10 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 | **ADR-009** | **Optional domain events** (`LoanCheckedOut`, `LoanReturned`, `CatalogPublished`) | Extensibility without coupling MVP to notifications | Consumers added post-MVP; MVP works without event bus |
 | **ADR-010** | **Role-based authorization** mapped to MVP actors | §3–§5 actor columns | Admin vs librarian vs patron scopes on API operations |
 | **ADR-011** | **MVP scope guardrail** — no implementation of §1 out-of-scope in core | Maintainability; avoids premature complexity | Bulk issue, renewals, fines, guardian portal deferred to extension edge |
+| **ADR-021** | **Application workflow coordinators** (`SearchAndIssueWorkflow`, `ReturnBookWorkflow`) | Desk UX needs multi-step compose of queries + commands (§2.1) | Workflows call orchestrator for writes only; no cross-context persistence bypass |
+| **ADR-022** | **`CirculationFulfillment` aggregate** for optional delivery/pick-up | K-12 schools may deliver to class/home (§2.1, §5.1) | References `Loan`/`Holding`; does not replace circulation kernel |
+| **ADR-023** | **Custody-aligned loan clock** | Due dates and `checkoutAt` must reflect library custody, not patron doorstep | Desk: immediate checkout; delivery: on dispatch; pick-up return: two-phase close |
+| **ADR-024** | **JWT Bearer auth** on all domain APIs | REQ-21, REQ-30; desk and Swagger clients need token-based access | `POST /api/v1/auth/token` public; `domain_api_router` requires Bearer JWT; Swagger `BearerJWT` scheme |
 
 ### 10.1 Design elements (implementation map)
 
@@ -395,7 +506,9 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 | **Application** | Command handlers (`RegisterPatron`, `PublishCatalog`, …) | Load aggregate, invoke domain behavior, persist, publish events |
 | **Application** | **CirculationOrchestrator** | `CheckoutHolding` / `ReturnHolding`: call ports, apply policy, persist `Loan`, update holding status |
 | **Application** | Query handlers (`SearchCatalogStaff`, `ListOverdueLoans`, …) | Read models, filters, overdue derivation |
-| **Domain** | Aggregates | `Patron`, `PatronType`, `ClassSection`, `PatronBlock`; `Catalog`, `Holding`; `Loan`, `LoanRuleSet` |
+| **Application** | **Workflow coordinators** (§2.1) | `SearchAndIssueWorkflow`, `ReturnBookWorkflow`; `IssueEligibilityValidator` → `ValidationReport` |
+| **Application** | **Fulfillment service** | `CirculationFulfillment` state transitions for delivery/pick-up |
+| **Domain** | Aggregates | `Patron`, `PatronType`, `ClassSection`, `PatronBlock`; `Catalog`, `Holding`; `Loan`, `LoanRuleSet`, `CirculationFulfillment` |
 | **Domain** | **PolicyResolver** | Resolve `LoanRuleSet` from patron type; compute `dueDate` |
 | **Domain** | Ports | `PatronEligibilityPort`, `HoldingLendabilityPort` |
 | **Infrastructure** | Repositories, ORM, migrations | Persistence per aggregate; unique constraint on open loan per `holdingId` |
@@ -488,6 +601,11 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 | **REQ-23** | Configurable limits and loan period | ADR-007; ADR-005 | `LoanRuleSet` table; optional `loan.loanRuleSetId` FK at checkout |
 | **REQ-24** | One open loan per physical copy (implied by §5–§6) | ADR-006; infrastructure | DB unique partial index on `(holding_id) WHERE returned_at IS NULL`; row lock on checkout |
 | **REQ-25** | Staff discovery + basic overdue visibility (§1) | ADR-003 read models | Dedicated query handlers; optional search index later |
+| **REQ-26** | WF-01 search + issue with rule preview (§2.1) | ADR-021 workflow coordinators | `SearchAndIssueWorkflow`, `IssueEligibilityValidator`, `POST /api/v1/workflows/issue/*` |
+| **REQ-27** | WF-02 return with desk + pick-up paths (§2.1) | ADR-021, ADR-023 | `ReturnBookWorkflow`, `POST /api/v1/workflows/return/*` |
+| **REQ-28** | Optional delivery/pick-up fulfillment (§5.1) | ADR-022 | `CirculationFulfillment` aggregate; migration `004_fulfillment` |
+| **REQ-29** | Aggregated validation report at workflow boundary (§2.1) | ADR-021 | `ValidationReport` VO with traceable `rule_id` |
+| **REQ-30** | JWT on all domain APIs (shipped) | ADR-024 | `domain_api_router`, `HTTPBearer`, `api_users` table, `POST /api/v1/auth/token` |
 
 ### 11.1 Traceability — quality attributes & principles
 
@@ -513,6 +631,10 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 | `CheckoutHolding` | **CirculationOrchestrator** |
 | `ReturnHolding` | **CirculationOrchestrator** |
 | `ListOpenLoansByPatron`, `ListOverdueLoans` | Loan query handlers |
+| `SearchAndIssueWorkflow` (WF-01) | `loan/application/workflows/search_and_issue.py` + workflow API router |
+| `ReturnBookWorkflow` (WF-02) | `loan/application/workflows/return_book.py` + workflow API router |
+| `CreateIssueFulfillment`, `CompleteIssueFulfillment` | Fulfillment service (Phase 5B) |
+| `InitiateReturnPickup`, `ConfirmReturnReceived` | Fulfillment service + `ReturnBookWorkflow` |
 
 ---
 
@@ -526,6 +648,8 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 | [loan.md](loan.md) | `Loan`, `LoanRuleSet`, checkout/return |
 | [library_domain_model_final.md](library_domain_model_final.md) | One-page cross-domain overview |
 | [plan-mvp.md](plan-mvp.md) | Phased implementation plan, verify gates, REQ checklist |
+| [go-live-checklist.md](go-live-checklist.md) | G1–G10 sign-off and verification commands |
+| [runbook.md](runbook.md) | Deploy, backup, migration rollback, incidents |
 
 ---
 
@@ -574,9 +698,11 @@ Idempotency keys should be retained for a bounded replay window (for example 24 
 | Catalog draft/publish/suppress/holding maintenance | Yes | Yes | No |
 | Checkout / return at desk | Optional (policy) | Yes | Optional (self-checkout policy) |
 | Staff discovery / overdue operational views | Yes | Yes | No |
+| Workflow issue / return (§2.1) | Optional (policy) | Yes | No |
+| Fulfillment state transitions (delivery / pick-up) | Optional (policy) | Yes | No |
 | Patron self views (if enabled) | No | No | Yes |
 
-Policy choice on self-checkout must be explicitly fixed in product configuration before go-live.
+Policy choice on self-checkout must be explicitly fixed in product configuration before go-live. All domain and workflow APIs require **Bearer JWT** (ADR-024); obtain token via `POST /api/v1/auth/token`.
 
 ### 13.5 Observability and audit minimums
 
@@ -600,3 +726,22 @@ The MVP should be validated against explicit baseline assumptions before release
 | Overdue/report query window | Up to 12 months history without timeout at p95 targets |
 
 If expected production numbers exceed these baselines, run targeted performance tests and revise SLOs before rollout.
+
+---
+
+## 14. Implementation status (snapshot)
+
+Current codebase vs planned work. Authoritative execution tracking: **[plan-mvp.md](plan-mvp.md) §0**.
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Phase 0 — Foundation | **Done** | CI, idempotency, module boundaries, JWT auth (`api_users`, `POST /api/v1/auth/token`) |
+| Phase 1 — Reference | **Done** | Patron, types, class sections, blocks; REST under `/api/v1/reference` |
+| Phase 2 — Loan policy | **Done** | `LoanRuleSet`, `PolicyResolver` |
+| Phase 3 — Catalog | **Done** | Draft/publish/holdings; REST under `/api/v1/catalog` |
+| Phase 4 — Circulation | **Done** | `CirculationOrchestrator`, ports, partial unique index |
+| Phase 5 — Queries | **Done** | Lendable search, open/overdue with display labels; G1 E2E |
+| Phase 5A — Desk workflows | **Done** | WF-01, WF-02 + rollback/name lookup (§2.1) |
+| Phase 5B — Fulfillment | **Done** | Delivery/pick-up in MVP scope (§5.1) |
+| Phase 6 — Staff UI | **Done** | Issue/return wizards at `/staff/` |
+| Phase 7 — Hardening | **Done** | Concurrency, idempotency, SLO tests; [runbook.md](runbook.md), [go-live-checklist.md](go-live-checklist.md) |

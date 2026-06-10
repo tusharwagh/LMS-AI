@@ -2,9 +2,26 @@
 
 Execution plan for the K‑12 Library Management MVP.
 
-**Scope authority:** [MVP.md](MVP.md) §1–§6, §8–§13. **Domain rules:** [reference.md](reference.md), [catalog.md](catalog.md), [loan.md](loan.md).
+**Scope authority:** [MVP.md](MVP.md) §1–§6, §2.1 (staff workflows), §8–§14. **Domain rules:** [reference.md](reference.md), [catalog.md](catalog.md), [loan.md](loan.md).
 
 **Out of scope (do not implement):** guardian portals, fines ledger, bulk class issue, renewals, procurement integration, full OPAC polish (MVP.md §1, ADR-011).
+
+---
+
+## 0. Implementation status
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 0 Foundation | **Done** | JWT + `api_users`, idempotency, CI, module boundaries (ADR-024) |
+| 1 Reference | **Done** | REST + services under `/api/v1/reference` |
+| 2 Loan policy | **Done** | `LoanRuleSet`, `PolicyResolver` |
+| 3 Catalog | **Done** | Draft/publish/holdings under `/api/v1/catalog` |
+| 4 Circulation | **Done** | `CirculationOrchestrator`, ports, partial unique index |
+| 5 Queries | **Done** | Lendable search, open/overdue with display labels; G1 E2E |
+| **5A Workflows** | **Done** | WF-01, WF-02 + rollback/name lookup |
+| **5B Fulfillment** | **Done** | Delivery/pick-up in MVP scope (MVP.md §5.1) |
+| 6 Staff UI | **Done** | Issue/return wizards at `/staff/` |
+| 7 Hardening | **Done** | Concurrency, idempotency, SLO tests; [runbook.md](runbook.md), [go-live-checklist.md](go-live-checklist.md) |
 
 ---
 
@@ -12,18 +29,22 @@ Execution plan for the K‑12 Library Management MVP.
 
 ### 1.1 Product goal
 
-Deliver a **coherent circulation slice**: register patrons → configure loan rules → catalog and accession books → checkout/return → staff search and overdue visibility (MVP.md §2 journey steps 1–8).
+Deliver a **coherent circulation slice**: register patrons → configure loan rules → catalog and accession books → checkout/return → staff search and overdue visibility (MVP.md §2 steps 1–8), plus **staff desk workflows** for search/issue and return with optional **delivery/pick-up** (MVP.md §2.1).
 
 ### 1.2 MVP done when
 
 | # | Criterion | Verify |
 |---|-----------|--------|
-| **G1** | Journey steps 1–8 work end-to-end via API | Scripted E2E: patron + type + rule → publish catalog + holding → checkout → return → search + overdue |
+| **G1** | Journey steps 1–8 work end-to-end via API (domain + workflow APIs) | E2E: patron + type + rule → publish catalog + holding → checkout → return → search + overdue |
 | **G2** | Circulation invariants hold under concurrency | Two simultaneous checkouts on same `holdingId` → exactly one succeeds (REQ-24, MVP.md §13.2) |
 | **G3** | Idempotent checkout/return | Same `Idempotency-Key` replay → same outcome, no duplicate loan (MVP.md §13.3) |
-| **G4** | RBAC enforced | Unauthorized roles rejected on write operations (REQ-21, MVP.md §13.4) |
+| **G4** | RBAC + JWT enforced | Bearer JWT required on domain APIs; unauthorized roles rejected (REQ-21, REQ-30, MVP.md §13.4) |
 | **G5** | SLO baselines met on seed data at §13.6 scale | p95 checkout/return ≤ 1200 ms; staff search ≤ 1500 ms (MVP.md §13.1) |
-| **G6** | REQ-01 … REQ-25 mapped to shipped handlers/APIs | Traceability checklist §5 complete |
+| **G6** | REQ-01 … REQ-30 mapped to shipped handlers/APIs | Traceability checklist §5 complete |
+| **G7** | WF-01 desk issue via workflow API | E2E: patron lookup → search → select holding → commit → open loan (REQ-26) |
+| **G8** | WF-02 desk return via workflow API | E2E: barcode → return → holding `AVAILABLE` (REQ-27) |
+| **G9** | Delivery issue + pick-up return paths | E2E: fulfillment states + custody-aligned loan close (REQ-28, ADR-023) |
+| **G10** | Rule preview returns all violations | Unit/integration: blocked patron + unavailable holding → 2+ `rule_id`s (REQ-29) |
 
 ---
 
@@ -40,6 +61,8 @@ Deliver a **coherent circulation slice**: register patrons → configure loan ru
 | Scope guardrail | ADR-011 | Defer MVP.md §1 out-of-scope; no feature flags on circulation invariants (ADR-020) |
 | Idempotency | ADR-017 | `CheckoutHolding` / `ReturnHolding` require `Idempotency-Key` |
 | Audit / correlation | ADR-018, MVP.md §13.5 | Correlation id and audit metadata on write operations |
+| Workflow coordinators | ADR-021 | Desk workflows compose queries + orchestrator; no cross-context write bypass |
+| Custody-aligned circulation | ADR-023 | Loan timestamps follow library custody; pick-up return is two-phase |
 
 ---
 
@@ -60,9 +83,9 @@ Deliver a **coherent circulation slice**: register patrons → configure loan ru
 
 Phases follow [MVP.md](MVP.md) §2 journey. Each phase ends with **verify** checks — do not start the next phase until they pass.
 
-### Phase 0 — Foundation
+### Phase 0 — Foundation ✅ Done
 
-**Goal:** Runnable skeleton with CI, DB migrations, module boundaries, auth stub.
+**Goal:** Runnable skeleton with CI, DB migrations, module boundaries, JWT authentication.
 
 **Python project layout** (locked D1–D6):
 
@@ -89,15 +112,18 @@ docker-compose.yml        # PostgreSQL 16
 | Repo layout: `reference/`, `catalog/`, `loan/`, `shared/` | Module folders; no cross-import violations | REQ-01, ADR-001 |
 | PostgreSQL + migration tool | Empty schema + migration pipeline | ADR-013, ADR-014 |
 | API shell: health, correlation id, error model | `X-Correlation-Id`, machine-readable errors | MVP.md §13.5, §10.5 |
+| JWT auth: `api_users` table (migration `003`) | Bcrypt passwords; seed users via `ensure_default_api_users` | REQ-30, ADR-024 |
+| `POST /api/v1/auth/token`, `GET /api/v1/auth/me` | OAuth2 password flow; Bearer JWT on domain APIs | REQ-30 |
+| `domain_api_router` + `HTTPBearer` / Swagger `BearerJWT` | All `/api/v1/reference|catalog|loan` require token | ADR-024 |
 | Auth middleware: role extraction | `ADMIN`, `LIBRARIAN`, `PATRON` on request context | REQ-21, ADR-010 |
 | CI: unit + integration harness; migration on CI DB | Green pipeline on empty app | MVP.md §10.6 |
 | Idempotency store | `idempotency_key`, actor, payload hash, response, `expires_at` | ADR-017, MVP.md §13.3 |
 
-**Verify:** `GET /health` → 200; migration applies cleanly; CI green; module boundaries enforced.
+**Verify (regression):** `GET /health` → 200; migration applies cleanly; CI green; module boundaries enforced; unauthenticated domain call → 401.
 
 ---
 
-### Phase 1 — Reference domain
+### Phase 1 — Reference domain ✅ Done
 
 **Goal:** Patron master data and eligibility signals (journey step 1).
 
@@ -111,11 +137,11 @@ docker-compose.yml        # PostgreSQL 16
 | `GetPatronById`, `GetPatronByExternalRef`, `GetPatronByCardBarcode` | Desk lookup queries | Desk workflow |
 | Domain rules REF-P*, REF-B*, REF-T*, REF-C* | Aggregate validators | reference.md §5 |
 
-**Verify:** Register student with `PatronType` + `ClassSection`; suspend/block rejected at domain layer; barcode lookup returns patron; audit fields populated (MVP.md §13.5).
+**Verify (regression):** Register student with `PatronType` + `ClassSection`; suspend/block rejected at domain layer; barcode lookup returns patron; audit fields populated (MVP.md §13.5).
 
 ---
 
-### Phase 2 — Loan policy
+### Phase 2 — Loan policy ✅ Done
 
 **Goal:** Configurable limits before circulation (journey steps 2–3).
 
@@ -126,11 +152,11 @@ docker-compose.yml        # PostgreSQL 16
 | `PolicyResolver`: `PatronType` → `LoanRuleSet`, compute `dueDate` | Fail closed if unmapped | REQ-16, ADR-005 |
 | `MapPatronTypeToLoanRuleSet` | Via `UpdatePatronType` or dedicated command | MVP.md §2 step 2 |
 
-**Verify:** Unmapped type → resolver error; mapped type → correct `dueDate` for given `loanPeriodDays`.
+**Verify (regression):** Unmapped type → resolver error; mapped type → correct `dueDate` for given `loanPeriodDays`.
 
 ---
 
-### Phase 3 — Catalog domain
+### Phase 3 — Catalog domain ✅ Done
 
 **Goal:** Bibliographic records and lendable holdings (journey steps 4–5).
 
@@ -143,11 +169,11 @@ docker-compose.yml        # PostgreSQL 16
 | `HoldingLendabilityPort` adapter | Published catalog + `AVAILABLE` holding | REQ-17 |
 | Indexes: barcode, accession, catalog status | Per MVP.md §10.4 | ADR-013 |
 
-**Verify:** Unpublished catalog holding not lendable; withdrawn holding rejected; duplicate barcode fails.
+**Verify (regression):** Unpublished catalog holding not lendable; withdrawn holding rejected; duplicate barcode fails.
 
 ---
 
-### Phase 4 — Circulation kernel (critical path)
+### Phase 4 — Circulation kernel (critical path) ✅ Done
 
 **Goal:** Checkout and return with cross-context integrity (journey steps 6–7).
 
@@ -170,7 +196,7 @@ docker-compose.yml        # PostgreSQL 16
 5. Persist and commit atomically.
 6. Rely on partial unique index as final safety net.
 
-**Verify:**
+**Verify (regression):**
 
 - Happy path: checkout → holding `ON_LOAN`; return → `AVAILABLE`, `returnedAt` set.
 - Reject: blocked patron, max loans exceeded, unpublished catalog, non-available holding.
@@ -179,50 +205,95 @@ docker-compose.yml        # PostgreSQL 16
 
 ---
 
-### Phase 5 — Queries and staff operations
+### Phase 5 — Queries and staff operations ✅ Done
 
 **Goal:** Discovery and operational visibility (journey step 8).
 
-| Task | Handler / API | REQ |
-|------|---------------|-----|
-| `SearchCatalogStaff`, `ListHoldings` | Title/ISBN/barcode filters | REQ-10, REQ-25 |
-| `ListOpenLoansByPatron` | Join labels from Reference/Catalog in read layer | REQ-15, REQ-19 |
-| `ListOverdueLoans` | Open ∧ `today > dueDate` in library TZ (D6) | REQ-15, REQ-20 |
-| RBAC on all endpoints | Per MVP.md §13.4 | REQ-21 |
+| Task | Handler / API | REQ | Status |
+|------|---------------|-----|--------|
+| `SearchCatalogStaff`, `ListHoldings` | Title/ISBN/barcode filters | REQ-10, REQ-25 | **Done** |
+| `ListOpenLoansByPatron` | Join labels from Reference/Catalog in read layer | REQ-15, REQ-19 | **Done** |
+| `ListOverdueLoans` | Open ∧ `today > dueDate` in library TZ (D6) | REQ-15, REQ-20 | **Done** |
+| RBAC + JWT on all endpoints | Per MVP.md §13.4, ADR-024 | REQ-21, REQ-30 | **Done** |
+| Staff search filter `PUBLISHED` + lendable holdings view | Issue UI query enhancement | REQ-10 | **Done** |
+| Full G1 E2E incl. search + overdue in one script | `test_mvp_journey_includes_search_and_overdue` | REQ-02 | **Done** |
 
 **Verify:** Overdue list correct across timezone boundary; staff search p95 within MVP.md §13.1 on seed data at §13.6 scale.
 
 ---
 
-### Phase 6 — Staff UI (optional thin slice)
+### Phase 5A — Staff desk workflows ✅ Done
 
-**Goal:** Minimum desk-usable UI; API-first if UI slips.
+**Goal:** WF-01 and WF-02 desk paths per [MVP.md §2.1](MVP.md).
+
+| Task | Deliverable | REQ |
+|------|-------------|-----|
+| `IssueEligibilityValidator` | Composes ports → `ValidationReport` | REQ-29 |
+| `SearchAndIssueWorkflow` | Preview patron, search, list lendable copies, validate, commit | REQ-26 |
+| `ReturnBookWorkflow` | Resolve by barcode, preview, desk return | REQ-27 |
+| Workflow router `src/lms/api/workflows/` | `POST /api/v1/workflows/issue/start`, `.../commit`, `.../return/...` | REQ-26, REQ-27 |
+| Catalog query enhancement | Lendable catalog search / AVAILABLE-only copy list | REQ-10 |
+| E2E `tests/e2e/test_workflow_issue_return.py` | G7, G8 | REQ-02 |
+
+**Key files to add:**
+
+```
+src/lms/loan/application/workflows/search_and_issue.py
+src/lms/loan/application/workflows/return_book.py
+src/lms/loan/domain/validation.py
+src/lms/api/workflows/router.py
+```
+
+**Verify:** Librarian JWT → full desk issue/return via workflow APIs; `ValidationReport` lists named `rule_id`s on failure. Orchestrator contract unchanged.
+
+---
+
+### Phase 5B — Fulfillment (delivery / pick-up)
+
+**Goal:** Optional fulfillment when patron opts for delivery or pick-up (MVP.md §5.1).
+
+| Task | Deliverable | REQ |
+|------|-------------|-----|
+| Schema `circulation_fulfillments` | Alembic migration `004` | REQ-28 |
+| `CirculationFulfillment` aggregate + service | State machine: REQUESTED → READY → IN_TRANSIT → COMPLETED | REQ-28 |
+| Extend WF-01 commit | `mode != DESK` → create/update fulfillment after checkout | REQ-28 |
+| `InitiateReturnPickup` + `ConfirmReturnReceived` | Two-phase pick-up return (ADR-023) | REQ-27 |
+| E2E fulfillment paths | G9 | REQ-28 |
+
+**Verify:** Delivery issue completes fulfillment `COMPLETED` with open loan; pick-up return closes loan only on `ConfirmReturnReceived`.
+
+---
+
+### Phase 6 — Staff UI ✅ Done
+
+**Goal:** Minimum desk-usable UI; API-first if UI slips. Consumes **workflow APIs** (Phase 5A/5B), not raw domain checkout URLs.
 
 | Screen | Actions |
 |--------|---------|
 | Patron lookup | Scan card / search by admission no. |
-| Checkout / return | Scan patron + holding |
+| **Issue wizard** | Patron scan → catalog search → copy select → fulfillment choice (desk / delivery / pick-up) |
+| **Return wizard** | Barcode scan → desk return or schedule pick-up collection |
 | Catalog search | Find title, list holdings |
 | Overdue list | Operational report |
 | Admin | Patron types, loan rules, class sections |
 
-**Verify:** Librarian completes G1 journey without raw API calls.
+**Verify:** Librarian completes G1 + G7/G8 journey without raw domain API calls.
 
 ---
 
-### Phase 7 — Hardening and go-live
+### Phase 7 — Hardening and go-live ✅ Done
 
 **Goal:** Production readiness per MVP.md §13 and §10.6.
 
-| Task | Source |
-|------|--------|
-| Load test at §13.6 baselines | §13.6 |
-| Lock-contention and idempotency regression suite | §13.2, §13.3 |
-| Seed script: patron types, rules, sample catalog | §10.6 |
-| Runbook: backup, migration rollback policy | §10.6 |
-| Go-live checklist sign-off | §1.2 G1–G6 |
+| Task | Source | Status |
+|------|--------|--------|
+| Load test at §13.6 baselines | §13.6 | **Done** — `tests/performance/test_slo_baselines.py` |
+| Lock-contention and idempotency regression suite | §13.2, §13.3 | **Done** — `tests/hardening/` |
+| Seed script: patron types, rules, sample catalog | §10.6 | **Done** — `make seed` |
+| Runbook: backup, migration rollback policy | §10.6 | **Done** — [runbook.md](runbook.md) |
+| Go-live checklist sign-off | §1.2 G1–G10 | **Done** — [go-live-checklist.md](go-live-checklist.md) |
 
-**Verify:** All G1–G6 criteria pass.
+**Verify:** `make phase7` — all G1–G10 criteria pass.
 
 ---
 
@@ -257,6 +328,11 @@ Mark each REQ during Phase 7 with phase and test id.
 | REQ-23 | 2, 4 | Configurable limits + snapshot on loan |
 | REQ-24 | 4 | One open loan per holding |
 | REQ-25 | 5 | Staff discovery |
+| REQ-26 | 5A | WF-01 search + issue workflow |
+| REQ-27 | 5A, 5B | WF-02 return + pick-up paths |
+| REQ-28 | 5B | CirculationFulfillment |
+| REQ-29 | 5A | ValidationReport |
+| REQ-30 | 0 | JWT Bearer on domain APIs |
 
 ---
 
@@ -264,11 +340,14 @@ Mark each REQ during Phase 7 with phase and test id.
 
 | Layer | Focus |
 |-------|--------|
-| Unit | Aggregate invariants (REF-*, CAT-*, loan rules) |
+| Unit | Aggregate invariants (REF-*, CAT-*, loan rules); `ValidationReport` |
 | Integration | Handler + DB per module |
 | Circulation | Orchestrator + ports + transaction + unique index |
-| E2E | Full MVP.md §2 journey script |
-| Performance | Checkout/return and search at MVP.md §13.6 scale |
+| Workflow | Preview vs commit; desk vs fulfillment branches (G7–G10) |
+| Fulfillment | State transitions; custody policy with orchestrator (G9) |
+| E2E | Full MVP.md §2 journey + workflow APIs |
+| Performance | Checkout/return and search at MVP.md §13.6 scale | `make test-performance` |
+| Hardening | Concurrency + idempotency regression | `make test-hardening` |
 
 **CI gate (MVP.md §10.6):** no deploy if migration or circulation tests fail.
 
@@ -284,6 +363,9 @@ Mark each REQ during Phase 7 with phase and test id.
 | Patron lookup missing at desk | Phase 1 barcode/externalRef queries |
 | Self-checkout ambiguity | Lock D4 before Phase 4 |
 | Overdue TZ errors | Lock D6; test boundary dates in Phase 5 |
+| Workflow bypasses orchestrator | ADR-021: workflows only call orchestrator for writes |
+| Pick-up return closes loan early | ADR-023: two-phase return; tests on open-loan invariant |
+| Fulfillment scope creep | Desk path works without fulfillment row (`NOT_REQUIRED`) |
 
 ---
 
