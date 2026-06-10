@@ -18,7 +18,7 @@ API_PORT="${LMS_API_PORT:-8000}"
 if [[ "${SEED:-0}" == "1" ]]; then
   echo "Waiting for database before seed..."
   make ensure-venv
-  .venv/bin/alembic upgrade head
+  .venv/bin/python -m alembic upgrade head
   .venv/bin/python scripts/seed_sample_data.py
 fi
 
