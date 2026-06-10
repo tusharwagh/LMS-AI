@@ -17,6 +17,7 @@ Python **modular monolith** for K-12 school library circulation: reference data,
 | Tool | Version | Notes |
 |------|---------|-------|
 | **Python** | 3.12+ | Required for native dev and tests |
+| **Node.js** | 24+ | Optional; required for `make diagram` (see `.nvmrc`) |
 | **PostgreSQL** | 16 | Required for native deploy; bundled in Docker path |
 | **Docker + Compose** | recent | Optional; easiest path for a fresh machine |
 | **Make** | any | All build/deploy targets |
@@ -152,6 +153,8 @@ In Swagger (`/docs`), use **Authorize** with the raw `access_token` (no `Bearer 
 | Target | Command | Purpose |
 |--------|---------|---------|
 | Install (native dev) | `make install` | venv + editable install with dev tools |
+| Node deps (diagram) | `make install-node` | `npm install` for tldraw diagram script |
+| Regenerate diagram | `make diagram` | Requires Node.js 24+ |
 | CI (no Docker) | `make ci-native` | lint + test |
 | CI parity | `make ci` | lint + test + Docker build |
 | **Native deploy** | `make deploy-native` | No Docker — venv + migrate + API |
