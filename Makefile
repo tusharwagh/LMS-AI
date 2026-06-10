@@ -1,15 +1,17 @@
-.PHONY: help install build test lint ci ci-native diagram \
+.PHONY: help install install-node build test lint ci ci-native diagram \
 	migrate ddl seed seed-sql \
 	destroy-data destroy-schema destroy-db destroy destroy-all \
 	deploy-destroy destroy-native \
 	run-dev setup-native deploy-native deploy-local-native \
 	deploy-local deploy-local-logs deploy-local-down deploy-local-clean \
 	test-unit test-integration test-e2e test-hardening test-performance phase7 \
-	ensure-env ensure-venv
+	ensure-env ensure-venv ensure-node ensure-node-modules
 
 PYTHON ?= python3
 VENV ?= .venv
 BIN := $(VENV)/bin
+NODE ?= node
+NPM ?= npm
 COMPOSE := docker compose
 IMAGE ?= lms-ai:local
 API_HOST ?= 127.0.0.1
@@ -24,7 +26,8 @@ help:
 	@echo "LMS-AI build & local deployment"
 	@echo ""
 	@echo "Development"
-	@echo "  make install               Create venv and install dev dependencies"
+	@echo "  make install               Create venv and install Python dev dependencies"
+	@echo "  make install-node          Install Node.js deps (diagram tooling, Node 24+)"
 	@echo "  make test                  Run all pytest suites"
 	@echo "  make test-unit             Unit tests only (no DB)"
 	@echo "  make test-integration      Service + DB integration tests"
@@ -74,6 +77,9 @@ install:
 	$(BIN)/pip install -U pip
 	$(BIN)/pip install -e ".[dev]"
 
+install-node: ensure-node
+	$(NPM) install
+
 build:
 	docker build -t $(IMAGE) .
 
@@ -97,8 +103,15 @@ test-performance:
 
 phase7: test-hardening test-performance
 
-diagram:
-	node scripts/generate-architecture-diagram.mjs
+ensure-node:
+	@command -v $(NODE) >/dev/null || { echo "Node.js 24+ required (see .nvmrc)"; exit 1; }
+	@$(NODE) -e "const [major]=process.versions.node.split('.').map(Number); if(major<24){console.error('Node.js 24+ required, found '+process.version); process.exit(1)}"
+
+ensure-node-modules: ensure-node
+	@test -d node_modules/tldraw || $(NPM) install
+
+diagram: ensure-node-modules
+	$(NODE) scripts/generate-architecture-diagram.mjs
 
 lint:
 	$(BIN)/ruff check src tests scripts
