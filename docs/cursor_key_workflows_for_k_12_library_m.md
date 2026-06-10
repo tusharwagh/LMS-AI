@@ -1,4 +1,4 @@
-# K-12 Library Management - Consolidated Domain Notes
+# LMS-AI — K-12 Library Management - Consolidated Domain Notes
 
 **Reference:** [`reference.md`](reference.md) · **Catalog:** [`catalog.md`](catalog.md) · **Loan:** [`loan.md`](loan.md)
 

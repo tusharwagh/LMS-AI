@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tear down LMS data, schema, database, and/or local deployment.
+# Tear down LMS-AI data, schema, database, and/or local deployment.
 #
 # Usage:
 #   ./scripts/destroy.sh --data              Remove sample seed rows only
@@ -75,7 +75,7 @@ confirm() {
     return 0
   fi
   echo ""
-  echo "This will destroy LMS resources:"
+  echo "This will destroy LMS-AI resources:"
   [[ "$DO_DEPLOY" -eq 1 ]] && echo "  - Docker Compose stack and volumes"
   [[ "$DO_DATA" -eq 1 ]] && echo "  - Sample seed data"
   [[ "$DO_SCHEMA" -eq 1 ]] && echo "  - All LMS tables (domain + idempotency + alembic_version)"

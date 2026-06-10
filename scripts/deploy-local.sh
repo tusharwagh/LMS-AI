@@ -23,7 +23,7 @@ if [[ "${SEED:-0}" == "1" ]]; then
 fi
 
 echo ""
-echo "LMS local deployment started."
+echo "LMS-AI local deployment started."
 echo "  Health: http://localhost:${API_PORT}/health"
 echo "  Docs:   http://localhost:${API_PORT}/docs"
 echo "  Logs:   docker compose logs -f api"

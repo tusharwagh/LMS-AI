@@ -9,7 +9,7 @@ pytestmark = pytest.mark.e2e
 def test_staff_ui_index(bare_client: TestClient) -> None:
     resp = bare_client.get("/staff/")
     assert resp.status_code == 200
-    assert "Library Staff Desk" in resp.text
+    assert "LMS-AI Staff Desk" in resp.text
     assert "/staff/static/app.js" in resp.text
 
 

@@ -44,7 +44,7 @@ def parse_database_name(database_url: str) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Execute SQL against LMS DATABASE_URL")
+    parser = argparse.ArgumentParser(description="Execute SQL against LMS-AI DATABASE_URL")
     parser.add_argument("sql_file", type=Path, nargs="?", help="Path to .sql file")
     parser.add_argument(
         "--database",

@@ -1,6 +1,6 @@
-# Operations runbook — LMS MVP
+# Operations runbook — LMS-AI MVP
 
-Operational procedures for deploying, backing up, and recovering the K‑12 Library Management MVP.
+Operational procedures for deploying, backing up, and recovering the LMS-AI K‑12 Library Management MVP.
 
 **Scope:** single-school modular monolith (`src/lms/`). **Authority:** [MVP.md §13](MVP.md), [plan-mvp.md Phase 7](plan-mvp.md).
 

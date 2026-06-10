@@ -1,6 +1,6 @@
 # Research — architecture & design discovery
 
-This document preserves **conversation history and reasoning** for the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–E) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
+This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–E) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
 
 **Canonical implementation spec:** [MVP.md](MVP.md) (requirements, architecture §8–§10, traceability §11, staff workflows §2.1, status §14).  
 **Execution plan:** [plan-mvp.md](plan-mvp.md) (phased delivery, §0 implementation status).  

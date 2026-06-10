@@ -1,6 +1,6 @@
-# Plan — MVP Implementation
+# Plan — LMS-AI MVP Implementation
 
-Execution plan for the K‑12 Library Management MVP.
+Execution plan for the LMS-AI K‑12 Library Management MVP.
 
 **Scope authority:** [MVP.md](MVP.md) §1–§6, §2.1 (staff workflows), §8–§14. **Domain rules:** [reference.md](reference.md), [catalog.md](catalog.md), [loan.md](loan.md).
 

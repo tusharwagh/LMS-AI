@@ -11,7 +11,7 @@ PYTHON ?= python3
 VENV ?= .venv
 BIN := $(VENV)/bin
 COMPOSE := docker compose
-IMAGE ?= lms:local
+IMAGE ?= lms-ai:local
 API_HOST ?= 127.0.0.1
 API_PORT ?= 8000
 SEED ?= 0
@@ -21,7 +21,7 @@ SQL_DIR := scripts/sql
 DESTROY_FLAGS := $(if $(filter 1 true yes,$(DESTROY_YES)),--yes,)
 
 help:
-	@echo "LMS build & local deployment"
+	@echo "LMS-AI build & local deployment"
 	@echo ""
 	@echo "Development"
 	@echo "  make install               Create venv and install dev dependencies"

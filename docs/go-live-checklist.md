@@ -1,4 +1,4 @@
-# Go-live checklist — MVP
+# Go-live checklist — LMS-AI MVP
 
 Sign-off against [plan-mvp.md §1.2](plan-mvp.md) success criteria (G1–G10) and [MVP.md §13](MVP.md) guardrails.
 

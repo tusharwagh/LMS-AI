@@ -1,4 +1,4 @@
-# K-12 Library Management - Final Domain Model
+# LMS-AI — K-12 Library Management - Final Domain Model
 
 ## Canonical domains
 

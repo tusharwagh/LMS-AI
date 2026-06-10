@@ -18,10 +18,10 @@ def create_app() -> FastAPI:
     configure_logging(settings.app_debug)
 
     app = FastAPI(
-        title="LMS API",
+        title="LMS-AI API",
         version="0.1.0",
         description=(
-            "K-12 Library Management — MVP. "
+            "LMS-AI — K-12 Library Management (MVP). "
             "Click **Authorize**, paste a JWT from `POST /api/v1/auth/token`, "
             "then try domain endpoints."
         ),

@@ -22,7 +22,7 @@ API_HOST="${API_HOST:-127.0.0.1}"
 API_PORT="${API_PORT:-8000}"
 
 echo ""
-echo "LMS native deployment (no Docker)."
+echo "LMS-AI native deployment (no Docker)."
 echo "  Health: http://${API_HOST}:${API_PORT}/health"
 echo "  Docs:   http://${API_HOST}:${API_PORT}/docs"
 echo "  Stop:   Ctrl+C"

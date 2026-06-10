@@ -1,4 +1,4 @@
-# MVP — K‑12 Library Management (minimal ship)
+# MVP — LMS-AI · K‑12 Library Management (minimal ship)
 
 This document collects **MVP / minimal-scope** behavior across the three bounded contexts. Authoritative rules, entities, APIs, and diagrams remain in **[reference.md](reference.md)**, **[catalog.md](catalog.md)**, and **[loan.md](loan.md)**.
 
