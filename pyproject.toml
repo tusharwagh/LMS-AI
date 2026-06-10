@@ -42,7 +42,7 @@ directory = "src"
 packages = ["lms"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"lms/staff/static" = "lms/staff/static"
+"src/lms/staff/static" = "lms/staff/static"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
