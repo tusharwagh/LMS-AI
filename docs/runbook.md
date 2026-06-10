@@ -11,9 +11,10 @@ Operational procedures for deploying, backing up, and recovering the LMS-AI K‑
 | Item | Requirement |
 |------|-------------|
 | Python | 3.12+ |
+| Node.js | 24+ (diagram tooling only; see `.nvmrc`) |
 | PostgreSQL | 16 |
 | Config | `.env` from `.env.example` (`DATABASE_URL`, `JWT_SECRET`, `LIBRARY_TIMEZONE=Asia/Kolkata`) |
-| Tooling | `make install`, `make migrate` |
+| Tooling | `make install`, `make migrate`; `make install-node` for `make diagram` |
 
 Default API users (dev/demo only — **change before production**):
 
