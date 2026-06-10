@@ -109,7 +109,7 @@ ci-native: lint test-unit test-integration test-e2e test-hardening test-performa
 ci: ci-native build
 
 migrate: ensure-env ensure-venv
-	$(BIN)/alembic upgrade head
+	$(BIN)/python -m alembic upgrade head
 
 ddl: ensure-env ensure-venv
 	$(BIN)/python scripts/db_exec.py $(SQL_DIR)/001_domain_ddl.sql
@@ -159,7 +159,17 @@ ensure-env:
 	test -f .env || cp .env.example .env
 
 ensure-venv:
-	test -x $(BIN)/python || $(MAKE) install
+	@if ! test -x $(BIN)/python; then \
+		$(MAKE) install; \
+	elif ! test -f $(VENV)/pyvenv.cfg || ! grep -qF "$(abspath $(VENV))" $(VENV)/pyvenv.cfg; then \
+		echo "Recreating virtualenv (stale paths after project move)..."; \
+		rm -rf $(VENV); \
+		$(MAKE) install; \
+	elif ! $(BIN)/python -m alembic --version >/dev/null 2>&1; then \
+		echo "Repairing virtualenv (reinstalling console scripts)..."; \
+		$(BIN)/python -m pip install -U pip; \
+		$(BIN)/python -m pip install -e ".[dev]"; \
+	fi
 
 deploy-local:
 	@chmod +x scripts/deploy-local.sh scripts/destroy.sh 2>/dev/null || true
