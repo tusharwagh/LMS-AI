@@ -12,17 +12,15 @@ if [[ ! -f .env ]]; then
   echo "Created .env from .env.example"
 fi
 
-if [[ ! -x .venv/bin/python ]]; then
-  make ensure-venv
-fi
+make ensure-venv
 
 case "$MODE" in
   python)
-    .venv/bin/alembic upgrade head
+    .venv/bin/python -m alembic upgrade head
     .venv/bin/python scripts/seed_sample_data.py
     ;;
   sql)
-    .venv/bin/alembic upgrade head
+    .venv/bin/python -m alembic upgrade head
     .venv/bin/python scripts/db_exec.py scripts/sql/002_sample_data.sql
     ;;
   *)
