@@ -1,0 +1,16 @@
+{
+  "name": "lms-ai",
+  "private": true,
+  "description": "Node tooling for LMS-AI (architecture diagram generation)",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "diagram": "node scripts/generate-architecture-diagram.mjs"
+  },
+  "dependencies": {
+    "jsdom": "^26.1.0",
+    "tldraw": "^4.5.6"
+  }
+}
