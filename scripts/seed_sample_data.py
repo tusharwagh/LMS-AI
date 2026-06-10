@@ -98,7 +98,14 @@ def _clear_seed_namespace(session) -> None:
     session.execute(
         text(
             """
-            DELETE FROM loans WHERE id::text ~ '^0000000[0-9]-0001-4001-8001-';
+            DELETE FROM circulation_fulfillments
+            WHERE id::text ~ '^0000000[0-9]-0001-4001-8001-'
+               OR holding_id::text ~ '^0000000[0-9]-0001-4001-8001-'
+               OR loan_id::text ~ '^0000000[0-9]-0001-4001-8001-';
+            DELETE FROM loans
+            WHERE id::text ~ '^0000000[0-9]-0001-4001-8001-'
+               OR holding_id::text ~ '^0000000[0-9]-0001-4001-8001-'
+               OR patron_id::text ~ '^0000000[0-9]-0001-4001-8001-';
             DELETE FROM patron_blocks WHERE patron_id::text ~ '^0000000[0-9]-0001-4001-8001-';
             DELETE FROM holdings WHERE id::text ~ '^0000000[0-9]-0001-4001-8001-';
             DELETE FROM catalogs WHERE id::text ~ '^0000000[0-9]-0001-4001-8001-';
