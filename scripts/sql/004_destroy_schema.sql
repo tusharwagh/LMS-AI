@@ -3,6 +3,7 @@
 
 BEGIN;
 
+DROP INDEX IF EXISTS ix_circulation_fulfillments_loan_id;
 DROP INDEX IF EXISTS ix_loans_due_date_open;
 DROP INDEX IF EXISTS ix_loans_patron_open;
 DROP INDEX IF EXISTS ix_holdings_catalog_id;
@@ -10,6 +11,7 @@ DROP INDEX IF EXISTS ix_patrons_card_barcode;
 DROP INDEX IF EXISTS ix_patrons_external_ref;
 DROP INDEX IF EXISTS uq_loan_open_holding;
 
+DROP TABLE IF EXISTS circulation_fulfillments CASCADE;
 DROP TABLE IF EXISTS loans CASCADE;
 DROP TABLE IF EXISTS holdings CASCADE;
 DROP TABLE IF EXISTS catalogs CASCADE;

@@ -8,8 +8,15 @@ DELETE FROM idempotency_records
 WHERE scope_key LIKE 'checkout:00000006-%'
    OR scope_key LIKE 'return:00000006-%';
 
+DELETE FROM circulation_fulfillments
+WHERE id::text ~ '^0000000[0-9]-0001-4001-8001-'
+   OR holding_id::text ~ '^0000000[0-9]-0001-4001-8001-'
+   OR loan_id::text ~ '^0000000[0-9]-0001-4001-8001-';
+
 DELETE FROM loans
-WHERE id::text ~ '^0000000[0-9]-0001-4001-8001-';
+WHERE id::text ~ '^0000000[0-9]-0001-4001-8001-'
+   OR holding_id::text ~ '^0000000[0-9]-0001-4001-8001-'
+   OR patron_id::text ~ '^0000000[0-9]-0001-4001-8001-';
 
 DELETE FROM patron_blocks
 WHERE patron_id::text ~ '^0000000[0-9]-0001-4001-8001-';
