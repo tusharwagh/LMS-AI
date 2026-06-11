@@ -12,9 +12,9 @@ def _uid() -> str:
     return uuid.uuid4().hex[:8]
 
 
-def test_health_and_docs(client: TestClient) -> None:
-    assert client.get("/health").json() == {"status": "ok"}
-    assert client.get("/docs").status_code == 200
+def test_health_and_docs(bare_client: TestClient) -> None:
+    assert bare_client.get("/health").json() == {"status": "ok"}
+    assert bare_client.get("/docs").status_code == 200
 
 
 def test_mvp_circulation_journey(client: TestClient, admin_headers: dict[str, str]) -> None:

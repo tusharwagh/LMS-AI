@@ -30,8 +30,24 @@ def _settings_cache_clear(monkeypatch: pytest.MonkeyPatch) -> None:
     get_settings.cache_clear()
 
 
+def _test_needs_db_seed(request: pytest.FixtureRequest) -> bool:
+    if request.node.get_closest_marker("unit"):
+        return False
+    # Smoke tests that only hit stateless HTTP endpoints.
+    if request.node.name in {
+        "test_health_and_docs",
+        "test_health",
+        "test_correlation_id_echoed",
+        "test_auth_required_without_token",
+    }:
+        return False
+    return True
+
+
 @pytest.fixture(autouse=True)
-def _seed_api_users() -> None:
+def _seed_api_users(request: pytest.FixtureRequest) -> None:
+    if not _test_needs_db_seed(request):
+        return
     session = SessionLocal()
     try:
         ensure_default_api_users(session)

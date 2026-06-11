@@ -8,6 +8,22 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lms
+          POSTGRES_PASSWORD: lms
+          POSTGRES_DB: lms
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lms -d lms"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+psycopg://lms:lms@localhost:5432/lms
     steps:
       - uses: actions/checkout@v6
 
@@ -40,8 +56,13 @@ jobs:
         env:
           PYTHONPATH: src
 
+      - name: Migrate database
+        run: python -m alembic upgrade head
+
       - name: Pytest
         run: pytest
+        env:
+          PYTHONPATH: src
 
       - name: Docker build
         run: docker build -t lms-ai:ci .
