@@ -2,16 +2,26 @@ from dataclasses import dataclass
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from lms.api.errors import AppError, ErrorCode
-from lms.catalog.infrastructure.models.models import CatalogModel, HoldingModel
 from lms.loan.api.schemas import LoanRuleSetCreate, LoanRuleSetUpdate
 from lms.loan.domain.enums import CalendarPolicy
 from lms.loan.infrastructure.models.models import LoanModel, LoanRuleSetModel
-from lms.reference.infrastructure.models.models import PatronModel
 from lms.shared.time import library_today
+
+_LOAN_DETAIL_SELECT = """
+    SELECT
+        l.id AS loan_id,
+        p.display_name AS patron_display_name,
+        h.barcode AS holding_barcode,
+        c.title AS catalog_title
+    FROM loans l
+    JOIN patrons p ON l.patron_id = p.id
+    JOIN holdings h ON l.holding_id = h.id
+    JOIN catalogs c ON h.catalog_id = c.id
+"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,20 +77,15 @@ class LoanService:
         return list(self._session.scalars(stmt))
 
     def list_open_loan_details_by_patron(self, patron_id: UUID) -> list[LoanDetailRow]:
-        stmt = (
-            select(
-                LoanModel,
-                PatronModel.display_name,
-                HoldingModel.barcode,
-                CatalogModel.title,
-            )
-            .join(PatronModel, LoanModel.patron_id == PatronModel.id)
-            .join(HoldingModel, LoanModel.holding_id == HoldingModel.id)
-            .join(CatalogModel, HoldingModel.catalog_id == CatalogModel.id)
-            .where(LoanModel.patron_id == patron_id, LoanModel.returned_at.is_(None))
-            .order_by(LoanModel.checkout_at.desc())
+        stmt = text(
+            _LOAN_DETAIL_SELECT
+            + """
+            WHERE l.patron_id = :patron_id
+              AND l.returned_at IS NULL
+            ORDER BY l.checkout_at DESC
+            """
         )
-        return [self._loan_detail_row(row) for row in self._session.execute(stmt).all()]
+        return self._load_loan_details(stmt, {"patron_id": patron_id})
 
     def list_overdue_loans(self, *, as_of: date | None = None) -> list[LoanModel]:
         as_of = as_of or library_today()
@@ -93,30 +98,35 @@ class LoanService:
 
     def list_overdue_loan_details(self, *, as_of: date | None = None) -> list[LoanDetailRow]:
         as_of = as_of or library_today()
-        stmt = (
-            select(
-                LoanModel,
-                PatronModel.display_name,
-                HoldingModel.barcode,
-                CatalogModel.title,
-            )
-            .join(PatronModel, LoanModel.patron_id == PatronModel.id)
-            .join(HoldingModel, LoanModel.holding_id == HoldingModel.id)
-            .join(CatalogModel, HoldingModel.catalog_id == CatalogModel.id)
-            .where(LoanModel.returned_at.is_(None), LoanModel.due_date < as_of)
-            .order_by(LoanModel.due_date, LoanModel.checkout_at)
+        stmt = text(
+            _LOAN_DETAIL_SELECT
+            + """
+            WHERE l.returned_at IS NULL
+              AND l.due_date < :as_of
+            ORDER BY l.due_date, l.checkout_at
+            """
         )
-        return [self._loan_detail_row(row) for row in self._session.execute(stmt).all()]
+        return self._load_loan_details(stmt, {"as_of": as_of})
 
-    @staticmethod
-    def _loan_detail_row(row: tuple) -> LoanDetailRow:
-        loan, patron_display_name, holding_barcode, catalog_title = row
-        return LoanDetailRow(
-            loan=loan,
-            patron_display_name=patron_display_name,
-            holding_barcode=holding_barcode,
-            catalog_title=catalog_title,
-        )
+    def _load_loan_details(self, stmt, params: dict) -> list[LoanDetailRow]:
+        rows = self._session.execute(stmt, params).all()
+        if not rows:
+            return []
+        loan_ids = [row.loan_id for row in rows]
+        loans = {
+            loan.id: loan
+            for loan in self._session.scalars(select(LoanModel).where(LoanModel.id.in_(loan_ids)))
+        }
+        return [
+            LoanDetailRow(
+                loan=loans[row.loan_id],
+                patron_display_name=row.patron_display_name,
+                holding_barcode=row.holding_barcode,
+                catalog_title=row.catalog_title,
+            )
+            for row in rows
+            if row.loan_id in loans
+        ]
 
     def get_open_loan_by_holding(self, holding_id: UUID) -> LoanModel:
         row = self._session.scalar(
