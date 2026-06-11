@@ -36,7 +36,7 @@ jobs:
         run: ruff check src tests
 
       - name: Import linter
-        run: lint-imports lint
+        run: lint-imports
         env:
           PYTHONPATH: src
 
