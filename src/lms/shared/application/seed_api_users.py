@@ -26,9 +26,7 @@ def ensure_default_api_users(session: Session, *, password: str = DEFAULT_DEV_PA
     )
     pwd_hash = hash_password(password)
     for user_id, username, role, display_name in defaults:
-        existing = session.scalar(
-            select(ApiUserModel).where(ApiUserModel.username == username)
-        )
+        existing = session.scalar(select(ApiUserModel).where(ApiUserModel.username == username))
         if existing is not None:
             continue
         session.add(

@@ -90,7 +90,9 @@ def test_patron_blocked_window(
         start_at=now + timedelta(days=start_offset),
         end_at=(now + timedelta(days=end_offset)) if end_offset is not None else None,
     )
-    assert ReferenceService.is_patron_blocked_now(block, now + timedelta(days=now_offset)) is expected
+    assert (
+        ReferenceService.is_patron_blocked_now(block, now + timedelta(days=now_offset)) is expected
+    )
 
 
 class _FakeQuery:

@@ -44,10 +44,7 @@ class PatronEligibilityAdapter:
         )
 
         open_loan_count = self._session.scalar(
-            text(
-                "SELECT COUNT(*) FROM loans "
-                "WHERE patron_id = :patron_id AND returned_at IS NULL"
-            ),
+            text("SELECT COUNT(*) FROM loans WHERE patron_id = :patron_id AND returned_at IS NULL"),
             {"patron_id": patron_id},
         )
         open_loan_count = int(open_loan_count or 0)

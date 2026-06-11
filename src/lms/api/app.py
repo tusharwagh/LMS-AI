@@ -10,7 +10,8 @@ from lms.api.middleware import CorrelationIdMiddleware
 from lms.api.openapi import configure_openapi
 from lms.config import get_settings
 from lms.shared.logging import configure_logging
-from lms.staff.router import router as staff_router, staff_static_directory
+from lms.staff.router import router as staff_router
+from lms.staff.router import staff_static_directory
 
 
 def create_app() -> FastAPI:

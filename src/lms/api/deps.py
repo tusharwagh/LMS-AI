@@ -21,9 +21,7 @@ DbSession = Annotated[Session, Depends(get_db)]
 
 
 def get_auth_context(
-    credentials: Annotated[
-        HTTPAuthorizationCredentials | None, Security(http_bearer)
-    ],
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Security(http_bearer)],
 ) -> AuthContext | None:
     if credentials is None:
         return None

@@ -61,9 +61,7 @@ def update_patron_type(
 def list_patron_types(
     service: Annotated[ReferenceService, Depends(_service)],
 ) -> list[PatronTypeResponse]:
-    return [
-        PatronTypeResponse.model_validate(row) for row in service.list_patron_types()
-    ]
+    return [PatronTypeResponse.model_validate(row) for row in service.list_patron_types()]
 
 
 @router.get("/patron-types/{type_id}", response_model=PatronTypeResponse)
@@ -196,9 +194,7 @@ def assign_patron_to_class_section(
     body: AssignClassSectionRequest,
     service: Annotated[ReferenceService, Depends(_service)],
 ) -> PatronResponse:
-    return PatronResponse.model_validate(
-        service.assign_patron_to_class_section(patron_id, body)
-    )
+    return PatronResponse.model_validate(service.assign_patron_to_class_section(patron_id, body))
 
 
 @router.post("/class-sections/{section_id}/assign-patron", response_model=PatronResponse)
@@ -207,6 +203,4 @@ def assign_patron_to_section(
     body: AssignPatronToSectionRequest,
     service: Annotated[ReferenceService, Depends(_service)],
 ) -> PatronResponse:
-    return PatronResponse.model_validate(
-        service.assign_patron_to_section_by_id(section_id, body)
-    )
+    return PatronResponse.model_validate(service.assign_patron_to_section_by_id(section_id, body))

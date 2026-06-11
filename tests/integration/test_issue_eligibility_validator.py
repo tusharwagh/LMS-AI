@@ -3,16 +3,16 @@
 from datetime import UTC, datetime
 
 import pytest
+from tests.helpers import unique_tag
 
+from lms.api.workflows.issue_eligibility_validator import IssueEligibilityValidator
 from lms.catalog.api.schemas import CatalogCreate, HoldingCreate
 from lms.catalog.application.service import CatalogService
 from lms.loan.api.schemas import LoanRuleSetCreate
-from lms.api.workflows.issue_eligibility_validator import IssueEligibilityValidator
 from lms.loan.application.service import LoanService
 from lms.loan.infrastructure.policy_resolver import PolicyResolver
 from lms.reference.api.schemas import PatronBlockCreate, PatronCreate, PatronTypeCreate
 from lms.reference.application.service import ReferenceService
-from tests.helpers import unique_tag
 
 pytestmark = pytest.mark.integration
 
@@ -30,9 +30,7 @@ def test_validator_blocked_patron_and_unpublished_holding(db_session) -> None:
     ptype = ref.create_patron_type(
         PatronTypeCreate(code=f"T_{tag}", name="T", loan_rule_set_id=rule.id)
     )
-    patron = ref.register_patron(
-        PatronCreate(display_name=f"P {tag}", patron_type_id=ptype.id)
-    )
+    patron = ref.register_patron(PatronCreate(display_name=f"P {tag}", patron_type_id=ptype.id))
     ref.set_patron_block(
         patron.id,
         PatronBlockCreate(reason_code="DISCIPLINE", start_at=datetime.now(UTC)),

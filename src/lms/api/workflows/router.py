@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Header
 from lms.api.composition import get_circulation_orchestrator
 from lms.api.deps import DbSession
 from lms.api.rbac import StaffAuth, require_staff
+from lms.api.workflows.return_book import ReturnBookWorkflow
 from lms.api.workflows.schemas import (
     FulfillmentResponse,
     FulfillmentTransitionRequest,
@@ -34,11 +35,10 @@ from lms.api.workflows.schemas import (
     RuleViolationResponse,
     ValidationReportResponse,
 )
+from lms.api.workflows.search_and_issue import SearchAndIssueWorkflow
 from lms.catalog.application.service import CatalogService
 from lms.loan.application.circulation_orchestrator import CirculationOrchestrator
 from lms.loan.application.fulfillment_service import FulfillmentService
-from lms.api.workflows.return_book import ReturnBookWorkflow
-from lms.api.workflows.search_and_issue import SearchAndIssueWorkflow
 from lms.loan.domain.enums import FulfillmentStatus
 from lms.loan.domain.validation import ValidationReport
 
@@ -67,8 +67,7 @@ def _to_validation_response(report: ValidationReport) -> ValidationReportRespons
     return ValidationReportResponse(
         is_valid=report.is_valid,
         violations=[
-            RuleViolationResponse(rule_id=v.rule_id, message=v.message)
-            for v in report.violations
+            RuleViolationResponse(rule_id=v.rule_id, message=v.message) for v in report.violations
         ],
     )
 

@@ -148,9 +148,7 @@ def test_staff_search_p95_within_slo(client: TestClient, slo_fixture: dict) -> N
                 )
             )
         )
-        samples.append(
-            _timed_ms(lambda: client.get("/api/v1/loan/loans/overdue"))
-        )
+        samples.append(_timed_ms(lambda: client.get("/api/v1/loan/loans/overdue")))
 
     p95 = _p95_ms(samples)
     assert p95 <= SLO_STAFF_READ_MS, (

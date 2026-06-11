@@ -84,8 +84,7 @@ def list_lendable_holdings(
     service: Annotated[CatalogService, Depends(_service)],
 ) -> list[HoldingResponse]:
     return [
-        HoldingResponse.model_validate(row)
-        for row in service.list_lendable_holdings(catalog_id)
+        HoldingResponse.model_validate(row) for row in service.list_lendable_holdings(catalog_id)
     ]
 
 
@@ -121,9 +120,7 @@ def list_holdings(
     catalog_id: UUID,
     service: Annotated[CatalogService, Depends(_service)],
 ) -> list[HoldingResponse]:
-    return [
-        HoldingResponse.model_validate(row) for row in service.list_holdings(catalog_id)
-    ]
+    return [HoldingResponse.model_validate(row) for row in service.list_holdings(catalog_id)]
 
 
 @router.post("/holdings/{holding_id}/withdraw", response_model=HoldingResponse)

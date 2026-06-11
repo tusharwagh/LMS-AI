@@ -26,7 +26,10 @@ from lms.reference.infrastructure.models.models import (  # noqa: E402
     PatronModel,
     PatronTypeModel,
 )
-from lms.shared.application.seed_api_users import DEFAULT_DEV_PASSWORD, ensure_default_api_users
+from lms.shared.application.seed_api_users import (  # noqa: E402
+    DEFAULT_DEV_PASSWORD,
+    ensure_default_api_users,
+)
 from lms.shared.db.session import SessionLocal  # noqa: E402
 
 # Fixed seed IDs (match scripts/sql/002_sample_data.sql)
@@ -197,11 +200,51 @@ def seed(session) -> dict[str, int]:
         )
 
     patrons = [
-        (PAT_ARJUN, "ADM-2025-7001", "Arjun Mehta", TYPE_STUDENT, SEC_7A, PatronStatus.ACTIVE, "LIB-7001"),
-        (PAT_PRIYA, "ADM-2025-7002", "Priya Sharma", TYPE_STUDENT, SEC_7A, PatronStatus.ACTIVE, "LIB-7002"),
-        (PAT_ROHAN, "ADM-2025-8001", "Rohan Das", TYPE_STUDENT, SEC_8B, PatronStatus.ACTIVE, "LIB-8001"),
-        (PAT_KAVITA, "STF-2025-0101", "Ms. Kavita Nair", TYPE_TEACHER, None, PatronStatus.ACTIVE, "LIB-T101"),
-        (PAT_SNEHA, "ADM-2025-9001", "Sneha Patel", TYPE_STUDENT, SEC_9C, PatronStatus.SUSPENDED, "LIB-9001"),
+        (
+            PAT_ARJUN,
+            "ADM-2025-7001",
+            "Arjun Mehta",
+            TYPE_STUDENT,
+            SEC_7A,
+            PatronStatus.ACTIVE,
+            "LIB-7001",
+        ),
+        (
+            PAT_PRIYA,
+            "ADM-2025-7002",
+            "Priya Sharma",
+            TYPE_STUDENT,
+            SEC_7A,
+            PatronStatus.ACTIVE,
+            "LIB-7002",
+        ),
+        (
+            PAT_ROHAN,
+            "ADM-2025-8001",
+            "Rohan Das",
+            TYPE_STUDENT,
+            SEC_8B,
+            PatronStatus.ACTIVE,
+            "LIB-8001",
+        ),
+        (
+            PAT_KAVITA,
+            "STF-2025-0101",
+            "Ms. Kavita Nair",
+            TYPE_TEACHER,
+            None,
+            PatronStatus.ACTIVE,
+            "LIB-T101",
+        ),
+        (
+            PAT_SNEHA,
+            "ADM-2025-9001",
+            "Sneha Patel",
+            TYPE_STUDENT,
+            SEC_9C,
+            PatronStatus.SUSPENDED,
+            "LIB-9001",
+        ),
     ]
     for pid, ext, name, ptype, sec, status, card in patrons:
         track(
@@ -288,12 +331,60 @@ def seed(session) -> dict[str, int]:
         )
 
     holdings = [
-        (HLD_MATH1, CAT_MATH, "BC-MATH7-001", "ACC-2025-0001", "Stack A-01", HoldingStatus.ON_LOAN, True),
-        (HLD_MATH2, CAT_MATH, "BC-MATH7-002", "ACC-2025-0002", "Stack A-01", HoldingStatus.ON_LOAN, True),
-        (HLD_MATH3, CAT_MATH, "BC-MATH7-003", "ACC-2025-0003", "Stack A-01", HoldingStatus.AVAILABLE, True),
-        (HLD_PAN1, CAT_PAN, "BC-PAN-001", "ACC-2025-0101", "Stack B-12", HoldingStatus.AVAILABLE, True),
-        (HLD_NEHRU, CAT_NEHRU, "BC-NEH-001", "ACC-2025-0201", "Reference Desk", HoldingStatus.AVAILABLE, False),
-        (HLD_PAN2, CAT_PAN, "BC-PAN-002", "ACC-2024-0099", "Stack B-12", HoldingStatus.WITHDRAWN, True),
+        (
+            HLD_MATH1,
+            CAT_MATH,
+            "BC-MATH7-001",
+            "ACC-2025-0001",
+            "Stack A-01",
+            HoldingStatus.ON_LOAN,
+            True,
+        ),
+        (
+            HLD_MATH2,
+            CAT_MATH,
+            "BC-MATH7-002",
+            "ACC-2025-0002",
+            "Stack A-01",
+            HoldingStatus.ON_LOAN,
+            True,
+        ),
+        (
+            HLD_MATH3,
+            CAT_MATH,
+            "BC-MATH7-003",
+            "ACC-2025-0003",
+            "Stack A-01",
+            HoldingStatus.AVAILABLE,
+            True,
+        ),
+        (
+            HLD_PAN1,
+            CAT_PAN,
+            "BC-PAN-001",
+            "ACC-2025-0101",
+            "Stack B-12",
+            HoldingStatus.AVAILABLE,
+            True,
+        ),
+        (
+            HLD_NEHRU,
+            CAT_NEHRU,
+            "BC-NEH-001",
+            "ACC-2025-0201",
+            "Reference Desk",
+            HoldingStatus.AVAILABLE,
+            False,
+        ),
+        (
+            HLD_PAN2,
+            CAT_PAN,
+            "BC-PAN-002",
+            "ACC-2024-0099",
+            "Stack B-12",
+            HoldingStatus.WITHDRAWN,
+            True,
+        ),
     ]
     for hid, cat, bc, acc, shelf, status, circ in holdings:
         track(

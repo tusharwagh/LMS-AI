@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from tests.helpers import unique_tag
 
 from lms.api.errors import AppError, ErrorCode
 from lms.catalog.api.schemas import CatalogCreate, HoldingCreate
@@ -14,7 +15,6 @@ from lms.loan.application.service import LoanService
 from lms.loan.infrastructure.policy_resolver import PolicyResolver
 from lms.reference.api.schemas import ClassSectionCreate, PatronCreate, PatronTypeCreate
 from lms.reference.application.service import ReferenceService
-from tests.helpers import unique_tag
 
 pytestmark = pytest.mark.integration
 
@@ -81,9 +81,7 @@ def test_reference_suspend_and_block(db_session) -> None:
     ptype = ref.create_patron_type(
         PatronTypeCreate(code=f"STU_{tag}", name="Student", loan_rule_set_id=rule.id)
     )
-    patron = ref.register_patron(
-        PatronCreate(display_name="Blocked", patron_type_id=ptype.id)
-    )
+    patron = ref.register_patron(PatronCreate(display_name="Blocked", patron_type_id=ptype.id))
 
     suspended = ref.suspend_patron(patron.id)
     assert suspended.status == "SUSPENDED"
@@ -160,10 +158,9 @@ def test_policy_resolver_maps_patron_type_to_rules(db_session) -> None:
 
 
 def test_loan_overdue_query(db_session) -> None:
-    from lms.loan.infrastructure.models.models import LoanModel
-    from lms.reference.infrastructure.models.models import PatronModel, PatronTypeModel
     from lms.catalog.infrastructure.models.models import CatalogModel, HoldingModel
-    from lms.loan.infrastructure.models.models import LoanRuleSetModel
+    from lms.loan.infrastructure.models.models import LoanModel, LoanRuleSetModel
+    from lms.reference.infrastructure.models.models import PatronModel, PatronTypeModel
 
     tag = unique_tag()
     rule_id = uuid.uuid4()
@@ -173,11 +170,11 @@ def test_loan_overdue_query(db_session) -> None:
     holding_id = uuid.uuid4()
 
     db_session.add(
-        LoanRuleSetModel(
-            id=rule_id, name=f"R-{tag}", max_active_loans=1, loan_period_days=7
-        )
+        LoanRuleSetModel(id=rule_id, name=f"R-{tag}", max_active_loans=1, loan_period_days=7)
     )
-    db_session.add(PatronTypeModel(id=ptype_id, code=f"T_{tag}", name="T", loan_rule_set_id=rule_id))
+    db_session.add(
+        PatronTypeModel(id=ptype_id, code=f"T_{tag}", name="T", loan_rule_set_id=rule_id)
+    )
     db_session.add(
         PatronModel(
             id=patron_id,
@@ -187,7 +184,9 @@ def test_loan_overdue_query(db_session) -> None:
             blocked=False,
         )
     )
-    db_session.add(CatalogModel(id=cat_id, title=f"C-{tag}", language="en", cataloging_status="PUBLISHED"))
+    db_session.add(
+        CatalogModel(id=cat_id, title=f"C-{tag}", language="en", cataloging_status="PUBLISHED")
+    )
     db_session.add(
         HoldingModel(
             id=holding_id,

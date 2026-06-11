@@ -51,9 +51,7 @@ def _seed_circulation_fixture(client: TestClient, admin_headers: dict[str, str],
     }
 
 
-def test_workflow_desk_issue_and_return(
-    client: TestClient, admin_headers: dict[str, str]
-) -> None:
+def test_workflow_desk_issue_and_return(client: TestClient, admin_headers: dict[str, str]) -> None:
     """G7 + G8 — full desk issue/return via workflow APIs."""
     tag = _uid()
     fx = _seed_circulation_fixture(client, admin_headers, tag)
@@ -86,9 +84,7 @@ def test_workflow_desk_issue_and_return(
     loan_id = commit.json()["loan_id"]
     assert commit.json()["fulfillment"] is None
 
-    open_loans = client.get(
-        "/api/v1/loan/loans/open", params={"patron_id": fx["patron_id"]}
-    ).json()
+    open_loans = client.get("/api/v1/loan/loans/open", params={"patron_id": fx["patron_id"]}).json()
     assert len(open_loans) == 1
     assert open_loans[0]["id"] == loan_id
 
@@ -185,9 +181,7 @@ def test_workflow_delivery_issue_and_pickup_return(
     assert done.status_code == 200
     assert done.json()["status"] == "COMPLETED"
 
-    open_loans = client.get(
-        "/api/v1/loan/loans/open", params={"patron_id": fx["patron_id"]}
-    ).json()
+    open_loans = client.get("/api/v1/loan/loans/open", params={"patron_id": fx["patron_id"]}).json()
     assert len(open_loans) == 1
     assert open_loans[0]["id"] == loan_id
 
@@ -199,9 +193,7 @@ def test_workflow_delivery_issue_and_pickup_return(
     pickup_id = pickup.json()["id"]
     assert pickup.json()["status"] == "REQUESTED"
 
-    still_open = client.get(
-        "/api/v1/loan/loans/open", params={"patron_id": fx["patron_id"]}
-    ).json()
+    still_open = client.get("/api/v1/loan/loans/open", params={"patron_id": fx["patron_id"]}).json()
     assert len(still_open) == 1
 
     confirm = client.post(
@@ -272,9 +264,7 @@ def test_workflow_issue_search_patron_by_name(
     assert start.json()["patron_id"] == fx["patron_id"]
 
 
-def test_workflow_issue_back_and_cancel(
-    client: TestClient, admin_headers: dict[str, str]
-) -> None:
+def test_workflow_issue_back_and_cancel(client: TestClient, admin_headers: dict[str, str]) -> None:
     tag = _uid()
     fx = _seed_circulation_fixture(client, admin_headers, tag)
 

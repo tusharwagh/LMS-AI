@@ -80,7 +80,10 @@ def test_mvp_circulation_journey(client: TestClient, admin_headers: dict[str, st
     assert checkout.status_code == 201, checkout.text
     loan_id = checkout.json()["id"]
 
-    assert client.get(f"/api/v1/catalog/holdings/by-barcode/BC-{tag}").json()["holding_status"] == "ON_LOAN"
+    assert (
+        client.get(f"/api/v1/catalog/holdings/by-barcode/BC-{tag}").json()["holding_status"]
+        == "ON_LOAN"
+    )
     assert len(client.get("/api/v1/loan/loans/open", params={"patron_id": patron_id}).json()) == 1
 
     ret = client.post(
@@ -90,7 +93,10 @@ def test_mvp_circulation_journey(client: TestClient, admin_headers: dict[str, st
     )
     assert ret.status_code == 200
     assert ret.json()["id"] == loan_id
-    assert client.get(f"/api/v1/catalog/holdings/by-barcode/BC-{tag}").json()["holding_status"] == "AVAILABLE"
+    assert (
+        client.get(f"/api/v1/catalog/holdings/by-barcode/BC-{tag}").json()["holding_status"]
+        == "AVAILABLE"
+    )
 
 
 def test_mvp_journey_includes_search_and_overdue(
@@ -257,9 +263,7 @@ def test_admin_can_configure_loan_rules(
     assert resp.status_code == 201, resp.text
 
 
-def test_reference_patron_type_crud(
-    client: TestClient, admin_headers: dict[str, str]
-) -> None:
+def test_reference_patron_type_crud(client: TestClient, admin_headers: dict[str, str]) -> None:
     tag = _uid()
     create = client.post(
         "/api/v1/reference/patron-types",

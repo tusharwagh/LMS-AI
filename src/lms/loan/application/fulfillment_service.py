@@ -14,9 +14,7 @@ from lms.loan.domain.enums import (
 from lms.loan.infrastructure.models.models import CirculationFulfillmentModel, LoanModel
 
 _ALLOWED_TRANSITIONS: dict[FulfillmentStatus, frozenset[FulfillmentStatus]] = {
-    FulfillmentStatus.REQUESTED: frozenset(
-        {FulfillmentStatus.READY, FulfillmentStatus.CANCELLED}
-    ),
+    FulfillmentStatus.REQUESTED: frozenset({FulfillmentStatus.READY, FulfillmentStatus.CANCELLED}),
     FulfillmentStatus.READY: frozenset(
         {FulfillmentStatus.IN_TRANSIT, FulfillmentStatus.COMPLETED, FulfillmentStatus.CANCELLED}
     ),

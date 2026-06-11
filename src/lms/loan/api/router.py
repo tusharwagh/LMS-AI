@@ -66,9 +66,7 @@ def update_loan_rule_set(
 def list_loan_rule_sets(
     service: Annotated[LoanService, Depends(_loan_service)],
 ) -> list[LoanRuleSetResponse]:
-    return [
-        LoanRuleSetResponse.model_validate(row) for row in service.list_loan_rule_sets()
-    ]
+    return [LoanRuleSetResponse.model_validate(row) for row in service.list_loan_rule_sets()]
 
 
 @router.get("/loan-rule-sets/{rule_set_id}", response_model=LoanRuleSetResponse)
@@ -116,8 +114,7 @@ def list_open_loans_by_patron(
     patron_id: Annotated[UUID, Query()],
 ) -> list[LoanDetailResponse]:
     return [
-        _loan_detail_response(row)
-        for row in service.list_open_loan_details_by_patron(patron_id)
+        _loan_detail_response(row) for row in service.list_open_loan_details_by_patron(patron_id)
     ]
 
 
