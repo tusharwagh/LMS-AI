@@ -2,7 +2,7 @@
 
 Execution plan for the LMS-AI K‑12 Library Management MVP.
 
-**Scope authority:** [MVP.md](MVP.md) §1–§6, §2.1 (staff workflows), §8–§14. **Domain rules:** [reference.md](reference.md), [catalog.md](catalog.md), [loan.md](loan.md).
+**Scope authority:** [MVP.md](MVP.md) §1–§6, §2.1–§2.2 (staff workflows + agent desk), §8–§14. **Domain rules:** [reference.md](reference.md), [catalog.md](catalog.md), [loan.md](loan.md). **Agent governance:** [research.md §15](research.md).
 
 **Out of scope (do not implement):** guardian portals, fines ledger, bulk class issue, renewals, procurement integration, full OPAC polish (MVP.md §1, ADR-011).
 
@@ -22,6 +22,7 @@ Execution plan for the LMS-AI K‑12 Library Management MVP.
 | **5B Fulfillment** | **Done** | Delivery/pick-up in MVP scope (MVP.md §5.1) |
 | 6 Staff UI | **Done** | Issue/return wizards at `/staff/` |
 | 7 Hardening | **Done** | Concurrency, idempotency, SLO tests; [runbook.md](runbook.md), [go-live-checklist.md](go-live-checklist.md) |
+| **8 Agent desk** | **Done** | `lms/agent/`; tool allowlist (`select_barcode`, `cancel_issue`); `/api/v1/agent/issue/*`; `make test-agent` |
 
 ---
 
@@ -45,6 +46,11 @@ Deliver a **coherent circulation slice**: register patrons → configure loan ru
 | **G8** | WF-02 desk return via workflow API | E2E: barcode → return → holding `AVAILABLE` (REQ-27) |
 | **G9** | Delivery issue + pick-up return paths | E2E: fulfillment states + custody-aligned loan close (REQ-28, ADR-023) |
 | **G10** | Rule preview returns all violations | Unit/integration: blocked patron + unavailable holding → 2+ `rule_id`s (REQ-29) |
+| **G11** | Conversational WF-01 via agent with HITL | E2E: natural-language issue → approval card → commit → open loan (REQ-31) |
+| **G12** | Agentic fulfillment follow-up with HITL | E2E: delivery issue → agent proposes transition → confirm → `COMPLETED` / in-transit (REQ-32) |
+| **G13** | IMDA agent governance charter complete | Charter signed; Langfuse audit; tool allowlist; adversarial tests pass (REQ-34) |
+
+**Note:** G1–G10 gate **Phases 0–7** (wizard + workflow APIs). G11–G13 gate **Phase 8** (agent channel). G6 extends to REQ-34 when Phase 8 ships.
 
 ---
 
@@ -63,6 +69,9 @@ Deliver a **coherent circulation slice**: register patrons → configure loan ru
 | Audit / correlation | ADR-018, MVP.md §13.5 | Correlation id and audit metadata on write operations |
 | Workflow coordinators | ADR-021 | Desk workflows compose queries + orchestrator; no cross-context write bypass |
 | Custody-aligned circulation | ADR-023 | Loan timestamps follow library custody; pick-up return is two-phase |
+| Agent never owns circulation writes | ADR-025, ADR-027 | Tools → workflow services only; HITL before writes |
+| PII masking for hosted LLM | ADR-026 | Pseudonyms in prompts; IDs in server session |
+| Hosted LLM (no local inference) | ADR-028 | Groq primary; HF Inference fallback (pinned) |
 
 ---
 
@@ -76,6 +85,9 @@ Deliver a **coherent circulation slice**: register patrons → configure loan ru
 | **D4** | Self-checkout | **Librarian-only** for MVP; `PATRON` read-only ([research.md](research.md) OQ-1) |
 | **D5** | Class/section | Structured **`ClassSection`** + academic year (REQ-06) |
 | **D6** | Library timezone | **`Asia/Kolkata`** — store UTC, compare overdue in policy TZ (REQ-20) |
+| **D7** | Primary LLM | **Groq API** — `llama-3.3-70b-versatile` (dialogue + tool calling) |
+| **D8** | LLM fallback (optional) | **Hugging Face Inference** — pinned model + provider; off by default |
+| **D9** | Agent stack | **LangGraph** (SOP graph) + **LiteLLM** (routing) + **Langfuse** (observability) |
 
 ---
 
@@ -111,7 +123,7 @@ docker-compose.yml        # PostgreSQL 16
 |------|-------------|-----------|
 | Repo layout: `reference/`, `catalog/`, `loan/`, `shared/` | Module folders; no cross-import violations | REQ-01, ADR-001 |
 | PostgreSQL + migration tool | Empty schema + migration pipeline | ADR-013, ADR-014 |
-| API shell: health, correlation id, error model | `X-Correlation-Id`, machine-readable errors | MVP.md §13.5, §10.5 |
+| API shell: health, correlation id, error model | `X-Correlation-Id`; flat `{code, message, retriable, details}` envelope | MVP.md §10.5, §13.5 |
 | JWT auth: `api_users` table (migration `003`) | Bcrypt passwords; seed users via `ensure_default_api_users` | REQ-30, ADR-024 |
 | `POST /api/v1/auth/token`, `GET /api/v1/auth/me` | OAuth2 password flow; Bearer JWT on domain APIs | REQ-30 |
 | `domain_api_router` + `HTTPBearer` / Swagger `BearerJWT` | All `/api/v1/reference|catalog|loan` require token | ADR-024 |
@@ -289,11 +301,62 @@ src/lms/api/workflows/router.py
 |------|--------|--------|
 | Load test at §13.6 baselines | §13.6 | **Done** — `tests/performance/test_slo_baselines.py` |
 | Lock-contention and idempotency regression suite | §13.2, §13.3 | **Done** — `tests/hardening/` |
+| Security hardening (headers, rate limits, error disclosure) | MVP.md §13.7 | **Done** — `api/security_middleware.py`, `tests/hardening/test_security.py` |
 | Seed script: patron types, rules, sample catalog | §10.6 | **Done** — `make seed` |
 | Runbook: backup, migration rollback policy | §10.6 | **Done** — [runbook.md](runbook.md) |
 | Go-live checklist sign-off | §1.2 G1–G10 | **Done** — [go-live-checklist.md](go-live-checklist.md) |
 
-**Verify:** `make phase7` — all G1–G10 criteria pass.
+**Verify:** `make phase7` — all G1–G10 criteria pass; `pytest tests/hardening/test_security.py` for §13.7 controls.
+
+---
+
+### Phase 8 — Agent desk (conversational issue + agentic fulfillment)
+
+**Goal:** Question-driven WF-01 and agent-guided fulfillment follow-up (MVP.md §2.2) without changing the circulation kernel. Governed per IMDA MGF v1.5 ([research.md §15](research.md)).
+
+**Prerequisites:** Phases 5A/5B/6 complete; enterprise agent charter drafted; `GROQ_API_KEY` (and optional `HF_TOKEN`) in non-committed env.
+
+| Task | Deliverable | REQ |
+|------|-------------|-----|
+| Enterprise agent charter | Identity, SOP, HITL thresholds, restricted actions | REQ-34 |
+| Tool adapters | Typed wrappers over `SearchAndIssueWorkflow`, `FulfillmentService` (no ORM in agent module) | REQ-31, REQ-32 |
+| PII session map | Pseudonymizer + server-side slot state; redaction for Langfuse | REQ-33 |
+| LangGraph SOP graph | Fixed edges: patron → search → validate → HITL commit → fulfillment subgraph | REQ-31, REQ-34 |
+| Governance node + HITL | `_run_tool` allowlist; `pending_approval` + `/resume` before writes | REQ-27, REQ-34 |
+| LiteLLM → Groq | Primary model D7; optional HF fallback D8 | REQ-34, ADR-028 |
+| Langfuse integration | Traces with `agent_id`, `thread_id`, redacted tool args | REQ-34 |
+| Agent API | `POST /api/v1/agent/issue/sessions`, `.../message`, `.../resume`, session GET | REQ-31 |
+| Staff chat UI | Chat + approval cards; transparency copy; wizard remains available | REQ-31 |
+| Tests | Tool unit tests (no LLM); agent E2E with mocked LLM; injection cases | G11–G13 |
+| Docs / runbook | MVP §2.2, §13.8; runbook §10; go-live G11–G13 | REQ-34 |
+
+**Out of scope for Phase 8:**
+
+- Local LLM / Ollama / vLLM on school hardware (ADR-028)
+- Groq Compound / HF remote MCP for circulation tools
+- Agent-driven WF-02 return (wizard/API only until a future phase)
+- Replacing wizard APIs or G7–G10 regression tests
+
+**Verify:**
+
+- `make test-agent` (or `make phase8`) — G11–G12 E2E with `AGENT_MOCK_LLM=true` in CI
+- `AGENT_ISSUE_ENABLED=true` → librarian completes desk/delivery issue via chat with explicit approval; barcode selection and issue cancel with HITL
+- With agent disabled, G1–G10 unchanged
+- Langfuse trace shows redacted args + HITL events for every write (**G13 — not wired yet**)
+- Charter signed by use case owner + security (**G13 — operational**)
+
+**Implementation notes (shipped vs pending):**
+
+| Area | Status |
+|------|--------|
+| Tool allowlist + `IssueTools` | **Done** — read/write sets in `tools.py`; `_run_tool` enforcement |
+| `select_barcode` / `cancel_issue` | **Done** — read barcode via `find_lendable_copy_by_barcode`; cancel with HITL |
+| Staff AI assist tab | **Done** — `/staff/` chat + approval cards |
+| Rule-based intent parser (CI) | **Done** — `AGENT_MOCK_LLM=true` default in tests |
+| LiteLLM → Groq live path | **Done** — when `GROQ_API_KEY` set and `AGENT_MOCK_LLM=false` |
+| LangGraph SOP graph | **Partial** — compiles; business logic in `IssueAgentCoordinator` |
+| Langfuse integration | **Pending** — config only; not wired in coordinator |
+| Charter sign-off + eval datasets | **Pending** — G13 operational gate |
 
 ---
 
@@ -333,6 +396,10 @@ Mark each REQ during Phase 7 with phase and test id.
 | REQ-28 | 5B | CirculationFulfillment |
 | REQ-29 | 5A | ValidationReport |
 | REQ-30 | 0 | JWT Bearer on domain APIs |
+| REQ-31 | 8 | Conversational WF-01 agent |
+| REQ-32 | 8 | Agentic fulfillment subgraph |
+| REQ-33 | 8 | PII masking / token minimization |
+| REQ-34 | 8 | IMDA charter + Langfuse + governance |
 
 ---
 
@@ -348,8 +415,10 @@ Mark each REQ during Phase 7 with phase and test id.
 | E2E | Full MVP.md §2 journey + workflow APIs |
 | Performance | Checkout/return and search at MVP.md §13.6 scale | `make test-performance` |
 | Hardening | Concurrency + idempotency regression | `make test-hardening` |
+| Security | Headers, rate limits, production config guards, error disclosure | `pytest tests/hardening/test_security.py` |
+| Agent (Phase 8) | SOP adherence, HITL gates, tool allowlist, barcode select, issue cancel, mocked-LLM E2E | `make test-agent` → `tests/agent/` (11 tests) |
 
-**CI gate (MVP.md §10.6):** no deploy if migration or circulation tests fail.
+**CI gate (MVP.md §10.6):** no deploy if migration or circulation tests fail; CI also runs `npm audit --audit-level=high`. Agent tests use **mocked LLM** — no live Groq/HF in CI.
 
 ---
 
@@ -366,6 +435,11 @@ Mark each REQ during Phase 7 with phase and test id.
 | Workflow bypasses orchestrator | ADR-021: workflows only call orchestrator for writes |
 | Pick-up return closes loan early | ADR-023: two-phase return; tests on open-loan invariant |
 | Fulfillment scope creep | Desk path works without fulfillment row (`NOT_REQUIRED`) |
+| Agent bypasses orchestrator | ADR-025: tools call workflow services only; import-linter on `agent/` module |
+| PII sent to Groq/HF | ADR-026 pseudonymization; document residual risk; charter sign-off |
+| Automation bias | ADR-027 mandatory HITL; audit override rate in Langfuse |
+| LLM cost / abuse | Rate limits + `AGENT_MAX_TOOL_CALLS_PER_TURN`; feature flag off by default |
+| Open-ended ReAct | SOP-bound LangGraph; halt-on-error, no infinite retries |
 
 ---
 
@@ -383,5 +457,6 @@ Bulk class issue, renewals, fines, guardian/notices, full OPAC, procurement — 
 | [reference.md](reference.md) | Patron rules, entities |
 | [catalog.md](catalog.md) | Catalog/holding rules |
 | [loan.md](loan.md) | Loan rules, circulation |
-| [research.md](research.md) | Deferred decisions (OQ-1 self-checkout) |
+| [research.md](research.md) | Deferred decisions (OQ-1 self-checkout); agent governance §15 |
+| [.cursor/skills/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/imda-agentic-ai-governance/SKILL.md) | IMDA MGF v1.5 implementation checklist |
 | [library_domain_model_final.md](library_domain_model_final.md) | Cross-domain overview |

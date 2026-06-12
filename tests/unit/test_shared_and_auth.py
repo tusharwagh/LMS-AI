@@ -12,7 +12,12 @@ from lms.reference.application.service import ReferenceService
 from lms.reference.infrastructure.models.models import PatronBlockModel
 from lms.shared.auth.jwt import create_access_token, decode_access_token
 from lms.shared.auth.roles import Role
-from lms.shared.idempotency.service import _payload_hash, find_cached_response, store_response
+from lms.shared.idempotency.service import (
+    IdempotencyPayloadMismatchError,
+    _payload_hash,
+    find_cached_response,
+    store_response,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -153,7 +158,7 @@ def test_idempotency_cache_hit() -> None:
     assert result == (201, {"id": "loan-1"})
 
 
-def test_idempotency_hash_mismatch_returns_none() -> None:
+def test_idempotency_hash_mismatch_raises() -> None:
     from lms.shared.idempotency.store import IdempotencyRecord
 
     row = IdempotencyRecord(
@@ -165,15 +170,13 @@ def test_idempotency_hash_mismatch_returns_none() -> None:
         expires_at=datetime.now(UTC),
     )
     session = _FakeSession(row)
-    assert (
+    with pytest.raises(IdempotencyPayloadMismatchError):
         find_cached_response(
             session,  # type: ignore[arg-type]
             scope_key="checkout:x",
             idempotency_key="key-1",
             payload={"different": True},
         )
-        is None
-    )
 
 
 def test_store_response_adds_record() -> None:

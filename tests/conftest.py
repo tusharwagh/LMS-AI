@@ -27,6 +27,7 @@ class AuthenticatedTestClient(TestClient):
 @pytest.fixture(autouse=True)
 def _settings_cache_clear(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APP_DEBUG", "false")
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "false")
     get_settings.cache_clear()
 
 

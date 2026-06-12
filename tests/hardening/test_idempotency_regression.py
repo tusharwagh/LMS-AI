@@ -82,6 +82,44 @@ def test_return_idempotency_http_replay(client: TestClient, admin_headers: dict[
     assert open_loans == []
 
 
+def test_checkout_idempotency_payload_mismatch_returns_409(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    tag = _uid()
+    patron_id, holding_id = _seed_holding(client, admin_headers, tag)
+    rule_id = client.get("/api/v1/loan/loan-rule-sets").json()[0]["id"]
+    ptype_id = client.post(
+        "/api/v1/reference/patron-types",
+        json={"code": f"ID2_{tag}", "name": "Student", "loan_rule_set_id": rule_id},
+        headers=admin_headers,
+    ).json()["id"]
+    other_patron_id = client.post(
+        "/api/v1/reference/patrons",
+        json={"display_name": f"Idem Patron 2 {tag}", "patron_type_id": ptype_id},
+    ).json()["id"]
+
+    headers = {"Idempotency-Key": f"idem-mismatch-{tag}"}
+    first = client.post(
+        "/api/v1/loan/checkouts",
+        json={"patron_id": patron_id, "holding_id": holding_id},
+        headers=headers,
+    )
+    assert first.status_code == 201
+    client.post(
+        "/api/v1/loan/returns",
+        json={"holding_id": holding_id},
+        headers={"Idempotency-Key": f"idem-ret-mismatch-{tag}"},
+    )
+
+    conflict = client.post(
+        "/api/v1/loan/checkouts",
+        json={"patron_id": other_patron_id, "holding_id": holding_id},
+        headers=headers,
+    )
+    assert conflict.status_code == 409
+    assert conflict.json()["code"] == "CONFLICT"
+
+
 def test_workflow_commit_idempotency(client: TestClient, admin_headers: dict[str, str]) -> None:
     tag = _uid()
     patron_id, holding_id = _seed_holding(client, admin_headers, tag)

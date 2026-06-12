@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from lms.api.errors import AppError, ErrorCode
 from lms.api.workflows.issue_eligibility_validator import IssueEligibilityValidator
 from lms.catalog.application.service import CatalogService
+from lms.catalog.domain.enums import CatalogingStatus, HoldingStatus
+from lms.catalog.infrastructure.models.models import CatalogModel
 from lms.loan.application.circulation_orchestrator import CirculationOrchestrator
 from lms.loan.application.fulfillment_service import FulfillmentService
 from lms.loan.domain.enums import FulfillmentMode
@@ -16,7 +18,10 @@ from lms.loan.infrastructure.models.models import CirculationFulfillmentModel, L
 from lms.loan.infrastructure.policy_resolver import PolicyResolver
 from lms.reference.application.service import ReferenceService
 from lms.reference.infrastructure.models.models import PatronModel
-from lms.shared.idempotency.service import find_cached_response
+from lms.shared.idempotency.service import (
+    IdempotencyPayloadMismatchError,
+    find_cached_response,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +106,49 @@ class SearchAndIssueWorkflow:
             search_results=search_results,
         )
 
+    def find_lendable_copy_by_barcode(self, patron_id: UUID, barcode: str) -> IssueStartResult:
+        patron = self._resolve_patron(
+            patron_id=patron_id,
+            card_barcode=None,
+            external_ref=None,
+            display_name=None,
+        )
+        validation = self._validator.validate_patron(patron.id)
+        holding = self._catalog.get_holding_by_barcode(barcode)
+        catalog = self._session.get(CatalogModel, holding.catalog_id)
+        if catalog is None or catalog.cataloging_status != CatalogingStatus.PUBLISHED:
+            raise AppError(
+                ErrorCode.DOMAIN_RULE_VIOLATION,
+                "Copy is not available for issue",
+                status_code=422,
+            )
+        if holding.holding_status != HoldingStatus.AVAILABLE or not holding.circulating:
+            raise AppError(
+                ErrorCode.DOMAIN_RULE_VIOLATION,
+                "Copy is not available for issue",
+                status_code=422,
+            )
+        search_results = [
+            {
+                "catalog_id": str(catalog.id),
+                "title": catalog.title,
+                "lendable_copies": [
+                    {
+                        "holding_id": str(holding.id),
+                        "barcode": holding.barcode,
+                        "accession_number": holding.accession_number,
+                        "shelf_location": holding.shelf_location,
+                    }
+                ],
+            }
+        ]
+        return IssueStartResult(
+            patron_id=patron.id,
+            patron_display_name=patron.display_name,
+            patron_validation=validation,
+            search_results=search_results,
+        )
+
     def validate(self, patron_id: UUID, holding_id: UUID) -> ValidationReport:
         return self._validator.validate_issue(patron_id, holding_id)
 
@@ -159,12 +207,19 @@ class SearchAndIssueWorkflow:
             "patron_id": str(patron_id),
             "holding_id": str(holding_id),
         }
-        cached = find_cached_response(
-            self._session,
-            scope_key=f"checkout:{holding_id}",
-            idempotency_key=idempotency_key,
-            payload=checkout_payload,
-        )
+        try:
+            cached = find_cached_response(
+                self._session,
+                scope_key=f"checkout:{holding_id}",
+                idempotency_key=idempotency_key,
+                payload=checkout_payload,
+            )
+        except IdempotencyPayloadMismatchError as exc:
+            raise AppError(
+                ErrorCode.CONFLICT,
+                "Idempotency key reused with different payload",
+                status_code=409,
+            ) from exc
         validation: ValidationReport
         if cached is None:
             validation = self._validator.validate_issue(patron_id, holding_id)
@@ -192,16 +247,19 @@ class SearchAndIssueWorkflow:
 
         fulfillment: CirculationFulfillmentModel | None = None
         if fulfillment_mode != FulfillmentMode.DESK:
-            fulfillment = self._fulfillment.create_issue_fulfillment(
-                loan_id=loan.id,
-                holding_id=holding_id,
-                mode=fulfillment_mode,
-                destination_notes=destination_notes,
-                destination_class_section_id=destination_class_section_id,
-                destination_contact=destination_contact,
-            )
-            self._session.commit()
-            self._session.refresh(fulfillment)
+            if cached is not None:
+                fulfillment = self._fulfillment.get_issue_fulfillment_for_loan(loan.id)
+            else:
+                fulfillment = self._fulfillment.create_issue_fulfillment(
+                    loan_id=loan.id,
+                    holding_id=holding_id,
+                    mode=fulfillment_mode,
+                    destination_notes=destination_notes,
+                    destination_class_section_id=destination_class_section_id,
+                    destination_contact=destination_contact,
+                )
+                self._session.commit()
+                self._session.refresh(fulfillment)
 
         return IssueCommitResult(loan=loan, validation=validation, fulfillment=fulfillment)
 

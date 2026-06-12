@@ -235,6 +235,7 @@ def return_commit(
 def return_pickup_initiate(
     body: ReturnPickupInitiateRequest,
     workflow: Annotated[ReturnBookWorkflow, Depends(_return_workflow)],
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=64)],
 ) -> FulfillmentResponse:
     dest = body.destination
     row = workflow.initiate_pickup(
@@ -242,6 +243,7 @@ def return_pickup_initiate(
         destination_notes=dest.notes if dest else None,
         destination_class_section_id=dest.class_section_id if dest else None,
         destination_contact=dest.contact if dest else None,
+        idempotency_key=idempotency_key,
     )
     return FulfillmentResponse.model_validate(row)
 
@@ -271,8 +273,13 @@ def transition_fulfillment(
     body: FulfillmentTransitionRequest,
     service: Annotated[FulfillmentService, Depends(_fulfillment_service)],
     session: DbSession,
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=64)],
 ) -> FulfillmentResponse:
-    row = service.transition(fulfillment_id, FulfillmentStatus(body.status))
+    row = service.transition(
+        fulfillment_id,
+        FulfillmentStatus(body.status),
+        idempotency_key=idempotency_key,
+    )
     session.commit()
     session.refresh(row)
     return FulfillmentResponse.model_validate(row)

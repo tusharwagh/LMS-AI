@@ -12,6 +12,11 @@ from lms.loan.domain.enums import (
     FulfillmentStatus,
 )
 from lms.loan.infrastructure.models.models import CirculationFulfillmentModel, LoanModel
+from lms.shared.idempotency.service import (
+    IdempotencyPayloadMismatchError,
+    find_cached_response,
+    store_response,
+)
 
 _ALLOWED_TRANSITIONS: dict[FulfillmentStatus, frozenset[FulfillmentStatus]] = {
     FulfillmentStatus.REQUESTED: frozenset({FulfillmentStatus.READY, FulfillmentStatus.CANCELLED}),
@@ -86,7 +91,44 @@ class FulfillmentService:
         self,
         fulfillment_id: UUID,
         target_status: FulfillmentStatus,
+        *,
+        idempotency_key: str,
     ) -> CirculationFulfillmentModel:
+        payload = {
+            "fulfillment_id": str(fulfillment_id),
+            "status": target_status.value,
+        }
+        scope_key = f"fulfillment-transition:{fulfillment_id}"
+        try:
+            cached = find_cached_response(
+                self._session,
+                scope_key=scope_key,
+                idempotency_key=idempotency_key,
+                payload=payload,
+            )
+        except IdempotencyPayloadMismatchError as exc:
+            raise AppError(
+                ErrorCode.CONFLICT,
+                "Idempotency key reused with different payload",
+                status_code=409,
+            ) from exc
+        if cached is not None:
+            status_code, body = cached
+            if status_code != 200:
+                raise AppError(
+                    ErrorCode.CONFLICT,
+                    "Idempotency key reused with different payload",
+                    status_code=409,
+                )
+            cached_id = UUID(body["id"])
+            if cached_id != fulfillment_id:
+                raise AppError(
+                    ErrorCode.RETRIABLE_ERROR,
+                    "Cached fulfillment missing",
+                    status_code=500,
+                )
+            return self._get_fulfillment(fulfillment_id)
+
         row = self._get_fulfillment(fulfillment_id)
         current = FulfillmentStatus(row.status)
         if current == target_status:
@@ -105,10 +147,27 @@ class FulfillmentService:
                 self._require_open_loan(row.loan_id)  # type: ignore[arg-type]
         row.status = target_status
         self._session.flush()
+        store_response(
+            self._session,
+            scope_key=scope_key,
+            idempotency_key=idempotency_key,
+            payload=payload,
+            status_code=200,
+            body={"id": str(row.id)},
+        )
         return row
 
     def get_fulfillment(self, fulfillment_id: UUID) -> CirculationFulfillmentModel:
         return self._get_fulfillment(fulfillment_id)
+
+    def get_issue_fulfillment_for_loan(self, loan_id: UUID) -> CirculationFulfillmentModel | None:
+        row = self._session.scalar(
+            select(CirculationFulfillmentModel).where(
+                CirculationFulfillmentModel.loan_id == loan_id,
+                CirculationFulfillmentModel.direction == FulfillmentDirection.ISSUE,
+            )
+        )
+        return row
 
     def cancel_issue_fulfillments_for_loan(self, loan_id: UUID) -> bool:
         """Cancel open ISSUE fulfillments (not already COMPLETED/CANCELLED)."""

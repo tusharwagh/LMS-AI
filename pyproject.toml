@@ -20,6 +20,10 @@ dependencies = [
     "bcrypt>=4.2.0",
     "python-multipart>=0.0.17",
     "structlog>=24.4.0",
+    "langgraph>=0.2.60",
+    "langchain-core>=0.3.0",
+    "litellm>=1.55.0",
+    "langfuse>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -54,6 +58,7 @@ markers = [
     "e2e: end-to-end journey tests",
     "hardening: Phase 7 concurrency and idempotency regression",
     "performance: Phase 7 SLO baseline checks",
+    "agent: Phase 8 agent desk tests",
 ]
 
 [tool.ruff]
@@ -101,4 +106,21 @@ source_modules = ["lms.loan"]
 forbidden_modules = [
     "lms.reference.infrastructure",
     "lms.catalog.infrastructure",
+]
+
+[[tool.importlinter.contracts]]
+name = "Agent must not import domain infrastructure"
+type = "forbidden"
+source_modules = ["lms.agent"]
+forbidden_modules = [
+    "lms.reference.infrastructure",
+    "lms.catalog.infrastructure",
+    "lms.loan.infrastructure",
+]
+ignore_imports = [
+    "lms.agent.coordinator -> lms.api.composition",
+    "lms.agent.coordinator -> lms.api.workflows.search_and_issue",
+    "lms.agent.coordinator -> lms.loan.application.fulfillment_service",
+    "lms.agent.tools -> lms.api.workflows.search_and_issue",
+    "lms.agent.tools -> lms.loan.application.fulfillment_service",
 ]

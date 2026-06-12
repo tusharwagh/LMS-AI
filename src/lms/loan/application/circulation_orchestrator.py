@@ -12,7 +12,11 @@ from lms.loan.domain.ports import (
     PolicyResolverPort,
 )
 from lms.loan.infrastructure.models.models import LoanModel
-from lms.shared.idempotency.service import find_cached_response, store_response
+from lms.shared.idempotency.service import (
+    IdempotencyPayloadMismatchError,
+    find_cached_response,
+    store_response,
+)
 from lms.shared.time import utc_now
 
 
@@ -39,12 +43,19 @@ class CirculationOrchestrator:
     ) -> LoanModel:
         payload = {"patron_id": str(patron_id), "holding_id": str(holding_id)}
         scope_key = f"checkout:{holding_id}"
-        cached = find_cached_response(
-            self._session,
-            scope_key=scope_key,
-            idempotency_key=idempotency_key,
-            payload=payload,
-        )
+        try:
+            cached = find_cached_response(
+                self._session,
+                scope_key=scope_key,
+                idempotency_key=idempotency_key,
+                payload=payload,
+            )
+        except IdempotencyPayloadMismatchError as exc:
+            raise AppError(
+                ErrorCode.CONFLICT,
+                "Idempotency key reused with different payload",
+                status_code=409,
+            ) from exc
         if cached is not None:
             status_code, body = cached
             if status_code != 201:
@@ -145,12 +156,19 @@ class CirculationOrchestrator:
             payload["loan_id"] = str(loan_id)
 
         scope_key = f"return:{holding_id or loan_id}"
-        cached = find_cached_response(
-            self._session,
-            scope_key=scope_key,
-            idempotency_key=idempotency_key,
-            payload=payload,
-        )
+        try:
+            cached = find_cached_response(
+                self._session,
+                scope_key=scope_key,
+                idempotency_key=idempotency_key,
+                payload=payload,
+            )
+        except IdempotencyPayloadMismatchError as exc:
+            raise AppError(
+                ErrorCode.CONFLICT,
+                "Idempotency key reused with different payload",
+                status_code=409,
+            ) from exc
         if cached is not None:
             status_code, body = cached
             if status_code != 200:

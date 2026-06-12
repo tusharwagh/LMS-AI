@@ -15,6 +15,11 @@ from lms.loan.application.service import LoanService
 from lms.loan.domain.enums import FulfillmentDirection, FulfillmentStatus
 from lms.loan.infrastructure.models.models import CirculationFulfillmentModel, LoanModel
 from lms.reference.application.service import ReferenceService
+from lms.shared.idempotency.service import (
+    IdempotencyPayloadMismatchError,
+    find_cached_response,
+    store_response,
+)
 from lms.shared.time import library_today
 
 
@@ -91,12 +96,61 @@ class ReturnBookWorkflow:
         destination_notes: str | None = None,
         destination_class_section_id: UUID | None = None,
         destination_contact: str | None = None,
+        idempotency_key: str,
     ) -> CirculationFulfillmentModel:
+        payload = {
+            "loan_id": str(loan_id),
+            "destination_notes": destination_notes,
+            "destination_class_section_id": (
+                str(destination_class_section_id) if destination_class_section_id else None
+            ),
+            "destination_contact": destination_contact,
+        }
+        scope_key = f"return-pickup:{loan_id}"
+        try:
+            cached = find_cached_response(
+                self._session,
+                scope_key=scope_key,
+                idempotency_key=idempotency_key,
+                payload=payload,
+            )
+        except IdempotencyPayloadMismatchError as exc:
+            raise AppError(
+                ErrorCode.CONFLICT,
+                "Idempotency key reused with different payload",
+                status_code=409,
+            ) from exc
+        if cached is not None:
+            status_code, body = cached
+            if status_code != 201:
+                raise AppError(
+                    ErrorCode.CONFLICT,
+                    "Idempotency key reused with different payload",
+                    status_code=409,
+                )
+            fulfillment_id = UUID(body["id"])
+            row = self._session.get(CirculationFulfillmentModel, fulfillment_id)
+            if row is None:
+                raise AppError(
+                    ErrorCode.RETRIABLE_ERROR,
+                    "Cached fulfillment missing",
+                    status_code=500,
+                )
+            return row
+
         fulfillment = self._fulfillment.initiate_return_pickup(
             loan_id=loan_id,
             destination_notes=destination_notes,
             destination_class_section_id=destination_class_section_id,
             destination_contact=destination_contact,
+        )
+        store_response(
+            self._session,
+            scope_key=scope_key,
+            idempotency_key=idempotency_key,
+            payload=payload,
+            status_code=201,
+            body={"id": str(fulfillment.id)},
         )
         self._session.commit()
         self._session.refresh(fulfillment)

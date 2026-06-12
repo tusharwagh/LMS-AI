@@ -7,6 +7,10 @@ from sqlalchemy.orm import Session
 from lms.shared.idempotency.store import IDEMPOTENCY_TTL, IdempotencyRecord
 
 
+class IdempotencyPayloadMismatchError(Exception):
+    """Raised when an idempotency key exists but the request payload hash differs."""
+
+
 def _payload_hash(payload: dict[str, Any]) -> str:
     normalized = json.dumps(payload, sort_keys=True, default=str)
     return hashlib.sha256(normalized.encode()).hexdigest()
@@ -27,7 +31,7 @@ def find_cached_response(
     if row is None:
         return None
     if row.payload_hash != _payload_hash(payload):
-        return None
+        raise IdempotencyPayloadMismatchError(scope_key, idempotency_key)
     return row.response_status, json.loads(row.response_body)
 
 

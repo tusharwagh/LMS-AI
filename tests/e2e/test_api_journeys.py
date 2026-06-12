@@ -212,7 +212,7 @@ def test_auth_required_without_token(bare_client: TestClient) -> None:
     for path in domain_paths:
         resp = bare_client.get(path)
         assert resp.status_code == 401, path
-        assert resp.json()["detail"]["code"] == "UNAUTHORIZED"
+        assert resp.json()["code"] == "UNAUTHORIZED"
 
 
 def test_login_and_me(bare_client: TestClient, dev_password: str) -> None:
@@ -248,7 +248,7 @@ def test_librarian_cannot_configure_loan_rules(client: TestClient) -> None:
         json={"name": f"Denied {tag}", "max_active_loans": 1, "loan_period_days": 7},
     )
     assert resp.status_code == 403
-    assert resp.json()["detail"]["code"] == "FORBIDDEN"
+    assert resp.json()["code"] == "FORBIDDEN"
 
 
 def test_admin_can_configure_loan_rules(

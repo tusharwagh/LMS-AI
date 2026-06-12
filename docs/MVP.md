@@ -2,13 +2,13 @@
 
 This document collects **MVP / minimal-scope** behavior across the three bounded contexts. Authoritative rules, entities, APIs, and diagrams remain in **[reference.md](reference.md)**, **[catalog.md](catalog.md)**, and **[loan.md](loan.md)**.
 
-**Staff desk workflows** (search & issue, return, optional delivery/pick-up) → **§2.1**. **Knowledge graph (ontology layers)** for the MVP slice → **§7**. **Architecture, design decisions, and traceability** → **§8–§10**. **Phased implementation plan** → **[plan-mvp.md](plan-mvp.md)**. **Discovery conversation and user intent** → **[research.md](research.md)**.
+**Staff desk workflows** (search & issue, return, optional delivery/pick-up) → **§2.1**. **Conversational issue & agentic fulfillment** (Phase 8) → **§2.2**. **Knowledge graph (ontology layers)** for the MVP slice → **§7**. **Architecture, design decisions, and traceability** → **§8–§10**. **Phased implementation plan** → **[plan-mvp.md](plan-mvp.md)**. **Discovery conversation and user intent** → **[research.md](research.md)**. **Agent governance** → **[research.md §15](research.md)** + IMDA skill.
 
 ---
 
 ## 1. Purpose
 
-The MVP is the smallest **coherent** product slice: enough **Reference** master data to borrow, enough **Catalog** metadata and holdings to lend physical items, and enough **Loan** configuration and circulation to issue and return—plus **staff discovery** of titles, **basic overdue visibility**, and **orchestrated desk workflows** so librarians can search, issue, and return with optional **delivery / pick-up** fulfillment (§2.1).
+The MVP is the smallest **coherent** product slice: enough **Reference** master data to borrow, enough **Catalog** metadata and holdings to lend physical items, and enough **Loan** configuration and circulation to issue and return—plus **staff discovery** of titles, **basic overdue visibility**, and **orchestrated desk workflows** so librarians can search, issue, and return with optional **delivery / pick-up** fulfillment (§2.1). **Phase 8** adds a **conversational desk channel** for WF-01 (question-driven search & issue) and **agent-guided fulfillment follow-up**, governed per IMDA MGF v1.5 (§2.2, ADR-025–028).
 
 **Out of scope for this MVP list** (unless noted in domain docs): guardian portals, fines ledger, bulk class issue, renewals, procurement integration, full OPAC polish.
 
@@ -83,6 +83,108 @@ sequenceDiagram
 **Planned API surface:** `POST /api/v1/workflows/issue/start`, `.../issue/search-patrons`, `.../issue/back`, `.../issue/cancel`, `.../issue/commit`, `POST /api/v1/workflows/return/...` (see [plan-mvp.md](plan-mvp.md) Phase 5A/5B).
 
 **Rollback:** Before commit, **`POST .../issue/back`** returns the desk to an earlier wizard step (client-held state). After commit, **`POST .../issue/cancel`** reverses the loan via `ReturnHolding` and cancels open ISSUE fulfillments (orchestrator only).
+
+#### WF-01 wizard mode vs conversational mode
+
+| Mode | UX | API / implementation | Status |
+|------|-----|----------------------|--------|
+| **Wizard** (§2.1 steps 1–7) | Multi-step forms at `/staff/` | `POST /api/v1/workflows/issue/*` | **Shipped** (Phases 5A/5B, 6) |
+| **Conversational** (§2.2) | Natural-language questions + confirm cards | `POST /api/v1/agent/issue/*` (+ session) | **Shipped** (Phase 8) |
+
+Both modes compose the **same** `SearchAndIssueWorkflow` and `FulfillmentService` (ADR-021). The agent is an additional **application edge** (ADR-025); it must not bypass the orchestrator or domain validators.
+
+### 2.2 Conversational search & issue + agentic fulfillment (Phase 8)
+
+Librarians interact with WF-01 as a **dialogue** (“Issue *Harry Potter* to Riya Sharma, deliver to Class 5A”) instead of only a fixed wizard. **Fulfillment follow-up** (step 7 when `mode != DESK`) is driven by an **SOP-bound agent graph** that proposes transitions; the librarian **confirms** before any write.
+
+**Non-negotiable (ADR-025, ADR-027):**
+
+- The **LLM never performs circulation writes** — only typed **tools** call `SearchAndIssueWorkflow` / `FulfillmentService`.
+- **Human-in-the-loop (HITL)** via **`pending_approval` + `POST .../resume`** before `commit_issue`, `cancel_issue`, and `transition_fulfillment` (LangGraph `interrupt()` equivalent).
+- **Deny-by-default** if approval UI or session infrastructure is unavailable.
+- **Wizard APIs remain** the contract of record; agent channel is additive (ADR-020: no feature flags on circulation invariants).
+
+#### SOP graph (maps to §2.1 steps)
+
+| Graph step | Librarian intent (examples) | Tools (read / write) | HITL |
+|------------|----------------------------|----------------------|------|
+| 1 | “Find patron Riya” / admission no. | `search_patrons`, `resolve_patron` (read) | If multiple matches |
+| 2 | “Can she borrow?” | `resolve_patron` (includes patron eligibility), `validate_issue` (read) | If violations — explain only |
+| 3 | “Search Harry Potter” | `search_lendable` (read) | If ambiguous title |
+| 4 | “Use barcode ABC123” | `select_barcode` (read; via `find_lendable_copy_by_barcode`) | — |
+| 5 | “Deliver to 5A” | Slot fill only (no write) | — |
+| 6 | “Go ahead” | `commit_issue` (write) | **Required** (`pending_approval` → `/resume`) |
+| 6b | “Cancel the issue” | `cancel_issue` (write) | **Required** |
+| 7 | “Mark in transit” | `get_fulfillment_status`, `transition_fulfillment` (write) | **Required** |
+
+**Authorized tool allowlist** (`src/lms/agent/tools.py`): read — `search_patrons`, `resolve_patron`, `search_lendable`, `select_barcode`, `validate_issue`, `get_fulfillment_status`; write — `commit_issue`, `cancel_issue`, `transition_fulfillment`. **Restricted (never bound):** `direct_checkout`, `direct_db`, `admin_api`, `remote_mcp`.
+
+On tool failure: **halt and notify** — no unbounded self-retry (IMDA SOP; see [research.md §15](research.md)).
+
+```mermaid
+sequenceDiagram
+  participant Lib as Librarian
+  participant UI as Staff chat UI
+  participant Ag as IssueAgentCoordinator
+  participant Gov as Governance node
+  participant WF as SearchAndIssueWorkflow
+  participant FF as FulfillmentService
+  participant LLM as Hosted LLM Groq/HF
+
+  Lib->>UI: natural language message
+  UI->>Ag: POST /agent/issue/sessions/{id}/message
+  Ag->>LLM: pseudonymized context + tool schemas
+  LLM-->>Ag: tool call proposal
+  Ag->>Gov: allowlist + policy check
+  alt Write tool
+    Gov->>UI: interrupt approval card
+    Lib->>UI: confirm / deny
+    UI->>Ag: resume
+    Ag->>WF: commit / cancel
+    Ag->>FF: transition fulfillment
+  else Read tool
+    Ag->>WF: search / validate
+    WF-->>Ag: compact results
+    Ag-->>UI: plain-language reply
+  end
+```
+
+#### Hosted LLM (ADR-028) — no local inference for MVP
+
+| Role | Provider | Model | Notes |
+|------|----------|-------|-------|
+| **Primary** | **Groq API** | `llama-3.3-70b-versatile` | Dialogue + tool calling; low latency |
+| **Fast routing (optional)** | Groq | `llama-3.1-8b-instant` | Short clarifications only |
+| **Fallback (optional, off by default)** | **Hugging Face Inference** | Pinned model + provider (e.g. `Qwen/Qwen2.5-72B-Instruct`) | No `:fastest` routing in production |
+
+Routing via **LiteLLM**; orchestration via **LangGraph** (fixed `StateGraph` edges, not open-ended ReAct). **Do not** use Groq Compound remote MCP or arbitrary HF MCP servers for circulation tools (IMDA supply-chain control).
+
+#### Data masking & token minimization (ADR-026)
+
+| Data | In LLM prompt | Server session / tools only |
+|------|---------------|----------------------------|
+| Patron identity | Pseudonym (`PATRON_A`) + display label | `patron_id`, admission no., card barcode |
+| Holdings / loans | Title, barcode, shelf | `holding_id`, `loan_id` |
+| Destination contact | Redacted or “[on file]” | Full `destination_contact` |
+| Validation | `message` text only | `rule_id` (API traceability) |
+| Secrets | Never | JWT, API keys, DB URLs |
+
+**Server-side session** holds slot state; prompts carry deltas and short summaries only. **Langfuse** traces use redacted tool args (see §13.8).
+
+#### Agent API surface (shipped)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/v1/agent/issue/sessions` | Start agent session (operator-scoped) |
+| `GET /api/v1/agent/issue/sessions/{id}` | Session status for UI |
+| `POST /api/v1/agent/issue/sessions/{id}/message` | Turn-based chat; returns assistant text + optional `pending_approval` |
+| `POST /api/v1/agent/issue/sessions/{id}/resume` | HITL approve / deny after pending action |
+
+RBAC: same as workflow APIs — **LIBRARIAN** / **ADMIN** JWT (ADR-024). Feature flag: `AGENT_ISSUE_ENABLED` (extension edge only; ADR-020).
+
+#### Enterprise agent charter (summary)
+
+Full charter: [research.md §15.2](research.md). Restricted actions: direct orchestrator/DB access, patron admin, catalog publish, external HTTP, Groq/HF remote MCP, unbounded tool loops.
 
 ---
 
@@ -497,6 +599,10 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 | **ADR-022** | **`CirculationFulfillment` aggregate** for optional delivery/pick-up | K-12 schools may deliver to class/home (§2.1, §5.1) | References `Loan`/`Holding`; does not replace circulation kernel |
 | **ADR-023** | **Custody-aligned loan clock** | Due dates and `checkoutAt` must reflect library custody, not patron doorstep | Desk: immediate checkout; delivery: on dispatch; pick-up return: two-phase close |
 | **ADR-024** | **JWT Bearer auth** on all domain APIs | REQ-21, REQ-30; desk and Swagger clients need token-based access | `POST /api/v1/auth/token` public; `domain_api_router` requires Bearer JWT; Swagger `BearerJWT` scheme |
+| **ADR-025** | **Agent edge module** (`IssueAgentCoordinator`) | Conversational WF-01 without changing circulation kernel (§2.2) | LangGraph SOP graph; tools wrap workflow services only; LLM never writes directly |
+| **ADR-026** | **PII pseudonymization & token-minimized prompts** | K-12 patron data + hosted LLM (Groq/HF) | Server session holds IDs; prompts use pseudonyms; redact before Langfuse/HITL |
+| **ADR-027** | **Mandatory HITL on agent writes** | Irreversible desk actions; IMDA meaningful oversight | `pending_approval` + `/resume` before `commit_issue`, `cancel_issue`, `transition_fulfillment`; deny-by-default |
+| **ADR-028** | **Hosted OSS LLM routing (no local inference)** | MVP uses Groq primary, HF Inference optional fallback | LiteLLM; pin models/providers; document third-party residual risk |
 
 ### 10.1 Design elements (implementation map)
 
@@ -508,6 +614,8 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 | **Application** | Query handlers (`SearchCatalogStaff`, `ListOverdueLoans`, …) | Read models, filters, overdue derivation |
 | **Application** | **Workflow coordinators** (§2.1) | `SearchAndIssueWorkflow`, `ReturnBookWorkflow`; `IssueEligibilityValidator` → `ValidationReport` |
 | **Application** | **Fulfillment service** | `CirculationFulfillment` state transitions for delivery/pick-up |
+| **Application** | **Agent coordinator** (§2.2, Phase 8) | `IssueAgentCoordinator` — LangGraph SOP, governance node, HITL; tools → workflow layer |
+| **Infrastructure** | **LLM router** | LiteLLM → Groq (primary) / HF Inference (fallback); Langfuse callbacks |
 | **Domain** | Aggregates | `Patron`, `PatronType`, `ClassSection`, `PatronBlock`; `Catalog`, `Holding`; `Loan`, `LoanRuleSet`, `CirculationFulfillment` |
 | **Domain** | **PolicyResolver** | Resolve `LoanRuleSet` from patron type; compute `dueDate` |
 | **Domain** | Ports | `PatronEligibilityPort`, `HoldingLendabilityPort` |
@@ -554,9 +662,32 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 |------|----------|--------------|
 | API style | Resource-oriented REST with command-like endpoints where needed | Keep DTOs explicit and versionable |
 | API versioning | URI or header versioning with backward-compatible additive changes in MVP | Breaking changes require new version |
-| Error model | Deterministic machine-readable error codes | Include retriable/non-retriable classification |
+| Error model | Deterministic machine-readable error codes | Flat JSON envelope on every error response (see below) |
 | Validation | Edge validation at API + invariant validation in domain | Never rely only on controller validation |
 | Cross-context calls | In-process ports only for MVP | Do not introduce network RPC across modules yet |
+
+**Error response envelope** (ADR-016; implemented in `api/errors.py`):
+
+```json
+{
+  "code": "VALIDATION_ERROR",
+  "message": "Invalid input",
+  "retriable": false,
+  "details": {}
+}
+```
+
+| HTTP status | Typical `code` values |
+|-------------|----------------------|
+| 401 | `UNAUTHORIZED` |
+| 403 | `FORBIDDEN` |
+| 404 | `NOT_FOUND` |
+| 409 | `CONFLICT` |
+| 422 | `VALIDATION_ERROR`, `DOMAIN_RULE_VIOLATION` |
+| 429 | `RATE_LIMIT_EXCEEDED` |
+| 500 | `RETRIABLE_ERROR` |
+
+When `APP_DEBUG=false`, validation `details` and 500 `message` are generic (no internal paths or stack traces).
 
 ### 10.6 Delivery and release decisions
 
@@ -606,6 +737,10 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 | **REQ-28** | Optional delivery/pick-up fulfillment (§5.1) | ADR-022 | `CirculationFulfillment` aggregate; migration `004_fulfillment` |
 | **REQ-29** | Aggregated validation report at workflow boundary (§2.1) | ADR-021 | `ValidationReport` VO with traceable `rule_id` |
 | **REQ-30** | JWT on all domain APIs (shipped) | ADR-024 | `domain_api_router`, `HTTPBearer`, `api_users` table, `POST /api/v1/auth/token` |
+| **REQ-31** | Conversational WF-01 via agent (§2.2) | ADR-025, ADR-027 | `IssueAgentCoordinator`, `POST /api/v1/agent/issue/*`; same workflow tools as wizard |
+| **REQ-32** | Agentic fulfillment follow-up (§2.2 step 7) | ADR-025, ADR-022 | Fulfillment subgraph; HITL before `transition_fulfillment` |
+| **REQ-33** | PII masking & token-minimized agent prompts | ADR-026 | Pseudonym session map; compact tool payloads; no secrets in checkpoints |
+| **REQ-34** | IMDA-governed agent deployment | ADR-027, ADR-028; [research.md §15](research.md) | Enterprise charter, Langfuse audit, tool allowlist, phased rollout |
 
 ### 11.1 Traceability — quality attributes & principles
 
@@ -635,6 +770,7 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 | `ReturnBookWorkflow` (WF-02) | `loan/application/workflows/return_book.py` + workflow API router |
 | `CreateIssueFulfillment`, `CompleteIssueFulfillment` | Fulfillment service (Phase 5B) |
 | `InitiateReturnPickup`, `ConfirmReturnReceived` | Fulfillment service + `ReturnBookWorkflow` |
+| `IssueAgentCoordinator` (conversational WF-01) | `agent/` edge module + LangGraph; tools → `SearchAndIssueWorkflow` / `FulfillmentService` (Phase 8) |
 
 ---
 
@@ -648,8 +784,9 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 | [loan.md](loan.md) | `Loan`, `LoanRuleSet`, checkout/return |
 | [library_domain_model_final.md](library_domain_model_final.md) | One-page cross-domain overview |
 | [plan-mvp.md](plan-mvp.md) | Phased implementation plan, verify gates, REQ checklist |
-| [go-live-checklist.md](go-live-checklist.md) | G1–G10 sign-off and verification commands |
-| [runbook.md](runbook.md) | Deploy, backup, migration rollback, incidents |
+| [go-live-checklist.md](go-live-checklist.md) | G1–G13 sign-off and verification commands |
+| [runbook.md](runbook.md) | Deploy, backup, migration rollback, incidents, LLM config (§10) |
+| [research.md §15](research.md) | IMDA agent governance + desk agent charter |
 
 ---
 
@@ -699,7 +836,9 @@ Idempotency keys should be retained for a bounded replay window (for example 24 
 | Checkout / return at desk | Optional (policy) | Yes | Optional (self-checkout policy) |
 | Staff discovery / overdue operational views | Yes | Yes | No |
 | Workflow issue / return (§2.1) | Optional (policy) | Yes | No |
+| Agent conversational issue (§2.2) | Optional (policy) | Yes | No |
 | Fulfillment state transitions (delivery / pick-up) | Optional (policy) | Yes | No |
+| Agent fulfillment transitions (§2.2) | Optional (policy) | Yes | No |
 | Patron self views (if enabled) | No | No | Yes |
 
 Policy choice on self-checkout must be explicitly fixed in product configuration before go-live. All domain and workflow APIs require **Bearer JWT** (ADR-024); obtain token via `POST /api/v1/auth/token`.
@@ -727,6 +866,45 @@ The MVP should be validated against explicit baseline assumptions before release
 
 If expected production numbers exceed these baselines, run targeted performance tests and revise SLOs before rollout.
 
+### 13.7 Security hardening
+
+Operational security controls shipped with the API (see `.cursor/rules/security-and-hardening.md`).
+
+| Control | Implementation | Config / notes |
+|---------|----------------|----------------|
+| Password hashing | bcrypt, cost factor 12 | `shared/auth/password.py` |
+| JWT signing | HS256 via `APP_SECRET_KEY` | Refuse default secret when `APP_ENV=production` |
+| RBAC | `ADMIN`, `LIBRARIAN`, `PATRON` on domain routes | §13.4; `domain_api_router` requires Bearer JWT |
+| Auth rate limiting | Per-IP fixed window on `/api/v1/auth/` | Default 10 requests / 15 min → `429 RATE_LIMIT_EXCEEDED` |
+| API rate limiting | Per-IP fixed window on `/api/` | Default 100 requests / 15 min; `/health`, `/docs` exempt |
+| Security headers | CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, Referrer-Policy | Optional HSTS via `SECURITY_HSTS_ENABLED` (HTTPS only) |
+| CORS | Explicit allowlist in production | Startup rejects `CORS_ORIGINS=*` when `APP_ENV=production` |
+| Error disclosure | Generic client messages when `APP_DEBUG=false` | Full validation detail only in debug |
+| Staff UI token storage | JWT in `sessionStorage` (not `localStorage`) | `staff/static/app.js`; user HTML escaped via `escapeHtml` |
+| Supply chain | `npm ci` + `npm audit --audit-level=high` in CI | Lockfile committed |
+
+**Verify:** `pytest tests/hardening/test_security.py`; sign-off items in [go-live-checklist.md](go-live-checklist.md).
+
+### 13.8 Agent and LLM security (Phase 8)
+
+Extends §13.7 for hosted LLM desk agents (OWASP LLM Top 10; IMDA MGF v1.5). Authority: [research.md §15](research.md), `.cursor/skills/imda-agentic-ai-governance/SKILL.md`.
+
+| Control | Implementation | Config / notes |
+|---------|----------------|----------------|
+| LLM output untrusted | Pydantic-validated tool args only; no raw LLM → SQL/shell/orchestrator | Governance node on tool path |
+| Prompt injection | Catalog titles / patron text treated as data; structural tool allowlist | Not prompt-only restrictions |
+| PII in prompts | Pseudonyms in LLM context; full IDs in server session only | ADR-026 |
+| HITL on writes | `pending_approval` + `/resume` before commit, cancel, fulfillment transition | ADR-027; deny-by-default |
+| Bounded consumption | `max_tokens`, max tool calls/turn, API + LLM rate limits | `AGENT_MAX_TOOL_CALLS_PER_TURN` |
+| Secrets | Never in prompts, graph checkpoints, or Langfuse spans | `GROQ_API_KEY`, `HF_TOKEN` in env only |
+| Observability | Langfuse: `agent_id`, `thread_id`, redacted args, HITL events | Correlate with `X-Correlation-Id` (ADR-018) |
+| Third-party LLM | Document Groq/HF residual risk; pin model versions | ADR-028; no `:fastest` HF routing in prod |
+| Supply chain | No remote MCP for circulation; local tools only | Groq Compound / HF MCP disabled for desk agent |
+| Checkpoint store | Encrypt Postgres checkpointer; retention TTL; no JWT in state | Same classification as app DB |
+| Feature flag | `AGENT_ISSUE_ENABLED` — extension edge | Circulation kernel unchanged when off (ADR-020) |
+
+**Verify (Phase 8):** agent security tests + IMDA charter sign-off in [go-live-checklist.md](go-live-checklist.md) §Agent criteria (G11–G13).
+
 ---
 
 ## 14. Implementation status (snapshot)
@@ -744,4 +922,5 @@ Current codebase vs planned work. Authoritative execution tracking: **[plan-mvp.
 | Phase 5A — Desk workflows | **Done** | WF-01, WF-02 + rollback/name lookup (§2.1) |
 | Phase 5B — Fulfillment | **Done** | Delivery/pick-up in MVP scope (§5.1) |
 | Phase 6 — Staff UI | **Done** | Issue/return wizards at `/staff/` |
-| Phase 7 — Hardening | **Done** | Concurrency, idempotency, SLO tests; [runbook.md](runbook.md), [go-live-checklist.md](go-live-checklist.md) |
+| Phase 7 — Hardening | **Done** | Concurrency, idempotency, SLO, security tests (`test_security.py`); [runbook.md](runbook.md), [go-live-checklist.md](go-live-checklist.md) |
+| Phase 8 — Agent desk | **Done** | Conversational WF-01 + agentic fulfillment (§2.2); tool allowlist incl. `select_barcode`, `cancel_issue`; Groq/HF via LiteLLM; HITL via `/resume`; ADR-025–028 |

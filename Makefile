@@ -4,7 +4,7 @@
 	deploy-destroy destroy-native \
 	run-dev setup-native deploy-native deploy-local-native \
 	deploy-local deploy-local-logs deploy-local-down deploy-local-clean \
-	test-unit test-integration test-e2e test-hardening test-performance phase7 \
+	test-unit test-integration test-e2e test-agent test-hardening test-performance phase7 phase8 \
 	ensure-env ensure-venv ensure-node ensure-node-modules
 
 PYTHON ?= python3
@@ -31,10 +31,10 @@ help:
 	@echo "  make test                  Run all pytest suites"
 	@echo "  make test-unit             Unit tests only (no DB)"
 	@echo "  make test-integration      Service + DB integration tests"
-	@echo "  make test-e2e              Full HTTP journey tests"
+	@echo "  make test-agent              Phase 8 agent desk tests"
 	@echo "  make test-hardening        Phase 7 concurrency + idempotency"
 	@echo "  make test-performance      Phase 7 SLO baseline checks"
-	@echo "  make phase7                Hardening + performance (go-live gate)"
+	@echo "  make phase8                Agent desk tests (G11–G13)"
 	@echo "  make diagram               Regenerate docs/diagrams/lms-architecture.tldr"
 	@echo "  make lint                  Run ruff and import-linter"
 	@echo "  make ci                    Lint + test + Docker build"
@@ -95,6 +95,9 @@ test-integration:
 test-e2e:
 	PYTHONPATH=src $(BIN)/pytest -m e2e
 
+test-agent:
+	AGENT_ISSUE_ENABLED=true AGENT_MOCK_LLM=true PYTHONPATH=src $(BIN)/pytest -m agent
+
 test-hardening:
 	PYTHONPATH=src $(BIN)/pytest -m hardening
 
@@ -102,6 +105,8 @@ test-performance:
 	PYTHONPATH=src $(BIN)/pytest -m performance
 
 phase7: test-hardening test-performance
+
+phase8: test-agent
 
 ensure-node:
 	@command -v $(NODE) >/dev/null || { echo "Node.js 24+ required (see .nvmrc)"; exit 1; }
@@ -117,7 +122,7 @@ lint:
 	$(BIN)/ruff check src tests scripts
 	PYTHONPATH=src $(BIN)/lint-imports
 
-ci-native: lint test-unit test-integration test-e2e test-hardening test-performance
+ci-native: lint test-unit test-integration test-e2e test-agent test-hardening test-performance
 
 ci: ci-native build
 

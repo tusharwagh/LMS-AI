@@ -166,17 +166,20 @@ def test_workflow_delivery_issue_and_pickup_return(
     complete = client.post(
         f"/api/v1/workflows/fulfillment/{fulfillment_id}/transition",
         json={"status": "COMPLETED"},
+        headers={"Idempotency-Key": f"ful-skip-{tag}"},
     )
     assert complete.status_code == 422
 
     ready = client.post(
         f"/api/v1/workflows/fulfillment/{fulfillment_id}/transition",
         json={"status": "READY"},
+        headers={"Idempotency-Key": f"ful-ready-{tag}"},
     )
     assert ready.status_code == 200
     done = client.post(
         f"/api/v1/workflows/fulfillment/{fulfillment_id}/transition",
         json={"status": "COMPLETED"},
+        headers={"Idempotency-Key": f"ful-done-{tag}"},
     )
     assert done.status_code == 200
     assert done.json()["status"] == "COMPLETED"
@@ -188,6 +191,7 @@ def test_workflow_delivery_issue_and_pickup_return(
     pickup = client.post(
         "/api/v1/workflows/return/pickup/initiate",
         json={"loan_id": loan_id, "destination": {"notes": "Collect from home"}},
+        headers={"Idempotency-Key": f"pickup-init-{tag}"},
     )
     assert pickup.status_code == 201
     pickup_id = pickup.json()["id"]

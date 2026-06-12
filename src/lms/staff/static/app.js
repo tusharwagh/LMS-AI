@@ -19,6 +19,11 @@ const state = {
     context: null,
     pickupFulfillmentId: null,
   },
+  agent: {
+    sessionId: null,
+    pendingApproval: null,
+    messages: [],
+  },
 };
 
 function uuid() {
@@ -124,6 +129,89 @@ function showView(name) {
   });
   if (name === "overdue") loadOverdue();
   if (name === "admin") loadAdmin();
+  if (name === "agent") ensureAgentSession();
+}
+
+function renderAgentChat() {
+  const box = document.getElementById("agent-chat");
+  if (!box) return;
+  box.innerHTML = state.agent.messages
+    .map((m) => `<div class="agent-msg ${m.role}">${escapeHtml(m.content)}</div>`)
+    .join("");
+  box.scrollTop = box.scrollHeight;
+}
+
+function showAgentApproval(pending) {
+  const panel = document.getElementById("agent-approval");
+  const summary = document.getElementById("agent-approval-summary");
+  if (!panel || !summary) return;
+  if (!pending) {
+    panel.classList.add("hidden");
+    summary.textContent = "";
+    state.agent.pendingApproval = null;
+    return;
+  }
+  state.agent.pendingApproval = pending;
+  summary.textContent = pending.summary;
+  panel.classList.remove("hidden");
+}
+
+async function ensureAgentSession() {
+  if (state.agent.sessionId) return;
+  try {
+    const res = await api("/api/v1/agent/issue/sessions", { method: "POST" });
+    state.agent.sessionId = res.session_id;
+    state.agent.messages = [];
+    showAgentApproval(null);
+    renderAgentChat();
+    document.getElementById("agent-alert").innerHTML = "";
+  } catch (err) {
+    document.getElementById("agent-alert").innerHTML = alertHtml("error", err.message);
+  }
+}
+
+async function sendAgentMessage() {
+  const input = document.getElementById("agent-input");
+  const text = input.value.trim();
+  if (!text) return;
+  await ensureAgentSession();
+  state.agent.messages.push({ role: "user", content: text });
+  renderAgentChat();
+  input.value = "";
+  try {
+    const res = await api(
+      `/api/v1/agent/issue/sessions/${state.agent.sessionId}/message`,
+      { method: "POST", body: { message: text } },
+    );
+    state.agent.messages.push({ role: "assistant", content: res.assistant_message });
+    renderAgentChat();
+    showAgentApproval(res.pending_approval);
+  } catch (err) {
+    document.getElementById("agent-alert").innerHTML = alertHtml("error", err.message);
+  }
+}
+
+async function resumeAgent(approved) {
+  if (!state.agent.sessionId) return;
+  try {
+    const res = await api(
+      `/api/v1/agent/issue/sessions/${state.agent.sessionId}/resume`,
+      { method: "POST", body: { approved } },
+    );
+    state.agent.messages.push({ role: "assistant", content: res.assistant_message });
+    renderAgentChat();
+    showAgentApproval(null);
+  } catch (err) {
+    document.getElementById("agent-alert").innerHTML = alertHtml("error", err.message);
+  }
+}
+
+function resetAgentSession() {
+  state.agent = { sessionId: null, pendingApproval: null, messages: [] };
+  showAgentApproval(null);
+  renderAgentChat();
+  document.getElementById("agent-alert").innerHTML = "";
+  ensureAgentSession();
 }
 
 function alertHtml(type, message) {
@@ -518,10 +606,10 @@ async function commitIssue() {
     document.getElementById("issue-done").classList.remove("hidden");
     const title = state.issue.selectedHit?.title ?? "Book";
     const barcode = state.issue.selectedCopy?.barcode ?? "";
-    let msg = `<strong>${escapeHtml(title)}</strong> issued to <strong>${escapeHtml(state.issue.patronName)}</strong>. Due ${res.due_date}.`;
+    let msg = `<strong>${escapeHtml(title)}</strong> issued to <strong>${escapeHtml(state.issue.patronName)}</strong>. Due ${escapeHtml(res.due_date)}.`;
     if (barcode) msg += ` Copy barcode: ${escapeHtml(barcode)}.`;
     if (res.fulfillment) {
-      msg += ` ${formatFulfillmentMode(res.fulfillment.mode)} — ${formatFulfillmentStatus(res.fulfillment.status)}.`;
+      msg += ` ${escapeHtml(formatFulfillmentMode(res.fulfillment.mode))} — ${escapeHtml(formatFulfillmentStatus(res.fulfillment.status))}.`;
     }
     document.getElementById("issue-done-msg").innerHTML = msg;
   } catch (err) {
@@ -576,7 +664,7 @@ async function lookupReturn() {
       <div class="list-row">
         <strong>${escapeHtml(ctx.catalog_title)}</strong>
         <div class="meta">Copy barcode ${escapeHtml(ctx.holding_barcode)}</div>
-        <div class="meta">Borrower: <strong>${escapeHtml(ctx.patron_display_name)}</strong> · Due ${ctx.due_date}${ctx.is_overdue ? " · <span style='color:var(--danger)'>OVERDUE</span>" : ""}</div>
+        <div class="meta">Borrower: <strong>${escapeHtml(ctx.patron_display_name)}</strong> · Due ${escapeHtml(ctx.due_date)}${ctx.is_overdue ? " · <span style='color:var(--danger)'>OVERDUE</span>" : ""}</div>
         ${ctx.open_loans_for_patron > 1 ? `<div class="meta">${ctx.open_loans_for_patron - 1} other open loan${ctx.open_loans_for_patron - 1 === 1 ? "" : "s"} for this patron</div>` : ""}
       </div>
     `;
@@ -604,6 +692,7 @@ async function commitReturn() {
     } else {
       await api("/api/v1/workflows/return/pickup/initiate", {
         method: "POST",
+        headers: { "Idempotency-Key": uuid() },
         body: {
           loan_id: ctx.loan_id,
           destination: {
@@ -673,7 +762,7 @@ async function loadOverdue() {
             <td><strong>${escapeHtml(l.patron_display_name)}</strong></td>
             <td>${escapeHtml(l.catalog_title)}</td>
             <td class="meta">${escapeHtml(l.holding_barcode)}</td>
-            <td>${l.due_date}</td>
+            <td>${escapeHtml(l.due_date)}</td>
           </tr>`
             )
             .join("")}
@@ -714,7 +803,7 @@ async function lookupPatron() {
             (p, idx) => `
           <div class="copy-card patron-result-pick" data-patron-idx="${idx}">
             <strong>${escapeHtml(p.display_name)}</strong>
-            <div class="meta">${patronIdentifiers(p) || "No card or admission on file"}</div>
+            <div class="meta">${escapeHtml(patronIdentifiers(p) || "No card or admission on file")}</div>
             <div class="meta">${escapeHtml(p.patron_type_name || "")}${p.class_section_label ? ` · ${escapeHtml(p.class_section_label)}` : ""}</div>
           </div>`
           )
@@ -748,7 +837,7 @@ async function showPatronDetail(patron) {
     ? `<ul class="meta">${loans
         .map(
           (l) =>
-            `<li><strong>${escapeHtml(l.catalog_title)}</strong> · copy ${escapeHtml(l.holding_barcode)} · due ${l.due_date}</li>`
+            `<li><strong>${escapeHtml(l.catalog_title)}</strong> · copy ${escapeHtml(l.holding_barcode)} · due ${escapeHtml(l.due_date)}</li>`
         )
         .join("")}</ul>`
     : `<p class="meta">No open loans.</p>`;
@@ -886,6 +975,11 @@ function bindEvents() {
   document.getElementById("admin-rule-create").addEventListener("click", createAdminRule);
   document.getElementById("admin-type-create").addEventListener("click", createAdminType);
   document.getElementById("admin-section-create").addEventListener("click", createAdminSection);
+
+  document.getElementById("agent-send-btn").addEventListener("click", sendAgentMessage);
+  document.getElementById("agent-approve-btn").addEventListener("click", () => resumeAgent(true));
+  document.getElementById("agent-deny-btn").addEventListener("click", () => resumeAgent(false));
+  document.getElementById("agent-new-session-btn").addEventListener("click", resetAgentSession);
 
   document.getElementById("issue-card").addEventListener("keydown", (e) => {
     if (e.key === "Enter") findIssuePatron();

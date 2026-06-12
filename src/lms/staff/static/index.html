@@ -27,6 +27,7 @@
         <div class="brand">LMS-AI Staff</div>
         <div class="user" id="nav-user"></div>
         <button type="button" data-view="issue" class="nav-btn active">Issue book</button>
+        <button type="button" data-view="agent" class="nav-btn">AI assist</button>
         <button type="button" data-view="return" class="nav-btn">Return book</button>
         <button type="button" data-view="search" class="nav-btn">Catalog search</button>
         <button type="button" data-view="overdue" class="nav-btn">Overdue</button>
@@ -114,6 +115,32 @@
                 <button type="button" class="btn secondary" id="issue-new-btn">Issue another</button>
                 <button type="button" class="btn" id="issue-cancel-btn" style="background: var(--danger)">Cancel issuance</button>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Agent assist (Phase 8) -->
+        <section id="view-agent" class="view hidden">
+          <div class="panel">
+            <h2>AI-assisted issue</h2>
+            <p class="muted">
+              AI-assisted desk — you approve all issues and deliveries. The assistant cannot change
+              circulation without your confirmation.
+            </p>
+            <div id="agent-alert"></div>
+            <div id="agent-chat" class="agent-chat"></div>
+            <div id="agent-approval" class="hidden agent-approval">
+              <div id="agent-approval-summary"></div>
+              <div class="row">
+                <button type="button" class="btn" id="agent-approve-btn">Approve</button>
+                <button type="button" class="btn secondary" id="agent-deny-btn">Deny</button>
+              </div>
+            </div>
+            <label for="agent-input">Your message</label>
+            <textarea id="agent-input" rows="3" placeholder="Issue Harry Potter to Riya Sharma, desk pickup"></textarea>
+            <div class="row">
+              <button type="button" class="btn" id="agent-send-btn">Send</button>
+              <button type="button" class="btn secondary" id="agent-new-session-btn">New session</button>
             </div>
           </div>
         </section>

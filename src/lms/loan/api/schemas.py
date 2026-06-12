@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class LoanRuleSetResponse(BaseModel):
@@ -59,3 +59,9 @@ class CheckoutRequest(BaseModel):
 class ReturnRequest(BaseModel):
     holding_id: UUID | None = None
     loan_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def require_lookup(self) -> "ReturnRequest":
+        if not self.holding_id and not self.loan_id:
+            raise ValueError("Either holding_id or loan_id is required")
+        return self
