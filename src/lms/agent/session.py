@@ -31,6 +31,10 @@ class IssueSlots:
     fulfillment_id: UUID | None = None
     fulfillment_target_status: FulfillmentStatus | None = None
 
+    @property
+    def has_patron_and_holding(self) -> bool:
+        return self.patron_id is not None and self.holding_id is not None
+
 
 @dataclass
 class PendingApproval:

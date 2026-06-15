@@ -372,6 +372,7 @@ Practices:
 ### Automation bias mitigations
 
 - Contextual approval payloads (plain-language explanation + confidence, not chain-of-thought dumps)
+- **LMS-AI desk copy:** `pending_approval.summary` and `assistant_message` from `messages.py` — patron names, titles, barcodes; no UUIDs, tool names, or internal jargon (meaningful oversight for librarians)
 - Periodic human review samples of auto-approved actions
 - Training on agent failure modes (hallucinated tools, stale policy, injection)
 
@@ -426,6 +427,8 @@ builder.add_conditional_edges("governance", route_on_decision)
 - Repeated runs on varied datasets (stochastic stability)
 
 Use Langfuse scores/datasets for evals, `langgraph dev` test threads, and deterministic assertions on tool calls where possible. Correlate eval runs with production traces via shared `agent_id` and prompt version tags.
+
+**LMS-AI automated gate:** `make test-agent` with `AGENT_MOCK_LLM=true` — see [python-code-analysis/lms-ai.md](../python-code-analysis/lms-ai.md). Static: ruff + import-linter on `lms/agent/` (no infrastructure imports).
 
 **Deployment:** phased rollout (user cohort / feature flag), continuous monitoring, versioned graph definitions.
 
@@ -499,6 +502,11 @@ Surface in UI: agent status, pending approvals from `interrupt` payloads, audit 
 - [ ] Langfuse eval datasets for regression on tool selection and policy adherence
 - [ ] Gradual rollout with production monitoring and alerts
 
+### Testing & analysis
+- [ ] Agent changes covered by `tests/agent/` (mock LLM; assert routing, HITL, allowlist)
+- [ ] Static analysis on agent module: ruff, mypy, import-linter ([python-code-analysis](../python-code-analysis/SKILL.md))
+- [ ] Security/hardening tests if auth or write paths changed
+
 ### End users
 - [ ] Transparency copy in product
 - [ ] Training or in-app guidance for oversight
@@ -525,6 +533,7 @@ Surface in UI: agent status, pending approvals from `interrupt` payloads, audit 
 ## Additional resources
 
 - [reference.md](reference.md) — risk factors, multi-agent risks, related frameworks (CSA, GovTech ARCF, OWASP Agentic AI)
+- [python-code-analysis/SKILL.md](../python-code-analysis/SKILL.md) — static & dynamic analysis for Python (pytest, ruff, mypy, import-linter)
 - `.cursor/rules/security-and-hardening.md` — app security patterns (injection, auth, PII)
 - IMDA MGF for Agentic AI (v1.5): https://www.imda.gov.sg/-/media/imda/files/about/emerging-tech-and-research/artificial-intelligence/mgf-for-agentic-ai.pdf
 - LangGraph interrupts: https://docs.langchain.com/oss/python/langgraph/interrupts

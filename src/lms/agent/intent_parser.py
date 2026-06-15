@@ -4,39 +4,14 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
-from enum import StrEnum
 
+import structlog
+from litellm.exceptions import LITELLM_EXCEPTION_TYPES
+
+from lms.agent import messages as desk
+from lms.agent.schemas import IntentAction, ParsedIntent
 from lms.config import Settings
 from lms.loan.domain.enums import FulfillmentMode, FulfillmentStatus
-
-
-class IntentAction(StrEnum):
-    CHAT = "chat"
-    SEARCH_PATRON = "search_patron"
-    SEARCH_CATALOG = "search_catalog"
-    SELECT_BARCODE = "select_barcode"
-    SET_FULFILLMENT = "set_fulfillment"
-    REQUEST_COMMIT = "request_commit"
-    REQUEST_CANCEL_ISSUE = "request_cancel_issue"
-    REQUEST_FULFILLMENT_TRANSITION = "request_fulfillment_transition"
-    APPROVE = "approve"
-    DENY = "deny"
-
-
-@dataclass(frozen=True, slots=True)
-class ParsedIntent:
-    action: IntentAction
-    patron_query: str | None = None
-    card_barcode: str | None = None
-    external_ref: str | None = None
-    catalog_query: str | None = None
-    holding_barcode: str | None = None
-    fulfillment_mode: FulfillmentMode | None = None
-    destination_notes: str | None = None
-    fulfillment_status: FulfillmentStatus | None = None
-    reply_hint: str | None = None
-
 
 _APPROVE_RE = re.compile(r"^(yes|y|approve|confirm|go ahead|proceed|ok)\.?$", re.I)
 _DENY_RE = re.compile(r"^(no|n|deny|cancel|stop)\.?$", re.I)
@@ -54,6 +29,25 @@ _CANCEL_ISSUE_RE = re.compile(
     r"\b(cancel|rollback|undo)\s+(the\s+)?(issue|loan|checkout)\b",
     re.I,
 )
+_GREETING_RE = re.compile(
+    r"^(hi|hello|hey|thanks|thank you|good morning|good afternoon)[!.?\s]*$",
+    re.I,
+)
+_HELP_RE = re.compile(
+    r"^(help(?:\s+me)?|\?|what can you do\??|how (?:do|can) i\b.+)$",
+    re.I,
+)
+
+_LLM_INTENT_PARSE_ERRORS: tuple[type[BaseException], ...] = (
+    json.JSONDecodeError,
+    KeyError,
+    TypeError,
+    ValueError,
+    IndexError,
+    *LITELLM_EXCEPTION_TYPES,
+)
+
+logger = structlog.get_logger(__name__)
 
 
 class IntentParser:
@@ -62,7 +56,7 @@ class IntentParser:
     def parse(self, message: str, *, has_pending_approval: bool) -> ParsedIntent:
         text = message.strip()
         if not text:
-            return ParsedIntent(IntentAction.CHAT, reply_hint="Please enter a message.")
+            return ParsedIntent(IntentAction.CHAT, reply_hint=desk.EMPTY_MESSAGE)
 
         if has_pending_approval:
             if _APPROVE_RE.match(text):
@@ -113,6 +107,11 @@ class IntentParser:
         if _CANCEL_ISSUE_RE.search(text):
             return ParsedIntent(IntentAction.REQUEST_CANCEL_ISSUE)
 
+        if _GREETING_RE.match(text):
+            return ParsedIntent(IntentAction.CHAT, reply_hint=desk.greeting_reply())
+        if _HELP_RE.match(text):
+            return ParsedIntent(IntentAction.CHAT, reply_hint=desk.help_reply(text))
+
         if text.upper().startswith("CARD-"):
             return ParsedIntent(IntentAction.SEARCH_PATRON, card_barcode=text.strip())
         if text.upper().startswith("ADM-"):
@@ -139,7 +138,8 @@ class LLMIntentParser(IntentParser):
             return self._rules.parse(message, has_pending_approval=has_pending_approval)
         try:
             return self._parse_llm(message, has_pending_approval=has_pending_approval)
-        except Exception:
+        except _LLM_INTENT_PARSE_ERRORS as exc:
+            logger.warning("llm_intent_parse_failed", error=str(exc))
             return self._rules.parse(message, has_pending_approval=has_pending_approval)
 
     def _parse_llm(self, message: str, *, has_pending_approval: bool) -> ParsedIntent:

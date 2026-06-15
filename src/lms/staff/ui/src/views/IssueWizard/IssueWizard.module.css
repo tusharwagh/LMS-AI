@@ -1,0 +1,8 @@
+.candidates,
+.results {
+  margin-top: var(--space-4);
+}
+
+.done {
+  margin-top: var(--space-2);
+}

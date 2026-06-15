@@ -2,10 +2,11 @@
 	migrate ddl seed seed-sql \
 	destroy-data destroy-schema destroy-db destroy destroy-all \
 	deploy-destroy destroy-native \
-	run-dev setup-native deploy-native deploy-local-native \
+	run-dev run-dev-debug setup-native deploy-native deploy-local-native \
 	deploy-local deploy-local-logs deploy-local-down deploy-local-clean \
-	test-unit test-integration test-e2e test-agent test-hardening test-performance phase7 phase8 \
-	ensure-env ensure-venv ensure-node ensure-node-modules
+	test-unit test-integration test-e2e test-e2e-playwright test-agent test-hardening test-performance phase7 phase8 \
+	staff-ui-install staff-ui-build staff-ui-typecheck staff-ui-dev validate-langfuse \
+	ensure-env ensure-venv ensure-node ensure-node-modules ensure-staff-ui
 
 PYTHON ?= python3
 VENV ?= .venv
@@ -18,6 +19,14 @@ API_HOST ?= 127.0.0.1
 API_PORT ?= 8000
 SEED ?= 0
 DESTROY_YES ?= 0
+DEBUG ?= 0
+
+# DEBUG=1 → APP_DEBUG=true + uvicorn --log-level debug (overrides .env for this process)
+ifeq ($(filter 1 true yes,$(DEBUG)),)
+UVICORN := $(BIN)/uvicorn lms.main:app --reload --app-dir src --host $(API_HOST) --port $(API_PORT) --log-level info
+else
+UVICORN := APP_DEBUG=true $(BIN)/uvicorn lms.main:app --reload --app-dir src --host $(API_HOST) --port $(API_PORT) --log-level debug
+endif
 
 SQL_DIR := scripts/sql
 DESTROY_FLAGS := $(if $(filter 1 true yes,$(DESTROY_YES)),--yes,)
@@ -28,15 +37,20 @@ help:
 	@echo "Development"
 	@echo "  make install               Create venv and install Python dev dependencies"
 	@echo "  make install-node          Install Node.js deps (diagram tooling, Node 24+)"
+	@echo "  make staff-ui-build        Build React staff desk to src/lms/staff/static/ (not committed)"
+	@echo "  make staff-ui-typecheck    Typecheck staff desk UI"
 	@echo "  make test                  Run all pytest suites"
 	@echo "  make test-unit             Unit tests only (no DB)"
 	@echo "  make test-integration      Service + DB integration tests"
+	@echo "  make test-e2e              HTTP journeys + staff UI smoke tests"
+	@echo "  make test-e2e-playwright   Browser E2E (login, issue/return wizards, agent HITL)"
 	@echo "  make test-agent              Phase 8 agent desk tests"
+	@echo "  make validate-langfuse       Check Langfuse keys + emit test span"
 	@echo "  make test-hardening        Phase 7 concurrency + idempotency"
 	@echo "  make test-performance      Phase 7 SLO baseline checks"
 	@echo "  make phase8                Agent desk tests (G11–G13)"
 	@echo "  make diagram               Regenerate docs/diagrams/lms-architecture.tldr"
-	@echo "  make lint                  Run ruff and import-linter"
+	@echo "  make lint                  Run ruff, import-linter, and mypy"
 	@echo "  make ci                    Lint + test + Docker build"
 	@echo "  make ci-native             Lint + test (no Docker)"
 	@echo ""
@@ -44,7 +58,10 @@ help:
 	@echo "  make setup-native          install + migrate (+ SEED=1 for demo data)"
 	@echo "  make deploy-native         setup + run API with reload"
 	@echo "  make deploy-native SEED=1  deploy + sample data"
+	@echo "  make deploy-native DEBUG=1 deploy + debug mode"
 	@echo "  make run-dev               Run API only (venv + .env required)"
+	@echo "  make run-dev-debug         Verbose logs (APP_DEBUG=true); not for IDE breakpoints"
+	@echo "  Cursor: Run and Debug (F5) → LMS API (breakpoints) — see README"
 	@echo "  Staff UI: http://127.0.0.1:8000/staff/  (librarian / changeme)"
 	@echo "  make destroy-native        Wipe sample data, schema, and database"
 	@echo ""
@@ -65,7 +82,7 @@ help:
 	@echo "                             DESTROY_YES=1 skips confirmation"
 	@echo ""
 	@echo "Docker"
-	@echo "  make build                 Build Docker image ($(IMAGE))"
+	@echo "  make build                 Validate Langfuse (if configured) + Docker image ($(IMAGE))"
 	@echo "  make deploy-local          Compose: db + api + migrations"
 	@echo "  make deploy-local SEED=1   Deploy + load sample data"
 	@echo "  make deploy-local-logs     Tail Compose logs"
@@ -77,10 +94,27 @@ install:
 	$(BIN)/pip install -U pip
 	$(BIN)/pip install -e ".[dev]"
 
+STAFF_UI_DIR := src/lms/staff/ui
+
 install-node: ensure-node
 	$(NPM) install
 
-build:
+staff-ui-install: ensure-node
+	cd $(STAFF_UI_DIR) && $(NPM) install
+
+staff-ui-build: staff-ui-install
+	cd $(STAFF_UI_DIR) && $(NPM) run build
+
+staff-ui-typecheck: staff-ui-install
+	cd $(STAFF_UI_DIR) && $(NPM) run typecheck
+
+staff-ui-dev: staff-ui-install
+	cd $(STAFF_UI_DIR) && $(NPM) run dev
+
+ensure-staff-ui:
+	@test -f src/lms/staff/static/index.html || $(MAKE) staff-ui-build
+
+build: validate-langfuse
 	docker build -t $(IMAGE) .
 
 test:
@@ -92,11 +126,20 @@ test-unit:
 test-integration:
 	PYTHONPATH=src $(BIN)/pytest -m integration
 
-test-e2e:
+test-e2e: ensure-staff-ui
 	PYTHONPATH=src $(BIN)/pytest -m e2e
+
+test-e2e-playwright: ensure-staff-ui ensure-playwright
+	PYTHONPATH=src $(BIN)/pytest -m playwright
+
+ensure-playwright:
+	@$(BIN)/playwright install chromium
 
 test-agent:
 	AGENT_ISSUE_ENABLED=true AGENT_MOCK_LLM=true PYTHONPATH=src $(BIN)/pytest -m agent
+
+validate-langfuse: ensure-venv
+	@PYTHONPATH=src $(BIN)/python scripts/validate_langfuse.py
 
 test-hardening:
 	PYTHONPATH=src $(BIN)/pytest -m hardening
@@ -121,8 +164,9 @@ diagram: ensure-node-modules
 lint:
 	$(BIN)/ruff check src tests scripts
 	PYTHONPATH=src $(BIN)/lint-imports
+	$(BIN)/mypy
 
-ci-native: lint test-unit test-integration test-e2e test-agent test-hardening test-performance
+ci-native: lint staff-ui-build staff-ui-typecheck test-unit test-integration test-e2e test-e2e-playwright test-agent test-hardening test-performance
 
 ci: ci-native build
 
@@ -162,16 +206,19 @@ deploy-destroy:
 	@chmod +x scripts/destroy.sh scripts/deploy-local.sh scripts/deploy-native.sh scripts/seed.sh 2>/dev/null || true
 	./scripts/destroy.sh --deploy $(DESTROY_FLAGS)
 
-setup-native: ensure-env ensure-venv migrate
+setup-native: ensure-env ensure-venv migrate staff-ui-build
 	@if [ "$(SEED)" = "1" ]; then $(MAKE) seed; fi
 	@echo "Native setup complete. Run: make run-dev  or  make deploy-native"
 
 run-dev: ensure-env ensure-venv
-	$(BIN)/uvicorn lms.main:app --reload --app-dir src --host $(API_HOST) --port $(API_PORT)
+	$(UVICORN)
+
+run-dev-debug:
+	$(MAKE) run-dev DEBUG=1
 
 deploy-native deploy-local-native:
 	@chmod +x scripts/deploy-native.sh 2>/dev/null || true
-	SEED=$(SEED) API_HOST=$(API_HOST) API_PORT=$(API_PORT) ./scripts/deploy-native.sh
+	DEBUG=$(DEBUG) SEED=$(SEED) API_HOST=$(API_HOST) API_PORT=$(API_PORT) ./scripts/deploy-native.sh
 
 ensure-env:
 	test -f .env || cp .env.example .env

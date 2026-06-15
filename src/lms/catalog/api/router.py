@@ -1,6 +1,6 @@
 """Catalog domain API — all routes require Bearer JWT + staff role."""
 
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -73,7 +73,7 @@ def search_lendable_catalog(
     service: Annotated[CatalogService, Depends(_service)],
     q: Annotated[str, Query(min_length=1)],
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     hits = service.search_lendable(q=q, limit=limit)
     return [_lendable_hit_to_dict(hit) for hit in hits]
 
@@ -88,7 +88,7 @@ def list_lendable_holdings(
     ]
 
 
-def _lendable_hit_to_dict(hit: LendableCatalogHit) -> dict:
+def _lendable_hit_to_dict(hit: LendableCatalogHit) -> dict[str, Any]:
     catalog = hit.catalog
     return {
         "catalog": CatalogResponse.model_validate(catalog).model_dump(mode="json"),

@@ -30,9 +30,11 @@ dependencies = [
 dev = [
     "pytest>=8.3.0",
     "pytest-cov>=6.0.0",
+    "pytest-playwright>=0.7.0",
     "httpx>=0.28.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
+    "types-python-jose>=3.3.0",
     "import-linter>=2.1",
 ]
 
@@ -56,6 +58,7 @@ markers = [
     "unit: unit tests",
     "integration: integration tests with database",
     "e2e: end-to-end journey tests",
+    "playwright: browser E2E via Playwright",
     "hardening: Phase 7 concurrency and idempotency regression",
     "performance: Phase 7 SLO baseline checks",
     "agent: Phase 8 agent desk tests",
@@ -77,6 +80,10 @@ python_version = "3.12"
 strict = true
 packages = ["lms"]
 mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = ["jose.*"]
+ignore_missing_imports = true
 
 [tool.importlinter]
 root_package = "lms"
@@ -118,7 +125,6 @@ forbidden_modules = [
     "lms.loan.infrastructure",
 ]
 ignore_imports = [
-    "lms.agent.coordinator -> lms.api.composition",
     "lms.agent.coordinator -> lms.api.workflows.search_and_issue",
     "lms.agent.coordinator -> lms.loan.application.fulfillment_service",
     "lms.agent.tools -> lms.api.workflows.search_and_issue",

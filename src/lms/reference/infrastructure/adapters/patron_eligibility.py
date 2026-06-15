@@ -1,24 +1,15 @@
 """PatronEligibilityPort adapter (ADR-004)."""
 
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from lms.loan.domain.ports import PatronEligibilitySnapshot
 from lms.reference.application.service import ReferenceService
 from lms.reference.domain.enums import PatronStatus
 from lms.reference.infrastructure.models.models import PatronBlockModel, PatronModel
-
-
-@dataclass(frozen=True, slots=True)
-class PatronEligibility:
-    patron_id: UUID
-    is_active: bool
-    is_blocked: bool
-    open_loan_count: int
-    patron_type_id: UUID
 
 
 class PatronEligibilityAdapter:
@@ -27,7 +18,7 @@ class PatronEligibilityAdapter:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def check(self, patron_id: UUID) -> PatronEligibility:
+    def check(self, patron_id: UUID) -> PatronEligibilitySnapshot:
         patron = self._session.get(PatronModel, patron_id)
         if patron is None:
             raise ValueError(f"Patron {patron_id} not found")
@@ -49,7 +40,7 @@ class PatronEligibilityAdapter:
         )
         open_loan_count = int(open_loan_count or 0)
 
-        return PatronEligibility(
+        return PatronEligibilitySnapshot(
             patron_id=patron_id,
             is_active=patron.status == PatronStatus.ACTIVE,
             is_blocked=is_blocked,

@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -10,10 +10,14 @@ CORRELATION_HEADER = "X-Correlation-Id"
 
 
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         correlation_id = request.headers.get(CORRELATION_HEADER) or new_correlation_id()
         bind_correlation_id(correlation_id)
         request.state.correlation_id = correlation_id
-        response = await call_next(request)
+        response: Response = await call_next(request)
         response.headers[CORRELATION_HEADER] = correlation_id
         return response

@@ -1,10 +1,49 @@
 import pytest
 
-from lms.agent.intent_parser import IntentParser
+from lms.agent import messages as desk
+from lms.agent.intent_parser import IntentParser, ParsedIntent
 from lms.agent.masking import redact_for_audit
+from lms.agent.schemas import IntentAction
+from lms.agent.session import PendingActionKind
 from lms.loan.domain.enums import FulfillmentStatus
 
 pytestmark = pytest.mark.unit
+
+
+def test_missing_patron_messages_vary_by_intent() -> None:
+    catalog = desk.missing_patron_for(IntentAction.SEARCH_CATALOG)
+    barcode = desk.missing_patron_for(IntentAction.SELECT_BARCODE)
+    commit = desk.missing_patron_for(IntentAction.REQUEST_COMMIT)
+    assert "search for a copy" in catalog.lower()
+    assert "barcode" in barcode.lower()
+    assert "issue" in commit.lower()
+    assert catalog != barcode != commit
+
+
+def test_patron_search_empty_is_distinct_from_missing_patron_for_commit() -> None:
+    empty = desk.patron_search_empty()
+    missing = desk.missing_patron_for(IntentAction.REQUEST_COMMIT)
+    assert empty != missing
+    assert "didn't include" in empty.lower()
+
+
+def test_approval_denied_messages_vary_by_pending_kind() -> None:
+    commit = desk.approval_denied(PendingActionKind.COMMIT_ISSUE)
+    cancel = desk.approval_denied(PendingActionKind.CANCEL_ISSUE)
+    transition = desk.approval_denied(PendingActionKind.TRANSITION_FULFILLMENT)
+    assert "issue" in commit.lower()
+    assert "loan remains" in cancel.lower()
+    assert "delivery" in transition.lower()
+    assert commit != cancel != transition
+
+
+def test_missing_slots_for_commit_names_each_gap() -> None:
+    both = desk.missing_slots_for_commit(missing_patron=True, missing_copy=True)
+    patron_only = desk.missing_slots_for_commit(missing_patron=True, missing_copy=False)
+    copy_only = desk.missing_slots_for_commit(missing_patron=False, missing_copy=True)
+    assert "patron and a copy" in both.lower()
+    assert "still need a patron" in patron_only.lower()
+    assert "still need a copy" in copy_only.lower()
 
 
 def test_redact_for_audit_masks_card_like_numbers() -> None:
@@ -33,3 +72,100 @@ def test_intent_parser_fulfillment_transition() -> None:
     parser = IntentParser()
     intent = parser.parse("Mark in transit", has_pending_approval=False)
     assert intent.fulfillment_status == FulfillmentStatus.IN_TRANSIT
+
+
+def test_llm_intent_parser_falls_back_on_llm_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    from lms.agent.intent_parser import LLMIntentParser
+    from lms.config import Settings
+
+    settings = Settings(agent_mock_llm=False, groq_api_key="test-key")
+    parser = LLMIntentParser(settings)
+
+    def _fail_llm(_message: str, *, has_pending_approval: bool) -> ParsedIntent:
+        raise ValueError("simulated LLM failure")
+
+    monkeypatch.setattr(parser, "_parse_llm", _fail_llm)
+    intent = parser.parse("Cancel the issue", has_pending_approval=False)
+    assert intent.action.value == "request_cancel_issue"
+
+
+def test_patron_search_results_echoes_query() -> None:
+    msg = desk.patron_search_results("Sharma", 2, ["Riya Sharma", "Amit Sharma"])
+    assert "Sharma" in msg
+    assert "2 patrons" in msg
+    assert "Riya Sharma" in msg
+    assert "library card" in msg.lower()
+
+
+def test_catalog_search_results_echoes_query() -> None:
+    msg = desk.catalog_search_results("Harry Potter", 3, ["Harry Potter", "Harry Potter 2"])
+    assert "Harry Potter" in msg
+    assert "3 lendable copies" in msg
+    assert "barcode" in msg.lower()
+
+
+def test_issue_ready_names_patron_and_copy() -> None:
+    msg = desk.issue_ready("Riya Sharma", "Harry Potter", "ABC-123")
+    assert "Riya Sharma" in msg
+    assert "Harry Potter" in msg
+    assert "ABC-123" in msg
+    assert "issue" in msg.lower()
+
+
+def test_help_for_unknown_intent_echoes_user_message() -> None:
+    msg = desk.help_for_unknown_intent("what can you do?")
+    assert "what can you do?" in msg
+    assert "search for a patron" in msg.lower()
+
+
+def test_help_reply_for_issue_question() -> None:
+    msg = desk.help_reply("how do I issue a book?")
+    assert "issue" in msg.lower()
+    assert "Harry Potter" in msg or "title and patron" in msg.lower()
+
+
+def test_greeting_reply_is_friendly() -> None:
+    msg = desk.greeting_reply()
+    assert "hello" in msg.lower()
+    assert "issue" in msg.lower()
+    assert "pseudonym" not in msg.lower()
+
+
+def test_intent_parser_help_routes_to_chat() -> None:
+    parser = IntentParser()
+    intent = parser.parse("help", has_pending_approval=False)
+    assert intent.action == IntentAction.CHAT
+    assert intent.reply_hint is not None
+    assert "issue" in intent.reply_hint.lower()
+
+
+def test_intent_parser_greeting_routes_to_chat() -> None:
+    parser = IntentParser()
+    intent = parser.parse("hello", has_pending_approval=False)
+    assert intent.action == IntentAction.CHAT
+    assert intent.reply_hint is not None
+    assert "hello" in intent.reply_hint.lower()
+
+
+def test_intent_parser_issue_help_question() -> None:
+    parser = IntentParser()
+    intent = parser.parse("how do I issue a book?", has_pending_approval=False)
+    assert intent.action == IntentAction.CHAT
+    assert intent.reply_hint is not None
+    assert "issue" in intent.reply_hint.lower()
+
+
+def test_fulfillment_transition_prompt_includes_title() -> None:
+    msg = desk.fulfillment_transition_prompt(
+        FulfillmentStatus.IN_TRANSIT,
+        title="Harry Potter",
+    )
+    assert "Harry Potter" in msg
+    assert "in transit" in msg.lower()
+
+
+def test_issue_committed_is_friendly_not_technical() -> None:
+    msg = desk.issue_committed("Riya Sharma", "Harry Potter", "ABC-123")
+    assert "issued to Riya Sharma" in msg
+    assert "Harry Potter" in msg
+    assert "committed" not in msg.lower()

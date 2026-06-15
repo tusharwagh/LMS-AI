@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -52,8 +52,12 @@ def _security_header_values(*, hsts_enabled: bool) -> dict[str, str]:
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        response = await call_next(request)
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        response: Response = await call_next(request)
         settings = get_settings()
         for name, value in _security_header_values(
             hsts_enabled=settings.security_hsts_enabled
@@ -106,13 +110,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._hits[key] = recent
         return True
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         settings = get_settings()
         path = request.url.path
         if not settings.rate_limit_enabled or any(
             path.startswith(prefix) for prefix in self._EXEMPT_PREFIXES
         ):
-            return await call_next(request)
+            response: Response = await call_next(request)
+            return response
 
         rule = self._match_rule(path)
         if rule is None:

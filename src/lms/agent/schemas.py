@@ -1,11 +1,42 @@
-"""Agent desk API schemas."""
+"""Agent desk API and intent schemas."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+from lms.loan.domain.enums import FulfillmentMode, FulfillmentStatus
+
+
+class IntentAction(StrEnum):
+    CHAT = "chat"
+    SEARCH_PATRON = "search_patron"
+    SEARCH_CATALOG = "search_catalog"
+    SELECT_BARCODE = "select_barcode"
+    SET_FULFILLMENT = "set_fulfillment"
+    REQUEST_COMMIT = "request_commit"
+    REQUEST_CANCEL_ISSUE = "request_cancel_issue"
+    REQUEST_FULFILLMENT_TRANSITION = "request_fulfillment_transition"
+    APPROVE = "approve"
+    DENY = "deny"
+
+
+@dataclass(frozen=True, slots=True)
+class ParsedIntent:
+    action: IntentAction
+    patron_query: str | None = None
+    card_barcode: str | None = None
+    external_ref: str | None = None
+    catalog_query: str | None = None
+    holding_barcode: str | None = None
+    fulfillment_mode: FulfillmentMode | None = None
+    destination_notes: str | None = None
+    fulfillment_status: FulfillmentStatus | None = None
+    reply_hint: str | None = None
 
 
 class AgentSessionResponse(BaseModel):

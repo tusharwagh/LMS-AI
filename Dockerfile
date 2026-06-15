@@ -1,3 +1,13 @@
+FROM node:24-slim AS staff-ui
+
+WORKDIR /build/staff-ui
+
+COPY src/lms/staff/ui/package.json src/lms/staff/ui/package-lock.json* ./
+RUN npm install
+
+COPY src/lms/staff/ui/ ./
+RUN npm run build
+
 FROM python:3.12-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -12,6 +22,7 @@ RUN apt-get update \
 
 COPY pyproject.toml README.md ./
 COPY src ./src
+COPY --from=staff-ui /build/staff/static ./src/lms/staff/static
 COPY alembic ./alembic
 COPY alembic.ini ./
 

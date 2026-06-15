@@ -17,7 +17,7 @@ Python **modular monolith** for K-12 school library circulation: reference data,
 | Tool | Version | Notes |
 |------|---------|-------|
 | **Python** | 3.12+ | Required for native dev and tests |
-| **Node.js** | 24+ | Optional; required for `make diagram` (see `.nvmrc`) |
+| **Node.js** | 24+ | Required for `make diagram` and `make staff-ui-build` (see `.nvmrc`) |
 | **PostgreSQL** | 16 | Required for native deploy; bundled in Docker path |
 | **Docker + Compose** | recent | Optional; easiest path for a fresh machine |
 | **Make** | any | All build/deploy targets |
@@ -90,11 +90,30 @@ Staff UI login: **`librarian`** / **`changeme`** (dev only).
 make test                 # full suite (unit + integration + e2e)
 make test-unit            # no database
 make test-integration     # services + orchestrator + DB
-make test-e2e             # HTTP journeys + staff UI
+make test-e2e             # HTTP journeys + staff UI smoke
+make test-e2e-playwright  # Browser E2E (login, issue/return wizards, agent HITL)
 make phase7               # concurrency, idempotency, SLO baselines
 ```
 
 For native tests, Postgres must be running and `DATABASE_URL` in `.env` must match the test database.
+
+### Debug in Cursor (breakpoints)
+
+1. `make install` and ensure Postgres is up (`make migrate` or `make setup-native`).
+2. Open **Run and Debug** (sidebar) or press **F5**.
+3. Choose **LMS API (breakpoints)** — reliable breakpoints (no hot reload).
+   - Use **LMS API (reload + breakpoints)** if you need `--reload` (may need `subProcess` attach on reload).
+4. Set breakpoints in `src/lms/` (e.g. `agent/coordinator.py`), then hit the API or staff UI.
+
+Other launch configs: **Pytest: current file**, **Pytest: agent tests** (sets `AGENT_ISSUE_ENABLED`).
+
+| Mode | Use when |
+|------|----------|
+| Cursor **LMS API (breakpoints)** | Step through request handlers with F5/F10 |
+| `make run-dev-debug` | Verbose uvicorn logs only (no debugger attach) |
+| `DEBUG=1 make run-dev` | Same as run-dev-debug from terminal |
+
+Shared config lives in [`.vscode/launch.json`](.vscode/launch.json). Install the recommended **Python** extension if prompted.
 
 ### 5. Tear down (dev only)
 
@@ -200,7 +219,8 @@ src/lms/
   reference/     # Patrons, types, class sections
   catalog/       # Bibliographic records, holdings
   loan/          # Circulation, orchestrator, fulfillment
-  staff/         # Static desk UI (/staff/)
+  staff/         # Staff desk static output (built; not committed)
+  staff/ui/      # React + Vite source
 alembic/         # Database migrations
 scripts/         # Deploy, seed, SQL helpers
 tests/           # unit, integration, e2e, hardening, performance

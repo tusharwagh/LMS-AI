@@ -327,7 +327,8 @@ src/lms/api/workflows/router.py
 | Langfuse integration | Traces with `agent_id`, `thread_id`, redacted tool args | REQ-34 |
 | Agent API | `POST /api/v1/agent/issue/sessions`, `.../message`, `.../resume`, session GET | REQ-31 |
 | Staff chat UI | Chat + approval cards; transparency copy; wizard remains available | REQ-31 |
-| Tests | Tool unit tests (no LLM); agent E2E with mocked LLM; injection cases | G11–G13 |
+| Staff messages module | `messages.py` — intent-aware, query-echo desk copy; coordinator/tools import only | REQ-31 |
+| Tests | Tool unit tests (no LLM); agent E2E with mocked LLM; intent/message regression | G11–G13 |
 | Docs / runbook | MVP §2.2, §13.8; runbook §10; go-live G11–G13 | REQ-34 |
 
 **Out of scope for Phase 8:**
@@ -342,7 +343,7 @@ src/lms/api/workflows/router.py
 - `make test-agent` (or `make phase8`) — G11–G12 E2E with `AGENT_MOCK_LLM=true` in CI
 - `AGENT_ISSUE_ENABLED=true` → librarian completes desk/delivery issue via chat with explicit approval; barcode selection and issue cancel with HITL
 - With agent disabled, G1–G10 unchanged
-- Langfuse trace shows redacted args + HITL events for every write (**G13 — not wired yet**)
+- Langfuse trace shows redacted args + HITL events for every write (**G13 — wired in `tracing.py`; charter sign-off pending**)
 - Charter signed by use case owner + security (**G13 — operational**)
 
 **Implementation notes (shipped vs pending):**
@@ -355,7 +356,8 @@ src/lms/api/workflows/router.py
 | Rule-based intent parser (CI) | **Done** — `AGENT_MOCK_LLM=true` default in tests |
 | LiteLLM → Groq live path | **Done** — when `GROQ_API_KEY` set and `AGENT_MOCK_LLM=false` |
 | LangGraph SOP graph | **Partial** — compiles; business logic in `IssueAgentCoordinator` |
-| Langfuse integration | **Pending** — config only; not wired in coordinator |
+| Staff desk copy (`messages.py`) | **Done** — centralized plain-language copy; intent-aware guards; CHAT routing |
+| Langfuse integration | **Done** — `tracing.py` + `AgentTracing` in coordinator; charter sign-off still pending |
 | Charter sign-off + eval datasets | **Pending** — G13 operational gate |
 
 ---
@@ -416,7 +418,7 @@ Mark each REQ during Phase 7 with phase and test id.
 | Performance | Checkout/return and search at MVP.md §13.6 scale | `make test-performance` |
 | Hardening | Concurrency + idempotency regression | `make test-hardening` |
 | Security | Headers, rate limits, production config guards, error disclosure | `pytest tests/hardening/test_security.py` |
-| Agent (Phase 8) | SOP adherence, HITL gates, tool allowlist, barcode select, issue cancel, mocked-LLM E2E | `make test-agent` → `tests/agent/` (11 tests) |
+| Agent (Phase 8) | SOP adherence, HITL gates, tool allowlist, barcode select, issue cancel, friendly desk copy, mocked-LLM E2E | `make test-agent` → **7** marked E2E; `pytest tests/agent/` → **28** total |
 
 **CI gate (MVP.md §10.6):** no deploy if migration or circulation tests fail; CI also runs `npm audit --audit-level=high`. Agent tests use **mocked LLM** — no live Groq/HF in CI.
 

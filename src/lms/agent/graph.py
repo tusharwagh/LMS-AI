@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Any, TypedDict, cast
 
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -13,7 +13,7 @@ class AgentGraphState(TypedDict, total=False):
     halted: bool
 
 
-def build_issue_sop_graph() -> StateGraph:
+def build_issue_sop_graph() -> StateGraph[AgentGraphState, None, AgentGraphState, AgentGraphState]:
     """Minimal SOP graph documenting fixed edges; coordinator owns business logic."""
 
     def enter(_: AgentGraphState) -> AgentGraphState:
@@ -25,10 +25,12 @@ def build_issue_sop_graph() -> StateGraph:
     def govern(state: AgentGraphState) -> AgentGraphState:
         return {**state, "step": "respond"}
 
-    builder = StateGraph(AgentGraphState)
-    builder.add_node("enter", enter)
-    builder.add_node("parse", parse)
-    builder.add_node("govern", govern)
+    builder: StateGraph[AgentGraphState, None, AgentGraphState, AgentGraphState] = StateGraph(
+        AgentGraphState
+    )
+    builder.add_node("enter", cast(Any, enter))
+    builder.add_node("parse", cast(Any, parse))
+    builder.add_node("govern", cast(Any, govern))
     builder.add_edge(START, "enter")
     builder.add_edge("enter", "parse")
     builder.add_edge("parse", "govern")
@@ -36,6 +38,6 @@ def build_issue_sop_graph() -> StateGraph:
     return builder
 
 
-def compile_issue_sop_graph():
+def compile_issue_sop_graph() -> Any:
     checkpointer = MemorySaver()
     return build_issue_sop_graph().compile(checkpointer=checkpointer)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import model_validator
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _DEFAULT_SECRET = "change-me-in-production"
@@ -45,7 +45,10 @@ class Settings(BaseSettings):
     agent_max_tool_calls_per_turn: int = 5
     langfuse_public_key: str | None = None
     langfuse_secret_key: str | None = None
-    langfuse_host: str | None = None
+    langfuse_host: str | None = Field(
+        default="https://cloud.langfuse.com",
+        validation_alias=AliasChoices("LANGFUSE_HOST", "LANGFUSE_BASE_URL"),
+    )
 
     @property
     def is_production(self) -> bool:

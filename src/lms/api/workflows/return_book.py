@@ -203,15 +203,15 @@ class ReturnBookWorkflow:
             return loan, holding
 
         if loan_id is not None:
-            loan = self._session.get(LoanModel, loan_id)
-            if loan is None:
+            loan_row = self._session.get(LoanModel, loan_id)
+            if loan_row is None:
                 raise AppError(ErrorCode.NOT_FOUND, "Loan not found", status_code=404)
-            if loan.returned_at is not None:
+            if loan_row.returned_at is not None:
                 raise AppError(ErrorCode.NOT_FOUND, "Loan is already closed", status_code=404)
-            holding = self._session.get(HoldingModel, loan.holding_id)
-            if holding is None:
+            holding_row = self._session.get(HoldingModel, loan_row.holding_id)
+            if holding_row is None:
                 raise AppError(ErrorCode.NOT_FOUND, "Holding not found", status_code=404)
-            return loan, holding
+            return loan_row, holding_row
 
         raise AppError(
             ErrorCode.VALIDATION_ERROR,

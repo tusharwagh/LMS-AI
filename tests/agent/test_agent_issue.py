@@ -101,13 +101,16 @@ def test_agent_conversational_desk_issue(
     assert body["pending_approval"] is not None
     assert body["pending_approval"]["kind"] == "commit_issue"
     assert fx["patron_name"] in body["pending_approval"]["summary"]
+    assert fx["title"] in body["assistant_message"]
+    assert "desk pickup" in body["assistant_message"].lower()
+    assert "review" in body["assistant_message"].lower()
 
     deny = client.post(
         f"/api/v1/agent/issue/sessions/{session_id}/resume",
         json={"approved": False},
     )
     assert deny.status_code == 200
-    assert "cancelled" in deny.json()["assistant_message"].lower()
+    assert "denied" in deny.json()["assistant_message"].lower()
 
     msg2 = client.post(
         f"/api/v1/agent/issue/sessions/{session_id}/message",
@@ -121,7 +124,7 @@ def test_agent_conversational_desk_issue(
         json={"approved": True},
     )
     assert approve.status_code == 200, approve.text
-    assert "committed" in approve.json()["assistant_message"].lower()
+    assert "issued" in approve.json()["assistant_message"].lower()
 
     open_loans = client.get(f"/api/v1/loan/loans/open?patron_id={fx['patron_id']}")
     assert open_loans.status_code == 200
@@ -217,20 +220,46 @@ def test_agent_select_barcode_after_catalog_search(
         json={"message": fx["patron_name"]},
     )
     assert patron.status_code == 200, patron.text
+    patron_msg = patron.json()["assistant_message"]
+    assert fx["patron_name"] in patron_msg
+    assert "matching" in patron_msg.lower() or "ready to borrow" in patron_msg.lower()
 
     search = client.post(
         f"/api/v1/agent/issue/sessions/{session_id}/message",
         json={"message": f"search {fx['title']}"},
     )
     assert search.status_code == 200, search.text
+    search_msg = search.json()["assistant_message"]
+    assert fx["title"] in search_msg
+    assert "matching" in search_msg.lower() or "found" in search_msg.lower()
 
     select = client.post(
         f"/api/v1/agent/issue/sessions/{session_id}/message",
         json={"message": f"barcode {fx['barcode']}"},
     )
     assert select.status_code == 200, select.text
-    assert "Selected" in select.json()["assistant_message"]
+    select_msg = select.json()["assistant_message"]
+    assert fx["barcode"] in select_msg
+    assert "selected" in select_msg.lower() or "barcode" in select_msg.lower()
     assert select.json()["session_summary"]["holding_barcode"] == fx["barcode"]
+
+
+def test_agent_help_message_is_friendly_not_patron_search(
+    client: TestClient,
+    agent_env: None,
+) -> None:
+    sess = client.post("/api/v1/agent/issue/sessions")
+    session_id = sess.json()["session_id"]
+
+    res = client.post(
+        f"/api/v1/agent/issue/sessions/{session_id}/message",
+        json={"message": "help"},
+    )
+    assert res.status_code == 200, res.text
+    msg = res.json()["assistant_message"].lower()
+    assert "issue" in msg
+    assert "no patrons matched" not in msg
+    assert "pseudonym" not in msg
 
 
 def test_agent_cancel_issue_with_hitl(

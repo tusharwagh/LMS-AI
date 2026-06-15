@@ -7,6 +7,7 @@ from lms.api.auth_schemas import TokenResponse, UserResponse
 from lms.api.deps import DbSession, require_auth
 from lms.shared.application.auth_service import AuthService
 from lms.shared.auth.jwt import AuthContext
+from lms.shared.auth.roles import Role
 
 router = APIRouter()
 
@@ -34,7 +35,7 @@ def read_current_user(
     return UserResponse(
         id=str(user.id),
         username=user.username,
-        role=user.role,
+        role=Role(user.role),
         display_name=user.display_name,
         tenant_id=user.tenant_id,
     )

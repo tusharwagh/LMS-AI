@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Security, status
@@ -47,7 +48,7 @@ def require_auth(
     return ctx
 
 
-def require_roles(*allowed: Role):
+def require_roles(*allowed: Role) -> Callable[[AuthContext], AuthContext]:
     allowed_set = frozenset(allowed)
 
     def _checker(ctx: Annotated[AuthContext, Depends(require_auth)]) -> AuthContext:

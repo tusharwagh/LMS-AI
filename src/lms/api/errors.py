@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Any
 
 import structlog
 from fastapi import FastAPI, HTTPException, Request
@@ -29,7 +30,7 @@ class AppError(Exception):
         *,
         status_code: int = 400,
         retriable: bool = False,
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message)
         self.code = code
@@ -44,8 +45,8 @@ def error_body(
     message: str,
     *,
     retriable: bool = False,
-    details: dict | None = None,
-) -> dict:
+    details: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     return {
         "code": code.value,
         "message": message,
@@ -72,7 +73,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         _request: Request, exc: RequestValidationError
     ) -> JSONResponse:
         settings = get_settings()
-        details: dict = {}
+        details: dict[str, Any] = {}
         if settings.app_debug:
             details = {"errors": exc.errors()}
         return JSONResponse(

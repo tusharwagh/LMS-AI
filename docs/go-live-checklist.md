@@ -64,7 +64,7 @@ Requires [MVP.md §2.2](MVP.md), §13.8, and [research.md §15](research.md) (IM
 
 | # | Criterion | Verify command / check | Status |
 |---|-----------|----------------------|--------|
-| **G11** | Conversational WF-01 with HITL commit | `make test-agent` — NL issue, barcode select, cancel issue, HITL commit | ☐ |
+| **G11** | Conversational WF-01 with HITL commit | `make test-agent` — NL issue, barcode select, cancel issue, HITL commit; friendly desk copy (no technical jargon in `assistant_message`) | ☐ |
 | **G12** | Agentic fulfillment transitions with HITL | `make test-agent` — delivery issue → transition with HITL | ☐ |
 | **G13** | IMDA agent charter + observability | Charter signed; Langfuse traces with redacted args; adversarial tests | ☐ |
 
@@ -76,7 +76,7 @@ Requires [MVP.md §2.2](MVP.md), §13.8, and [research.md §15](research.md) (IM
 | `AGENT_ISSUE_ENABLED` intentional for pilot | `.env` | ☐ |
 | Enterprise agent charter signed | [research.md §15.2](research.md) | ☐ |
 | Langfuse keys configured (`LANGFUSE_*`) | [runbook.md §10](runbook.md) | ☐ |
-| Staff UI shows AI transparency + approval cards | MVP.md §2.2 | ☐ |
+| Staff UI shows AI transparency + approval cards | MVP.md §2.2; UI renders backend `assistant_message` verbatim | ☐ |
 | Wizard mode still passes G7–G10 with agent enabled | Regression E2E | ☐ |
 | HF fallback provider pinned (if enabled) | ADR-028 | ☐ |
 | Residual risk (PII to Groq/HF) accepted in writing | Charter | ☐ |

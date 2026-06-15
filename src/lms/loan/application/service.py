@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 from datetime import date
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import Executable
 
 from lms.api.errors import AppError, ErrorCode
 from lms.loan.api.schemas import LoanRuleSetCreate, LoanRuleSetUpdate
@@ -108,7 +110,9 @@ class LoanService:
         )
         return self._load_loan_details(stmt, {"as_of": as_of})
 
-    def _load_loan_details(self, stmt, params: dict) -> list[LoanDetailRow]:
+    def _load_loan_details(
+        self, stmt: Executable, params: dict[str, Any]
+    ) -> list[LoanDetailRow]:
         rows = self._session.execute(stmt, params).all()
         if not rows:
             return []

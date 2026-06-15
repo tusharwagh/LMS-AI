@@ -1,9 +1,10 @@
 # Research — architecture & design discovery
 
-This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–F) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E) and **ops/CI hardening session** (§13 E17, session F). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
+This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–I) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E), **ops/CI hardening** (§13 E17, session F), **agent desk spec** (§13 E18, session G), **Phase 8 implementation + quality pass** (§13 E19, session H), **agent desk UX / messages / refactor** (§13 E20, session I), **friendly query+intent desk copy** (§13 E21, session I cont.), and **Langfuse validation + React staff UI MVC** (§13 E22, session I cont.). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
 
 **Go-live gate (summary):** [§14](#14-go-live-checklist-summary) — full matrix in [go-live-checklist.md](go-live-checklist.md).  
-**Agent governance (summary):** [§15](#15-agent-governance-imda-mgf--enterprise-charter) — IMDA MGF v1.5 skill with Langfuse observability.
+**Agent governance (summary):** [§15](#15-agent-governance-imda-mgf--enterprise-charter) — IMDA MGF v1.5 skill with Langfuse observability.  
+**Engineering craft (summary):** [§16](#16-clean-code-ddd--implementation-patterns) — Uncle Bob, Kent Beck, Vaughn Vernon for Python / FastAPI / LangGraph.
 
 **Canonical implementation spec:** [MVP.md](MVP.md) (requirements, architecture §8–§10, traceability §11, staff workflows §2.1, status §14).  
 **Execution plan:** [plan-mvp.md](plan-mvp.md) (phased delivery, §0 implementation status).  
@@ -15,7 +16,7 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 
 | Use | How |
 |-----|-----|
-| **Context recovery** | Read §3 (all sessions) + §4 (architecture log) + §13 (implementation log) + §14 (go-live) + §15 (agent governance) + §5–§6 |
+| **Context recovery** | Read §3 (all sessions A–I) + §4 (architecture log) + §13 (implementation E1–E22) + §14 (go-live) + §15 (agent governance) + §16 (clean code / DDD) + §5–§6 |
 | **User profile** | §2 + §3.5 (early product intent) + §13 (locked tech + workflow decisions) |
 | **Feeder for AI / docs** | Paste or reference sections when generating ADRs, code, or phase‑2 plans |
 | **Avoid duplicate debate** | §6 lists resolved vs deferred; §3.6 / §13 note what landed in repo vs chat-only |
@@ -55,7 +56,7 @@ Signals from the discovery conversation—not a formal persona, but useful for p
 
 ## 3. Prior LMS sessions (extracted from Cursor transcripts)
 
-**Yes — extraction is possible.** Cursor stores agent transcripts under the project’s `.cursor` agent-transcripts folder. Six sessions are indexed for this LMS workspace. Summaries below; full JSONL logs are local to your machine (not in the git repo).
+**Yes — extraction is possible.** Cursor stores agent transcripts under the project’s `.cursor` agent-transcripts folder. Seven sessions are indexed for this LMS workspace. Summaries below; full JSONL logs are local to your machine (not in the git repo).
 
 ### 3.1 Session index
 
@@ -67,7 +68,9 @@ Signals from the discovery conversation—not a formal persona, but useful for p
 | **D** | `713739d5-039d-4207-a855-56b40f272ebd` | **Architecture** — quality attributes, ADRs, traceability | `MVP.md` §8–§11, this `research.md` |
 | **E** | `eaed8a2b-6ee7-49c8-a5d9-1b74a3a38da2` | **Implementation** — scaffold, domain APIs, JWT, workflows, staff UI, desk UX | `src/lms/`, `docs/plan-mvp.md`, `MVP.md` §2.1/§13–§14, ADR-012–024 |
 | **F** | `3f82c968-9594-409a-9ef6-8e0201676ab4` | **Ops & CI** — destroy-native FK, Node 24, lint/import boundaries, CI Postgres, pytest smoke | `Makefile`, `package.json`, CI, `loan/application/service.py`, `tests/conftest.py` |
-| **G** | *(current session)* | **Agent desk spec** — conversational WF-01, agentic fulfillment, Groq/HF, IMDA charter | `MVP.md` §2.2, ADR-025–028, `plan-mvp.md` Phase 8 |
+| **G** | *(spec session)* | **Agent desk spec** — conversational WF-01, agentic fulfillment, Groq/HF, IMDA charter (docs) | `MVP.md` §2.2, ADR-025–028, `plan-mvp.md` Phase 8 |
+| **H** | `3f82c968-9594-409a-9ef6-8e0201676ab4` | **Phase 8 ship + quality** — agent module/API/UI, allowlist fixes, DDD refactor, mypy/lint, Cursor debug | `src/lms/agent/`, `tests/agent/`, `.vscode/`, §13 E19 |
+| **I** | *(post-E19 thread)* | **Agent desk UX + messages** — slot guards, `messages.py`, intent-aware copy, Langfuse tracing, rules/skills pass | `messages.py`, `tracing.py`, `tools.py`, `session.py`, §13 E20 |
 
 *Full logs: `.cursor/projects/.../agent-transcripts/<uuid>/<uuid>.jsonl` on your machine. In Cursor chat, cite a parent session as [title ≤6 words](uuid).*
 
@@ -188,6 +191,49 @@ Fully summarized in **§4** below. Canonical output: `MVP.md` §8–§11.
 
 **Canonical spec:** [MVP.md §2.2](MVP.md), ADR-025–028, [plan-mvp.md Phase 8](plan-mvp.md), charter **§15.8** below.
 
+### 3.10 Session H — Phase 8 implementation & quality pass (Jun 2026)
+
+**Transcript:** [Phase 8 ship + quality](3f82c968-9594-409a-9ef6-8e0201676ab4) — continues after Session G spec; same JSONL also contains Session F ops/CI work.
+
+**User asks (chronological):**
+
+| Topic | Outcome |
+|-------|---------|
+| Execute Phase 8 | Shipped agent desk — not docs-only |
+| Tool allowlist gaps | `select_barcode` added to read tools; `cancel_issue` wired with HITL |
+| Barcode lookup bug | `SearchAndIssueWorkflow.find_lendable_copy_by_barcode()` — not title search |
+| Spec alignment | `MVP.md`, `plan-mvp.md`, `go-live-checklist.md`, `runbook.md` updated |
+| Cursor breakpoints | `DEBUG=1`, `run-dev-debug`, `.vscode/launch.json` (F5 → LMS API) |
+| Clean Code / DDD | Coordinator DI, thin router, `agent_composition.py` split for import-linter |
+| Static analysis | `make lint` = ruff + import-linter + **mypy strict** (110 files); 74 tests green |
+| Full Sonar-style sweep | **Partial** — CI green; deeper smell pass not finished |
+
+**Verify:** `make test-agent && make ci-native` — **74 passed** (11 agent tests).
+
+**Open:** G13 charter sign-off; optional staff UI agent smoke; live Groq path outside CI. *(Langfuse wiring completed in Session I — §13 E20.)*
+
+### 3.11 Session I — Agent desk UX, messages, and refactor (Jun 2026)
+
+**Transcript:** Post-E19 follow-up thread (same workspace; no separate UUID indexed yet).
+
+**User asks (chronological):**
+
+| Topic | Outcome |
+|-------|---------|
+| Full rules/skills pass | Sonar fix in `intent_parser.py` (typed LLM exceptions + structlog); new `tracing.py` for G13 Langfuse; coordinator wired; skills/rules updated |
+| Slot guard refactor | Composed Method: `_patron_id`, `_holding_id`, `_patron_and_holding` in `tools.py`; `IssueSlots.has_patron_and_holding` in `session.py` |
+| Message clarity | New `messages.py` — issue statement + next action for desk staff on every response |
+| Intent-specific messages | `IntentAction` / `ParsedIntent` in `schemas.py`; slot guards and helpers take `action=`; coordinator passes `intent.action` to tools and message helpers |
+| Docs | Session summary appended as §13 E20–E21 in this file |
+| Friendly query+intent copy | `messages.py` helpers echo patron/title/barcode queries; CHAT routing for help/greeting (no misroute to patron search); plain desk language only |
+| Agent message tests | `tests/agent/test_intent_and_masking.py` — intent-specific guards, query echo, CHAT routing |
+| React staff UI (MVC) | `src/lms/staff/ui/` — Vite + React 18 + TS; `models/` / `controllers/` / `views/`; CRM layout (`AppSidebar`, `AppHeader`, `PageShell`) |
+| Playwright browser E2E | `tests/e2e/test_staff_playwright.py` — login, issue wizard, return wizard, agent HITL (5 tests); `make test-e2e-playwright` |
+| Staff UI build strategy | Vite output **not committed** — `make staff-ui-build` in CI, Docker, `setup-native`, `deploy-native` |
+| Langfuse validation | `LANGFUSE_BASE_URL` alias fix; `scripts/validate_langfuse.py`; `make validate-langfuse`; runs on **`make build`** (SKIP if keys unset) |
+
+**Verify:** `make lint && make test-agent && make ci-native` — **100 passed** (**32** in `tests/agent/` including `test_tracing.py`; **7** with `-m agent`; **5** Playwright); `make validate-langfuse` — auth OK when US/EU host matches keys.
+
 ### 3.9 Extraction coverage matrix
 
 | Topic | Session | In repo? | Where |
@@ -219,9 +265,21 @@ Fully summarized in **§4** below. Canonical output: `MVP.md` §8–§11.
 | destroy-native FK teardown | F | **Yes** | `scripts/sql/003_*`, `004_*`, `seed_sample_data.py` |
 | Loan import-linter boundary | F | **Yes** | `loan/application/service.py` raw SQL reads |
 | CI Postgres + smoke pytest | F | **Yes** | `.github/workflows/ci.yml`, `tests/conftest.py` |
-| Conversational WF-01 + agent fulfillment | G | **Done** | MVP.md §2.2; `tests/agent/`; `AGENT_ISSUE_ENABLED` |
-| Groq / HF hosted LLM (no local) | G | **Spec only** | ADR-028; D7–D9 in plan-mvp |
-| IMDA agent charter (desk issue) | G | **Spec only** | research.md §15.8 |
+| Conversational WF-01 + agent fulfillment | G, H | **Done** | `src/lms/agent/`; `tests/agent/`; `AGENT_ISSUE_ENABLED` |
+| Groq / HF hosted LLM (no local) | G, H | **Done (mock in CI)** | ADR-028; `AGENT_MOCK_LLM=true`; live Groq staging TBD |
+| IMDA agent charter (desk issue) | G, H | **Template filled; sign-off pending** | research.md §15.8; G13 operational |
+| Agent tool allowlist + HITL | H | **Done** | `tools.py` READ/WRITE/RESTRICTED; `pending_approval` + `/resume` |
+| Cursor IDE debug / Makefile | H | **Done** | `.vscode/launch.json`; `DEBUG=1`; `make run-dev-debug` |
+| Mypy strict in lint gate | H | **Done** | `make lint`; `types-python-jose`; agent tools/graph fixes |
+| Agent desk staff messages module | I | **Done** | `src/lms/agent/messages.py` — issue + next action copy |
+| Intent-aware slot / guard messages | I | **Done** | `IntentAction` in `schemas.py`; `missing_patron_for(action=)` etc.; coordinator passes `intent.action` |
+| Langfuse / structlog agent tracing | I | **Done** | `src/lms/agent/tracing.py`; `AgentTracing` in coordinator (`turn_span`, `tool_span`) |
+| Composed Method slot guards | I | **Done** | `tools.py` `_patron_id` / `_holding_id` / `_patron_and_holding`; `IssueSlots.has_patron_and_holding` |
+| Sonar-style intent_parser fix | I | **Done** | Typed `LITELLM_EXCEPTION_TYPES`; structlog on parse failure |
+| React staff desk UI (MVC) | I | **Done** | `src/lms/staff/ui/`; CRM layout; `make staff-ui-build` |
+| Playwright staff E2E | I | **Done** | `test_staff_playwright.py`; in `make ci-native` |
+| Langfuse ops validation | I | **Done** | `validate_langfuse.py`; `make build` prerequisite; `LANGFUSE_HOST` / `LANGFUSE_BASE_URL` |
+| Staff static not in git | I | **Done** | `.gitignore`; CI/Docker always build |
 | Librarian gap list (shelf, lost, ERP) | E | Partial / deferred | Chat + librarian review; not in MVP §1 |
 | tldraw architecture diagram | E | Yes | `docs/diagrams/lms-architecture.tldr` |
 
@@ -508,15 +566,21 @@ Success criteria **G1–G10:** [plan-mvp.md §1.2](plan-mvp.md).
 When resuming work with an AI assistant or new developer, provide:
 
 ```
-Read LMS/docs/research.md §2–§3 (sessions A–F), §4 (architecture), §13 (implementation), §14 (go-live).
+Read LMS/docs/research.md §2–§3 (sessions A–I), §4 (architecture), §13 (implementation E1–E22), §14 (go-live).
 Canonical spec: MVP.md §1–§14.
 Execution plan: plan-mvp.md §0 — phases 0–8 complete.
 Domain: reference.md, catalog.md, loan.md.
 Shipped: src/lms/api/workflows/ (WF-01/02), src/lms/staff/ (desk UI); JWT on all /api/v1/*.
 Phase 8: MVP.md §2.2 — Groq/HF, LangGraph SOP, HITL; charter research.md §15.8; behind `AGENT_ISSUE_ENABLED`.
-Verify: make phase7 && make ci-native; checklist: go-live-checklist.md (G1–G13).
+Verify: make phase8 && make ci-native (100 tests); checklist: go-live-checklist.md (G1–G13).
+Staff UI: src/lms/staff/ui/ (React MVC) — build with make staff-ui-build; not committed.
+Langfuse: make validate-langfuse or make build (SKIP without keys); US cloud needs LANGFUSE_BASE_URL=https://us.cloud.langfuse.com.
+Agent code: src/lms/agent/ (coordinator, tools, graph, messages, tracing); composition: api/agent_composition.py.
+Desk copy: messages.py — intent-aware helpers (missing_patron_for(action=), ready_to_issue, approval prompts); coordinator passes intent.action.
+HITL: pending_approval + POST .../resume — not LangGraph interrupt() in production path.
 Phase-2 / chat-only intent: research.md §6.2.
 Agent governance (IMDA MGF, Langfuse, HITL): research.md §15 + .cursor/skills/imda-agentic-ai-governance/SKILL.md.
+Engineering craft (Clean Code, Beck, Vernon DDD): research.md §16 + .cursor/skills/clean-code-ddd-python/ + clean-code-ddd-lms-ai/.
 Open questions: research.md §6.3 (OQ-1–OQ-8).
 Local auth: POST /api/v1/auth/token — admin/librarian/patron, password changeme.
 Node 24: make install-node for make diagram; Python 3.12+; Postgres 16 for full test suite.
@@ -543,6 +607,12 @@ Node 24: make install-node for make diagram; Python 3.12+; Postgres 16 for full 
 | [diagrams/lms-architecture.tldr](diagrams/lms-architecture.tldr) | tldraw architecture diagram (`make diagram`) |
 | [.cursor/skills/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/imda-agentic-ai-governance/SKILL.md) | IMDA MGF v1.5 + enterprise agent charter for LangGraph agents |
 | [.cursor/skills/imda-agentic-ai-governance/reference.md](../.cursor/skills/imda-agentic-ai-governance/reference.md) | Risk factors, multi-agent risks, Langfuse observability mapping |
+| [.cursor/skills/clean-code-ddd-python/SKILL.md](../.cursor/skills/clean-code-ddd-python/SKILL.md) | Clean Code, Kent Beck patterns, Vernon DDD — Python / FastAPI / LangGraph |
+| [.cursor/skills/clean-code-ddd-lms-ai/SKILL.md](../.cursor/skills/clean-code-ddd-lms-ai/SKILL.md) | LMS-AI addendum — module map, import-linter, workflows, agent desk |
+| [.cursor/skills/clean-code-ddd-python/reference.md](../.cursor/skills/clean-code-ddd-python/reference.md) | Context map, entity vs value object, module placement |
+| [.cursor/skills/python-code-analysis/SKILL.md](../.cursor/skills/python-code-analysis/SKILL.md) | Static & dynamic analysis — ruff, mypy, import-linter, pytest |
+| [.cursor/skills/python-code-analysis/lms-ai.md](../.cursor/skills/python-code-analysis/lms-ai.md) | LMS-AI Makefile targets, markers, CI gates |
+| [.cursor/rules/sonarqube-quality.md](../.cursor/rules/sonarqube-quality.md) | SonarQube-aligned bugs, smells, security, complexity |
 
 ---
 
@@ -960,7 +1030,8 @@ Observability stack standardized on **Langfuse**:
 ### 15.7 Implementation checklist (Phase 8 gate — G13)
 
 - [ ] Enterprise charter signed (§15.8)
-- [ ] Langfuse wired with redacted tool args and `agent_id` metadata
+- [x] Langfuse wired with redacted tool args and `agent_id` metadata (`tracing.py`; optional when keys unset)
+- [x] Langfuse ops validation — `make validate-langfuse` / `make build` (auth + test span; SKIP when keys unset)
 - [x] Governance node on tool path (`_run_tool` allowlist); restricted tools never bound
 - [x] HITL before `commit_issue`, `cancel_issue`, `transition_fulfillment` (`pending_approval` + `/resume`)
 - [x] SOP error path halts and notifies — no unbounded retry loops (`AGENT_MAX_TOOL_CALLS_PER_TURN`)
@@ -1053,4 +1124,447 @@ Residual risk acceptance: _________________ Date: _______
 
 ---
 
-*Last updated: Jun 2026 — Phase 8 agent desk shipped; tool allowlist includes `select_barcode` and HITL `cancel_issue`. Phases 0–8 complete.*
+### E19 — Session H: Phase 8 implementation, refactor, and quality gate (Jun 2026)
+
+**Transcript:** [Phase 8 ship + quality](3f82c968-9594-409a-9ef6-8e0201676ab4)
+
+**User asks (sequence):** Execute Phase 8 (code, not docs); explain tool authorization; fix `select_barcode` + HITL `cancel_issue`; sync specs; add Makefile/Cursor debug for breakpoints; apply `clean-code-ddd-lms-ai` + `clean-code-ddd-python`; run `python-code-analysis` repo-wide; validate against rules/skills; summarize session in this file for context recovery.
+
+#### E19.1 Agent module shipped
+
+| Component | Path | Role |
+|-----------|------|------|
+| Coordinator | `src/lms/agent/coordinator.py` | Session lifecycle, intent dispatch, HITL `pending_approval`, tool execution |
+| Tools + allowlist | `src/lms/agent/tools.py` | Delegates to workflows; deny-by-default `RESTRICTED_TOOL_NAMES` |
+| Intent parser | `src/lms/agent/intent_parser.py` | NL → `ParsedIntent` (rule-based when `AGENT_MOCK_LLM=true`) |
+| Masking | `src/lms/agent/masking.py` | Pseudonyms for LLM prompts; server holds real IDs |
+| Graph | `src/lms/agent/graph.py` | Structural SOP (`enter → parse → govern`) — not business rules |
+| Session store | `src/lms/agent/session.py` | In-memory session state per operator |
+| API | `src/lms/api/agent/router.py` | `POST/GET .../sessions`, `.../message`, `.../resume` |
+| Composition | `src/lms/api/agent_composition.py` | `get_issue_agent_coordinator()` — avoids loan→workflow import-linter violation |
+| Staff UI | `src/lms/staff/static/` | AI assist tab at `/staff/` |
+
+**Feature flag:** `AGENT_ISSUE_ENABLED=true` (staff JWT required). **CI default:** `AGENT_MOCK_LLM=true`.
+
+#### E19.2 Tool governance (allowlist)
+
+| Class | Tools | Authorization |
+|-------|-------|---------------|
+| **Read** | `search_patrons`, `resolve_patron`, `search_lendable`, `select_barcode`, `validate_issue`, `get_fulfillment_status` | Auto — no HITL |
+| **Write (HITL)** | `commit_issue`, `cancel_issue`, `transition_fulfillment` | `pending_approval` → staff approves via `POST .../resume?approved=true` |
+| **Restricted** | `direct_checkout`, `direct_db`, `admin_api`, `remote_mcp` | Never bound — deny-by-default |
+
+**Fixes in this session:**
+
+- `select_barcode` was missing from read allowlist — added; barcode path uses `find_lendable_copy_by_barcode()` not title search.
+- `cancel_issue` wired with same HITL pattern as `commit_issue`.
+- `get_fulfillment_status` routed through allowlist (was bypassing governance).
+
+**Design note:** Not every conceivable tool is authorized — only workflow-backed, auditable operations. Writes always require human approval; ambiguous patron match and any `ValidationReport` violation also surface approval cards.
+
+#### E19.3 HITL implementation
+
+Production path uses **coordinator state**, not LangGraph `interrupt()`:
+
+1. Write tool or ambiguous validation → `_set_pending_approval(...)` with patron/title/barcode/mode/violations.
+2. API returns session with `pending_approval` payload.
+3. Staff calls `POST /api/v1/agent/issue/sessions/{id}/resume` with `approved=true|false`.
+4. On approve: server issues idempotency key and runs `commit_issue` / `cancel_issue` / `transition_fulfillment`.
+
+Fulfillment subgraph (post-commit, non-DESK mode): read status → HITL transition.
+
+#### E19.4 Clean Code / DDD refactor
+
+| Change | Rationale |
+|--------|-----------|
+| `IssueAgentCoordinator` DI | `workflow`, `fulfillment`, `parser` from composition root — testable, no hidden globals |
+| Intent dispatch | `match intent.action` → `_handle_search_patron`, `_handle_request_commit`, etc. |
+| Thin router | `_session_response`, `_message_response`; ownership in coordinator |
+| `agent_composition.py` split | `composition.py` stays circulation-only; satisfies import-linter contract |
+| `IssueTools` union guards | `_patron_id()` / `_patron_and_holding()` for mypy-safe optional slot IDs |
+| Skills updated | `.cursor/skills/clean-code-ddd-lms-ai/SKILL.md` documents composition split |
+
+#### E19.5 Static analysis & CI
+
+| Gate | Status |
+|------|--------|
+| `ruff check` | Pass |
+| `import-linter` | 4/4 contracts (agent ignore list for workflow/application imports) |
+| `mypy --strict` | Pass — 110 files; `types-python-jose` + `jose.*` override |
+| `make lint` | ruff + lint-imports + mypy |
+| `make ci-native` | **74 tests** (11 in `tests/agent/`) |
+| `make test-agent` / `make phase8` | Agent-focused targets added |
+
+**Fixes during analysis:** Makefile tab-indent on lint help line; mypy on agent `tools.py` / `graph.py` optional narrowing.
+
+#### E19.6 Developer ergonomics
+
+| Item | Detail |
+|------|--------|
+| `DEBUG=1` | Enables debug-friendly server reload |
+| `make run-dev-debug` | Dev server with debug env |
+| `.vscode/launch.json` | F5 → **LMS API (breakpoints)** |
+| `.vscode/tasks.json`, `settings.json`, `extensions.json` | Committed (`.gitignore` allows `.vscode` configs) |
+
+#### E19.7 Docs synced (Phase 8 → Done)
+
+- [plan-mvp.md](plan-mvp.md) §0 — Phase 8 complete
+- [MVP.md](MVP.md) §2.2, §14 — tool list, HITL, API paths
+- [go-live-checklist.md](go-live-checklist.md) — G11–G12 automated; G13 operational
+- [runbook.md](runbook.md) §10 — LLM/agent env vars
+
+#### E19.8 Remaining / deferred
+
+| Item | Status |
+|------|--------|
+| **G13** Langfuse traces in coordinator | Not wired — operational sign-off pending |
+| **G13** IMDA charter sign-off (§15.8) | Template filled; residual risk line blank |
+| Eval datasets / override-rate review | Not started |
+| Full Sonar-style smell sweep | Interrupted — e.g. bare `except` in `intent_parser.py` not addressed |
+| Staff UI agent smoke tests | Optional |
+| Live Groq path (non-mock LLM) | Staging validation TBD |
+
+#### E19.9 Local enablement
+
+```bash
+export AGENT_ISSUE_ENABLED=true
+export AGENT_MOCK_LLM=true   # rule-based parser; CI default
+make test-agent
+make ci-native
+# Cursor: F5 → "LMS API (breakpoints)"
+```
+
+**Verify:** `make phase8 && make ci-native` — 74 passed at last run.
+
+**Next gate:** Staging with `AGENT_ISSUE_ENABLED`; G13 Langfuse + charter; wizard regression with agent enabled.
+
+---
+
+### E20 — Session I: Agent desk UX, messages, tracing, and rules/skills pass (Jun 2026)
+
+**Transcript:** Post-E19 follow-up thread (Session I — §3.11).
+
+**User asks (sequence):** Run full rules/skills validation pass; refactor slot guards (Composed Method); centralize staff-facing copy; tie messages to parsed intent (not generic guards); wire Langfuse tracing for G13; update clean-code and SonarQube skills/rules; summarize in this file.
+
+#### E20.1 Files and patterns
+
+| Component | Path | Change |
+|-----------|------|--------|
+| Staff messages | `src/lms/agent/messages.py` | Centralized desk copy — **issue + next action** on every helper (e.g. `ready_to_issue`, `missing_patron_for`, approval prompts) |
+| Intent schema | `src/lms/agent/schemas.py` | `IntentAction` enum + frozen `ParsedIntent` dataclass — single source for dispatch and message context |
+| Slot model | `src/lms/agent/session.py` | `IssueSlots.has_patron_and_holding` property — coordinator guard without duplicating null checks |
+| Tool guards | `src/lms/agent/tools.py` | Composed Method: `_patron_id`, `_holding_id`, `_patron_and_holding(slots, action)` — each returns `UUID \| ToolResult` with intent-specific message |
+| Coordinator | `src/lms/agent/coordinator.py` | Passes `intent.action` into tools (`search_lendable`, `select_barcode`, `validate_issue`) and uses `messages.*` for responses |
+| Intent parser | `src/lms/agent/intent_parser.py` | Sonar fix: catch typed `LITELLM_EXCEPTION_TYPES`; structlog on failure; imports desk copy from `messages` |
+| Tracing (G13) | `src/lms/agent/tracing.py` | `AgentTracing` — structlog audit always; optional Langfuse `tool_span` / `turn_span` when keys configured |
+| Tests | `tests/agent/` | Intent messages, masking, graph, CHAT routing, query echo — **28 tests** in agent package |
+
+#### E20.2 Message design (desk staff UX)
+
+**Principles locked in Session I (see also §13 E21):**
+
+1. **Issue + next action** — every staff message states what happened (or what is missing) and what to do next (search patron, scan barcode, approve, use wizard).
+2. **Intent-aware slot guards** — `missing_patron_for(action=IntentAction.REQUEST_COMMIT)` differs from catalog search or barcode select; no generic “missing patron” string.
+3. **Query echo** — search and not-found helpers wrap the librarian’s query in quotes (`'Riya'`, `'Harry Potter'`).
+4. **Names over IDs** — patron display names, titles, barcodes in copy; UUIDs, pseudonyms, and tool names stay server-side (extends §E14).
+5. **Plain language** — no “slots”, “HITL”, or internal field names in `assistant_message`.
+6. **CHAT routing** — greetings and help questions return `IntentAction.CHAT` with `greeting_reply()` / `help_reply()`; must not misroute to patron search.
+7. **Approval clarity** — `commit_approval_prompt`, `cancel_approval_prompt`, `fulfillment_transition_prompt` pair summary with approve/deny consequence.
+
+**Example helpers:** `DEFAULT_HELP`, `patron_eligible`, `copy_selected`, `issue_blocked_for_commit`, `approval_denied(kind)`.
+
+#### E20.3 Slot guard refactor (Composed Method)
+
+Before E20, tools used monolithic `_patron_and_holding()` only. After:
+
+```text
+_patron_id(slots, action)     → UUID | ToolResult(missing_patron_for(action))
+_holding_id(slots, action)    → UUID | ToolResult(missing_copy_for(action))
+_patron_and_holding(...)      → tuple | ToolResult (compose the two)
+```
+
+Coordinator uses `slots.has_patron_and_holding` before commit path; tools accept `action: IntentAction` defaulting per method.
+
+Documented in `.cursor/skills/clean-code-ddd-lms-ai/SKILL.md` and `.cursor/rules/code-simplification.md` as Composed Method + guard clause pattern.
+
+#### E20.4 Langfuse tracing (G13 operational step)
+
+| Span | When | Metadata |
+|------|------|----------|
+| `turn_span` | `create_session`, `handle_message` | `session_id`, `operator_id`, `agent_id` |
+| `tool_span` | Each allowlisted tool execution | `tool_name`, session/operator/agent |
+
+Graceful degradation: structlog `agent_tool_call` always; Langfuse client only when `LANGFUSE_PUBLIC_KEY` + `LANGFUSE_SECRET_KEY` set. Init failures logged via structlog (typed exceptions).
+
+**Host config:** `Settings.langfuse_host` accepts **`LANGFUSE_HOST`** or **`LANGFUSE_BASE_URL`** (default `https://cloud.langfuse.com`). US projects must set `https://us.cloud.langfuse.com` — wrong region causes `auth_check` failure.
+
+**Ops validation:** `scripts/validate_langfuse.py` → `make validate-langfuse`; also runs before **`make build`** (Docker). Exits 0 with SKIP when keys absent (CI-safe). `AgentTracing.flush()` after each `turn_span`; `auth_ok()` for credential check.
+
+**Tests:** `tests/agent/test_tracing.py` (4 unit tests — mock client, flush, env alias).
+
+**Remaining G13:** charter sign-off (§15.8 residual risk line); eval datasets; production key rotation.
+
+#### E20.5 Rules and skills updated
+
+| Artifact | Update |
+|----------|--------|
+| `.cursor/skills/clean-code-ddd-lms-ai/SKILL.md` | Agent module map: `messages.py`, `tracing.py`, intent-aware guards, desk copy guidelines |
+| `.cursor/skills/clean-code-ddd-python/SKILL.md` | Composed Method + message builder pattern on agent tools |
+| `.cursor/rules/code-simplification.md` | Slot guard decomposition; centralize scattered desk copy |
+| `.cursor/rules/sonarqube-quality.md` | Typed exceptions; agent desk copy smells |
+| `.cursor/rules/api-and-interface-design.md` | Agent API response fields (`assistant_message`, approvals) |
+| `.cursor/rules/frontend-ui-engineering.md` | Staff UI renders backend messages verbatim |
+| `.cursor/skills/python-code-analysis/lms-ai.md` | Makefile targets; agent + `test_intent_and_masking.py` scope |
+| `.cursor/skills/imda-agentic-ai-governance/SKILL.md` | Plain-language approval payloads (MGF meaningful oversight) |
+
+#### E20.6 Static analysis & verification
+
+| Gate | Status |
+|------|--------|
+| `make lint` | Pass — ruff + import-linter (4/4) + mypy strict **112 files** |
+| `make test-agent` | **7 passed** (pytest `-m agent` — G11/G12 E2E subset) |
+| `pytest tests/agent/` | **28 passed** |
+| `make ci-native` / full suite | **91 passed** (was 74 at E19) |
+
+#### E20.7 Local enablement
+
+```bash
+export AGENT_ISSUE_ENABLED=true
+export AGENT_MOCK_LLM=true
+# Optional G13:
+# export LANGFUSE_PUBLIC_KEY=... LANGFUSE_SECRET_KEY=...
+# export LANGFUSE_HOST=https://us.cloud.langfuse.com   # or LANGFUSE_BASE_URL
+make lint && make test-agent && make validate-langfuse
+```
+
+**Verify:** `make lint && make ci-native` — 100 passed at last run.
+
+**Next gate:** G13 charter sign-off; staging with live Groq; Playwright E2E in CI.
+
+---
+
+### E21 — Session I (cont.): Friendly query+intent desk copy (Jun 2026)
+
+**Transcript:** Same Session I thread — follow-up on staff-facing message quality and test coverage.
+
+**User asks:** Centralize desk copy; tie messages to `IntentAction`; echo what the librarian typed; distinguish help/greeting from patron search; no technical jargon in `assistant_message`.
+
+#### E21.1 Guidelines (locked)
+
+| # | Rule | Implementation |
+|---|------|----------------|
+| 1 | **Plain desk language** | No UUIDs, pseudonyms, tool names, "slots", "HITL", or `holding_id` in staff messages — use patron names, titles, barcodes |
+| 2 | **Intent-specific** | Slot guards and helpers take `IntentAction` — e.g. `missing_patron_for(REQUEST_COMMIT)` vs `SELECT_BARCODE` |
+| 3 | **Query echo** | Success and empty-state replies reference what the user typed — `patron_search_results(query, ...)`, `no_patron_found(query)`, `issue_committed(...)` |
+| 4 | **Issue + next action** | Every message states what is wrong/missing **and** what to do next (search, scan, approve, wizard) |
+| 5 | **Composed Method guards** | `_patron_id`, `_holding_id`, `_patron_and_holding(action)` in `tools.py`; propagate the specific guard message |
+| 6 | **CHAT vs search** | `_GREETING_RE` / `_HELP_RE` → `IntentAction.CHAT` with `greeting_reply()` / `help_reply()` — must not fall through to patron search |
+| 7 | **Centralization** | All staff-facing strings in `src/lms/agent/messages.py`; coordinator and tools import `messages as desk` |
+
+#### E21.2 Key helpers
+
+`missing_patron_for`, `missing_copy_for`, `missing_slots_for_commit`, `patron_search_results`, `catalog_search_results`, `issue_ready`, `issue_committed`, `help_reply`, `greeting_reply`, `help_for_unknown_intent`, `EMPTY_MESSAGE`, approval prompts (`commit_approval_prompt`, etc.).
+
+#### E21.3 Verification
+
+| Gate | Result |
+|------|--------|
+| `pytest tests/agent/` | **28 passed** |
+| `make test-agent` | **7 passed** (`-m agent` E2E subset) |
+| `make ci-native` | **91 passed** (full suite) |
+
+Primary regression file for copy changes: `tests/agent/test_intent_and_masking.py` (intent guards, query echo, CHAT routing, no technical jargon in `issue_committed`).
+
+---
+
+### E22 — Session I (cont.): Langfuse validation, React staff UI MVC, Playwright E2E (Jun 2026)
+
+**Transcript:** Post-E21 follow-up — ops validation, frontend architecture, browser E2E.
+
+#### E22.1 Langfuse validation (G13 ops)
+
+| Issue | Fix |
+|-------|-----|
+| `.env` had `LANGFUSE_BASE_URL` but Settings only read `LANGFUSE_HOST` | `Settings.langfuse_host` now accepts **`LANGFUSE_HOST`** or **`LANGFUSE_BASE_URL`** via `AliasChoices` |
+| Wrong default region | Default host `https://cloud.langfuse.com`; US keys require `https://us.cloud.langfuse.com` |
+| No ops check | `scripts/validate_langfuse.py` — `auth_ok()` + test `turn:validate` / `tool:search_patrons` span |
+| Build gate | **`make build`** runs `validate-langfuse` first (SKIP exit 0 when keys unset — CI-safe) |
+| Buffered events | `AgentTracing.flush()` at end of each `turn_span` |
+
+**Makefile targets:** `validate-langfuse`, `test-e2e-playwright` (in `ci-native`).
+
+#### E22.2 React staff desk — MVC + CRM layout
+
+| Layer | Path | Role |
+|-------|------|------|
+| Model | `src/lms/staff/ui/src/models/` | Re-exports `@/api/*` types and HTTP clients |
+| Controller | `src/lms/staff/ui/src/controllers/` | `useIssueWizardController`, `useReturnWizardController`, `useAgentChatController` |
+| View | `src/lms/staff/ui/src/views/*/*View.tsx` | Presentation; `PageShell` content panel |
+| Config | `src/config/navigation.ts` | Grouped nav (Circulation, Catalog, Patrons, Admin) + `VIEW_META` |
+| Layout | `src/layout/` | `AppSidebar`, `AppHeader`, `ShellContext`, `AppLayout` |
+
+**CRM patterns adopted:** grouped sidebar, sticky header with breadcrumb, collapsible nav, mobile drawer, split-panel login hero.
+
+**Build:** `src/lms/staff/ui/` (Vite 8) → `src/lms/staff/static/` — **not committed**; built in CI, Docker, `setup-native`, `deploy-native`.
+
+#### E22.3 Playwright browser E2E
+
+| Test | Flow |
+|------|------|
+| `test_staff_login_flow` | Sign in → desk nav |
+| `test_issue_wizard_desk_commit` | Patron → catalog → copy → commit |
+| `test_return_wizard_desk_return` | Barcode lookup → desk return |
+| `test_agent_assist_pending_approval` | Agent message → approval card |
+| `test_agent_assist_hitl_approve_commit` | Approve → issued confirmation |
+
+**Run:** `make test-e2e-playwright` (includes `ensure-staff-ui` + Chromium install). Fixtures in `tests/e2e/conftest.py`.
+
+#### E22.4 Verification
+
+| Gate | Result |
+|------|--------|
+| `make validate-langfuse` | Pass (with keys + correct US host) |
+| `make staff-ui-build` / `staff-ui-typecheck` | Pass |
+| `make test-e2e-playwright` | **5 passed** |
+| `tests/agent/test_tracing.py` | **4 passed** |
+| Full suite | **100 passed** |
+
+**Open:** G13 charter sign-off; Langfuse eval datasets; remove legacy tracked `static/app.js` from git if still present.
+
+---
+
+## 16. Clean Code, DDD & implementation patterns
+
+**Session focus (Jun 2026):** Codify engineering craft for this repo — **Clean Code** (Robert C. Martin), **Implementation Patterns** (Kent Beck), **Implementing DDD** (Vaughn Vernon) — applied to **Python 3.12**, **FastAPI**, **SQLAlchemy**, **LangChain / LangGraph**, and **Langfuse**.
+
+**Canonical skills (full detail):**
+
+| Skill | Path | Role |
+|-------|------|------|
+| General principles | [.cursor/skills/clean-code-ddd-python/SKILL.md](../.cursor/skills/clean-code-ddd-python/SKILL.md) | Uncle Bob + Beck + Vernon for the stack |
+| LMS-AI addendum | [.cursor/skills/clean-code-ddd-lms-ai/SKILL.md](../.cursor/skills/clean-code-ddd-lms-ai/SKILL.md) | This repo’s modules, import rules, agent desk |
+| DDD supplement | [.cursor/skills/clean-code-ddd-python/reference.md](../.cursor/skills/clean-code-ddd-python/reference.md) | Context map, entity vs value object |
+| Static & dynamic analysis | [.cursor/skills/python-code-analysis/SKILL.md](../.cursor/skills/python-code-analysis/SKILL.md) | ruff, mypy, import-linter, pytest markers |
+| Analysis addendum | [.cursor/skills/python-code-analysis/lms-ai.md](../.cursor/skills/python-code-analysis/lms-ai.md) | Makefile, CI, change-type test scope |
+| SonarQube rules | [.cursor/rules/sonarqube-quality.md](../.cursor/rules/sonarqube-quality.md) | Quality gate, bugs, smells, security hotspots |
+
+**Overlaps:** §8 design principles (EMC), §15 agent governance (tools/HITL), `.cursor/rules/code-simplification.md`, `.cursor/rules/api-and-interface-design.md`, `.cursor/rules/sonarqube-quality.md`.
+
+### 16.1 Unified decision workflow
+
+When implementing or reviewing code:
+
+1. Name concepts in **ubiquitous language** (patron, holding, circulation — not `user`, `item`).
+2. Place code in the correct **bounded context** and **layer** (`api` → `application` → `domain` → `infrastructure`).
+3. Keep functions at **one abstraction level**; target small, named steps (Composed Method).
+4. **Validate at boundaries** only — Pydantic on HTTP; typed intents for agent input.
+5. **Wire dependencies explicitly** — `composition.py`, port injection, no hidden globals.
+6. **Trace at boundaries** — Langfuse on coordinator/LLM; structlog + correlation id on API writes.
+
+### 16.2 Clean Code (Uncle Bob) — key rules for this stack
+
+| Area | Rule |
+|------|------|
+| Names | Reveal intent: `CirculationOrchestrator`, `resolve_patron_by_card` |
+| Functions | One job; &lt;20 lines where practical; guard clauses over nesting |
+| Errors | Raise `AppError` / `ValidationReport` in domain; HTTP translation in `errors.py` only |
+| Classes | Small; `dataclass(frozen=True, slots=True)` for value bundles |
+| Comments | Why (ADR, policy), not what |
+| Tests | Behavior specs: `test_issue_rejected_when_patron_blocked` |
+
+### 16.3 Implementation Patterns (Kent Beck) — key patterns
+
+| Pattern | LMS-AI usage |
+|---------|----------------|
+| **Simple design** | Tests green → intention-revealing names → no dup → minimal elements |
+| **Composed Method** | `SearchAndIssueWorkflow.start` → `validate` → `commit`; coordinator `_apply_intent` |
+| **Guard clause** | Early `AppError` raises; `ValidationReport` before commit |
+| **Explaining variable** | `policy = resolver.resolve(...)` before due-date math |
+| **Strategy (Protocol)** | `PatronEligibilityPort`, `HoldingCirculationPort`, `PolicyResolverPort` |
+| **Factory** | `get_circulation_orchestrator(session)` in `composition.py` |
+| **TDD** | Failing test first for new behavior; bug fix = repro test first |
+
+### 16.4 DDD (Vaughn Vernon) — tactical patterns in LMS-AI
+
+| Concept | Implementation |
+|---------|----------------|
+| **Bounded contexts** | `reference`, `catalog`, `loan` — each owns language and ORM |
+| **Layers** | `api` / `application` / `domain` / `infrastructure` per context |
+| **Ports & adapters** | `loan/domain/ports.py` + `{provider}/infrastructure/adapters/` |
+| **Anti-corruption** | `HoldingSnapshot`, `ResolvedPolicy` — no cross-context ORM in orchestrators |
+| **Application service** | `CirculationOrchestrator`, `ReferenceService`, workflow classes |
+| **Process manager** | `SearchAndIssueWorkflow`, `ReturnBookWorkflow` in `api/workflows/` |
+| **Aggregate boundary** | One transaction per command; checkout via orchestrator only |
+
+**Anti-patterns to avoid:** anemic domain (rules in routers); leaky repos (ORM everywhere); smart agent (loan policy in tools/prompts); cross-context infrastructure imports (fails `import-linter`).
+
+### 16.5 FastAPI boundary patterns
+
+- **Contract first** — Pydantic schemas before route bodies; stable error envelope (`code`, `message`, `retriable`, `details`).
+- **RBAC at router** — `StaffAuth`, `AdminAuth`; no duplicate checks in services.
+- **Composition root** — circulation orchestrators in `composition.py`; agent coordinator in `agent_composition.py` — not inline in routes.
+- **Idempotency** — `Idempotency-Key` on mutating workflow commits (`shared/idempotency/`).
+
+### 16.6 LangGraph / agent desk patterns
+
+| Component | Responsibility | Path |
+|-----------|----------------|------|
+| Coordinator | Session, intent, HITL, turn lifecycle | `lms/agent/coordinator.py` |
+| Tools | Allowlisted delegation to workflows | `lms/agent/tools.py` |
+| Intent parser | NL → `ParsedIntent` / `IntentAction` | `lms/agent/intent_parser.py` |
+| Graph | Structural SOP only (`enter → parse → govern`) | `lms/agent/graph.py` |
+| Staff messages | Intent-aware desk copy (issue + next action) | `lms/agent/messages.py` |
+| Tracing | structlog audit + optional Langfuse spans | `lms/agent/tracing.py` |
+
+- **Read tools** (`search_*`, `validate_*`) vs **write tools** (`commit_issue`, `cancel_issue`, `transition_fulfillment`) — writes require HITL via `resume(approved=...)`.
+- **`RESTRICTED_TOOL_NAMES`** never bound — deny-by-default (aligns with §15 charter).
+- Business rules stay in workflows/services; tools return `ToolResult(ok, message, data)`.
+- **Intent-aware messages** — slot guards and coordinator responses use `messages.*(action=IntentAction.…)`; never generic “missing field” strings (§13 E20–E21).
+- **Query echo** — search/success/not-found helpers include the librarian’s typed query or selected barcode/title where helpful.
+- **CHAT vs search** — `intent_parser.py` routes greetings and help to `IntentAction.CHAT`; empty message → `EMPTY_MESSAGE`; coordinator uses `reply_hint` or `help_for_unknown_intent`.
+- **Plain desk copy** — all staff strings in `messages.py`; ban UUIDs, pseudonyms, tool names, “slots”, “HITL”, internal IDs in `assistant_message`.
+- **Composed Method guards** — `_patron_id` / `_holding_id` / `_patron_and_holding(action)`; `IssueSlots.has_patron_and_holding` for commit preconditions; first missing slot wins with its action-specific message.
+- Langfuse via `AgentTracing` at coordinator boundary; PII via pseudonyms + `redact_for_audit`; ops check via `make validate-langfuse`.
+
+### 16.7 Staff desk UI — React MVC (Phase 6 + Session I)
+
+| Layer | Path |
+|-------|------|
+| Source | `src/lms/staff/ui/` (Vite, React 18+, strict TypeScript) |
+| Build output | `src/lms/staff/static/` — **not committed**; `make staff-ui-build` |
+| Model | `models/` → API clients |
+| Controller | `controllers/` → wizard/chat hooks |
+| View | `views/*View.tsx` + `components/` |
+| Nav config | `config/navigation.ts` — grouped CRM sidebar |
+
+- **Single source for desk copy:** backend `messages.py` — UI renders `assistant_message` verbatim (no frontend duplication).
+- **E2E:** HTTP smoke `test_staff_ui.py`; browser `test_staff_playwright.py`.
+- **Docs:** `.cursor/rules/frontend-ui-engineering.md` §LMS-AI staff UI.
+
+### 16.8 Import-linter contracts (enforced in CI)
+
+| Module | Forbidden |
+|--------|-----------|
+| `reference` | `catalog.infrastructure`, `loan.infrastructure` |
+| `catalog` | `reference.infrastructure`, `loan.infrastructure` |
+| `loan` | `reference.infrastructure`, `catalog.infrastructure` |
+| `agent` | Any domain `infrastructure` (narrow ignore list for composition/workflows) |
+
+Cross-context data flows through **ports + adapters** or **workflow orchestration** — not shared ORM imports.
+
+### 16.9 PR checklist (engineering craft)
+
+- [ ] Ubiquitous language in names and API fields
+- [ ] Correct bounded context and layer
+- [ ] `import-linter` / `lint-imports` clean
+- [ ] `AppError` + `ErrorCode`; no ad-hoc HTTP errors in domain
+- [ ] Pydantic at API edge; frozen dataclasses in application
+- [ ] New cross-context need → port + adapter
+- [ ] Agent tools delegate to workflows; writes behind HITL
+- [ ] Tests + strict mypy; PII masked in agent paths
+
+**Verify:** `ruff check`, `mypy`, `lint-imports`, `pytest` with appropriate markers (`unit`, `integration`, `agent`). See [python-code-analysis](../python-code-analysis/SKILL.md).
+
+---
+
+*Last updated: Jun 2026 — §13 E22 (Langfuse validation on `make build`, React staff UI MVC, Playwright E2E). Phases 0–8 complete; 100 tests; G13 charter sign-off pending.*

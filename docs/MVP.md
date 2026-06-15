@@ -121,6 +121,21 @@ Librarians interact with WF-01 as a **dialogue** (“Issue *Harry Potter* to Riy
 
 On tool failure: **halt and notify** — no unbounded self-retry (IMDA SOP; see [research.md §15](research.md)).
 
+#### Desk copy (staff-facing messages)
+
+All librarian-visible text is built in `src/lms/agent/messages.py` and returned as `assistant_message` (and `pending_approval.summary`). The staff UI renders these strings as-is — do not duplicate copy in the frontend.
+
+| Guideline | Requirement |
+|-----------|-------------|
+| Plain language | Patron names, titles, barcodes — never UUIDs, pseudonyms, tool names, "slots", "HITL", or internal field names |
+| Intent-specific | Messages tied to `IntentAction` (e.g. missing patron before commit vs before barcode select) |
+| Query echo | Search and not-found replies reference what the librarian typed (`'Riya Sharma'`, `'Harry Potter'`) |
+| Issue + next action | Every response states what is wrong/missing **and** what to do next |
+| CHAT routing | Greetings and help (`hello`, `how do I issue…`) → `IntentAction.CHAT` — not patron search |
+| Approvals | Plain-language summary + consequence of approve/deny (`commit_approval_prompt`, etc.) |
+
+See [research.md §13 E21](research.md) for patterns and test scope (`tests/agent/test_intent_and_masking.py`).
+
 ```mermaid
 sequenceDiagram
   participant Lib as Librarian

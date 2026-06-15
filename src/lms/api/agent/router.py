@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
-from lms.agent.coordinator import IssueAgentCoordinator
+from lms.agent.coordinator import AgentTurnResult, IssueAgentCoordinator
 from lms.agent.schemas import (
     AgentMessageRequest,
     AgentMessageResponse,
@@ -15,6 +15,8 @@ from lms.agent.schemas import (
     AgentSessionResponse,
     PendingApprovalResponse,
 )
+from lms.agent.session import AgentIssueSession
+from lms.api.agent_composition import get_issue_agent_coordinator
 from lms.api.deps import DbSession
 from lms.api.rbac import StaffAuth, require_staff
 
@@ -22,39 +24,13 @@ router = APIRouter(prefix="/agent/issue", dependencies=[require_staff])
 
 
 def _coordinator(session: DbSession) -> IssueAgentCoordinator:
-    return IssueAgentCoordinator(session)
+    return get_issue_agent_coordinator(session)
 
 
-@router.post("/sessions", response_model=AgentSessionResponse, status_code=201)
-def create_session(
-    auth: StaffAuth,
-    coordinator: Annotated[IssueAgentCoordinator, Depends(_coordinator)],
+def _session_response(
+    coordinator: IssueAgentCoordinator,
+    sess: AgentIssueSession,
 ) -> AgentSessionResponse:
-    sess = coordinator.start_session(auth.subject)
-    return AgentSessionResponse(
-        session_id=sess.session_id,
-        operator_id=sess.operator_id,
-        session_summary={
-            "patron_display_name": None,
-            "catalog_title": None,
-            "holding_barcode": None,
-            "fulfillment_mode": sess.slots.fulfillment_mode.value,
-            "has_pending_approval": False,
-        },
-    )
-
-
-@router.get("/sessions/{session_id}", response_model=AgentSessionResponse)
-def get_session(
-    session_id: UUID,
-    auth: StaffAuth,
-    coordinator: Annotated[IssueAgentCoordinator, Depends(_coordinator)],
-) -> AgentSessionResponse:
-    sess = coordinator.get_session(session_id)
-    if sess.operator_id != auth.subject:
-        from lms.api.errors import AppError, ErrorCode
-
-        raise AppError(ErrorCode.FORBIDDEN, "Session belongs to another operator", status_code=403)
     return AgentSessionResponse(
         session_id=sess.session_id,
         operator_id=sess.operator_id,
@@ -62,14 +38,7 @@ def get_session(
     )
 
 
-@router.post("/sessions/{session_id}/message", response_model=AgentMessageResponse)
-def post_message(
-    session_id: UUID,
-    body: AgentMessageRequest,
-    auth: StaffAuth,
-    coordinator: Annotated[IssueAgentCoordinator, Depends(_coordinator)],
-) -> AgentMessageResponse:
-    result = coordinator.handle_message(session_id, body.message, auth.subject)
+def _message_response(result: AgentTurnResult) -> AgentMessageResponse:
     pending = None
     if result.pending_approval:
         pending = PendingApprovalResponse(**result.pending_approval)
@@ -81,6 +50,36 @@ def post_message(
     )
 
 
+@router.post("/sessions", response_model=AgentSessionResponse, status_code=201)
+def create_session(
+    auth: StaffAuth,
+    coordinator: Annotated[IssueAgentCoordinator, Depends(_coordinator)],
+) -> AgentSessionResponse:
+    sess = coordinator.start_session(auth.subject)
+    return _session_response(coordinator, sess)
+
+
+@router.get("/sessions/{session_id}", response_model=AgentSessionResponse)
+def get_session(
+    session_id: UUID,
+    auth: StaffAuth,
+    coordinator: Annotated[IssueAgentCoordinator, Depends(_coordinator)],
+) -> AgentSessionResponse:
+    sess = coordinator.get_session_for_operator(session_id, auth.subject)
+    return _session_response(coordinator, sess)
+
+
+@router.post("/sessions/{session_id}/message", response_model=AgentMessageResponse)
+def post_message(
+    session_id: UUID,
+    body: AgentMessageRequest,
+    auth: StaffAuth,
+    coordinator: Annotated[IssueAgentCoordinator, Depends(_coordinator)],
+) -> AgentMessageResponse:
+    result = coordinator.handle_message(session_id, body.message, auth.subject)
+    return _message_response(result)
+
+
 @router.post("/sessions/{session_id}/resume", response_model=AgentMessageResponse)
 def post_resume(
     session_id: UUID,
@@ -89,9 +88,4 @@ def post_resume(
     coordinator: Annotated[IssueAgentCoordinator, Depends(_coordinator)],
 ) -> AgentMessageResponse:
     result = coordinator.resume(session_id, approved=body.approved, operator_id=auth.subject)
-    return AgentMessageResponse(
-        session_id=result.session_id,
-        assistant_message=result.assistant_message,
-        pending_approval=None,
-        session_summary=result.session_summary,
-    )
+    return _message_response(result)

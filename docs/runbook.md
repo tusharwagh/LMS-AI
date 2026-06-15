@@ -11,7 +11,7 @@ Operational procedures for deploying, backing up, and recovering the LMS-AI K‑
 | Item | Requirement |
 |------|-------------|
 | Python | 3.12+ |
-| Node.js | 24+ (diagram tooling only; see `.nvmrc`) |
+| Node.js | 24+ (diagram tooling + staff UI build; see `.nvmrc`) |
 | PostgreSQL | 16 |
 | Config | `.env` from `.env.example` (`DATABASE_URL`, `APP_SECRET_KEY`, `LIBRARY_TIMEZONE=Asia/Kolkata`) |
 | Tooling | `make install`, `make migrate`; `make install-node` for `make diagram` |
@@ -25,6 +25,8 @@ Default API users (dev/demo only — **change before production**):
 | `patron` | PATRON | `changeme` |
 
 Staff desk UI: `http://<host>:8000/staff/`
+
+**Staff UI build:** source in `src/lms/staff/ui/`; Vite output under `src/lms/staff/static/` is **not committed** (see `.gitignore`; only `.gitkeep` is tracked). Always build before deploy or E2E — `make staff-ui-build` runs in CI, Docker, `make setup-native`, and `scripts/deploy-native.sh`.
 
 ---
 
@@ -55,6 +57,8 @@ curl -s http://127.0.0.1:8000/health
 ```
 
 Run smoke tests: `make test-e2e`
+
+Browser E2E (Playwright): `make test-e2e-playwright` — login, issue wizard, return wizard, agent pending approval, agent HITL approve.
 
 ---
 
@@ -220,6 +224,7 @@ Conversational WF-01 and agentic fulfillment ([MVP.md §2.2](MVP.md)). **No loca
 | `LANGFUSE_PUBLIC_KEY` | — | Required for agent audit in production |
 | `LANGFUSE_SECRET_KEY` | — | Never commit |
 | `LANGFUSE_HOST` | `https://cloud.langfuse.com` | Self-hosted if required by school IT |
+| `LANGFUSE_BASE_URL` | *(alias)* | Same as `LANGFUSE_HOST` (e.g. `https://us.cloud.langfuse.com`) |
 
 ### Authorized agent tools
 
@@ -233,6 +238,10 @@ Enforced in `IssueAgentCoordinator._run_tool` (`src/lms/agent/tools.py`):
 
 Writes require librarian approval via `pending_approval` and `POST /api/v1/agent/issue/sessions/{id}/resume`.
 
+### Staff-facing messages
+
+Librarians see `assistant_message` and approval `summary` from the API — built in `src/lms/agent/messages.py`, not in the UI. Copy is plain desk language (patron names, titles, barcodes); it echoes search queries where relevant and always includes a next action. If responses look technical (UUIDs, tool names, “missing slot”), treat as a defect — see [research.md §13 E21](research.md).
+
 ### Pre-enable checklist
 
 - [ ] Enterprise agent charter signed ([research.md §15.2](research.md))
@@ -240,6 +249,14 @@ Writes require librarian approval via `pending_approval` and `POST /api/v1/agent
 - [ ] Langfuse project created; retention policy set
 - [ ] `AGENT_ISSUE_ENABLED=true` only on pilot cohort
 - [ ] Wizard workflows (G7–G10) regression-tested with agent flag on
+
+**Validate Langfuse locally** (runs automatically on `make build`; also `make validate-langfuse`):
+
+```bash
+make validate-langfuse
+```
+
+Expect `auth_ok: True` and a test `turn:validate` / `tool:search_patrons` span in your Langfuse project. US cloud projects must use `https://us.cloud.langfuse.com`, not the default EU host.
 
 ### Incident response (agent)
 

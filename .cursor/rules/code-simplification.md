@@ -133,6 +133,7 @@ Scan for these patterns — each one is a concrete signal, not a vague smell:
 | Nested ternaries | Requires mental stack to parse | Replace with if/else chains, switch, or lookup objects |
 | Boolean parameter flags | `doThing(true, false, true)` | Replace with options objects or separate functions |
 | Repeated conditionals | Same `if` check in multiple places | Extract to a well-named predicate function |
+| Multi-prerequisite guards | One function checks patron **and** holding (or more) | Split into one guard per slot; compose for combined tools (Composed Method) |
 
 **Naming and readability:**
 
@@ -149,10 +150,12 @@ Scan for these patterns — each one is a concrete signal, not a vague smell:
 | Pattern | Signal | Simplification |
 |---------|--------|----------------|
 | Duplicated logic | Same 5+ lines in multiple places | Extract to a shared function |
+| Duplicated desk copy | Same staff message in coordinator and tools | Single `messages.py` helper; pass `IntentAction` + query |
 | Dead code | Unreachable branches, unused variables, commented-out blocks | Remove (after confirming it's truly dead) |
 | Unnecessary abstractions | Wrapper that adds no value | Inline the wrapper, call the underlying function directly |
 | Over-engineered patterns | Factory-for-a-factory, strategy-with-one-strategy | Replace with the simple direct approach |
 | Redundant type assertions | Casting to a type that's already inferred | Remove the assertion |
+| Scattered user-facing strings | Same desk copy in coordinator, tools, and tests | Centralize in `messages.py`; intent-specific builders with query echo |
 
 ### Step 3: Apply Changes Incrementally
 

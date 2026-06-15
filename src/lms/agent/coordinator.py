@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy.orm import Session
 
-from lms.agent.intent_parser import IntentAction, LLMIntentParser, ParsedIntent
+from lms.agent import messages as desk
+from lms.agent.intent_parser import LLMIntentParser
 from lms.agent.masking import redact_for_audit
+from lms.agent.schemas import IntentAction, ParsedIntent
 from lms.agent.session import (
     AgentIssueSession,
+    IssueSlots,
     PendingActionKind,
     PendingApproval,
     SessionStore,
@@ -21,8 +25,9 @@ from lms.agent.tools import (
     AUTHORIZED_TOOL_NAMES,
     RESTRICTED_TOOL_NAMES,
     IssueTools,
+    ToolResult,
 )
-from lms.api.composition import get_circulation_orchestrator
+from lms.agent.tracing import AgentTracing
 from lms.api.errors import AppError, ErrorCode
 from lms.api.workflows.search_and_issue import SearchAndIssueWorkflow
 from lms.config import Settings, get_settings
@@ -44,16 +49,21 @@ class IssueAgentCoordinator:
     def __init__(
         self,
         session: Session,
+        *,
+        workflow: SearchAndIssueWorkflow,
+        fulfillment: FulfillmentService,
+        parser: LLMIntentParser,
         settings: Settings | None = None,
         store: SessionStore | None = None,
+        tracing: AgentTracing | None = None,
     ) -> None:
         self._db = session
         self._settings = settings or get_settings()
         self._store = store or session_store
-        orchestrator = get_circulation_orchestrator(session)
-        self._workflow = SearchAndIssueWorkflow(session, orchestrator)
-        self._fulfillment = FulfillmentService(session)
-        self._parser = LLMIntentParser(self._settings)
+        self._workflow = workflow
+        self._fulfillment = fulfillment
+        self._parser = parser
+        self._tracing = tracing or AgentTracing(self._settings)
 
     def start_session(self, operator_id: str) -> AgentIssueSession:
         self._ensure_enabled()
@@ -66,28 +76,27 @@ class IssueAgentCoordinator:
             raise AppError(ErrorCode.NOT_FOUND, "Agent session not found", status_code=404)
         return found
 
+    def get_session_for_operator(self, session_id: UUID, operator_id: str) -> AgentIssueSession:
+        agent_session = self.get_session(session_id)
+        self._ensure_operator_owns_session(agent_session, operator_id)
+        return agent_session
+
     def handle_message(self, session_id: UUID, message: str, operator_id: str) -> AgentTurnResult:
         self._ensure_enabled()
-        agent_session = self.get_session(session_id)
-        if agent_session.operator_id != operator_id:
-            raise AppError(
-                ErrorCode.FORBIDDEN,
-                "Session belongs to another operator",
-                status_code=403,
-            )
-
+        agent_session = self.get_session_for_operator(session_id, operator_id)
         agent_session.tool_calls_this_turn = 0
         agent_session.messages.append({"role": "user", "content": message})
-        tools = IssueTools(
-            self._db,
-            self._workflow,
-            self._fulfillment,
-            agent_session.pseudonyms,
-        )
 
+        tools = self._tools_for(agent_session)
         has_pending = agent_session.pending_approval is not None
-        intent = self._parser.parse(message, has_pending_approval=has_pending)
-        reply = self._apply_intent(agent_session, tools, intent, operator_id=operator_id)
+        with self._tracing.turn_span(
+            session_id=str(session_id),
+            operator_id=operator_id,
+            agent_id=self.AGENT_ID,
+            action="message",
+        ):
+            intent = self._parser.parse(message, has_pending_approval=has_pending)
+            reply = self._apply_intent(agent_session, tools, intent, user_message=message)
 
         agent_session.messages.append({"role": "assistant", "content": reply.assistant_message})
         self._store.save(agent_session)
@@ -101,13 +110,7 @@ class IssueAgentCoordinator:
         operator_id: str,
     ) -> AgentTurnResult:
         self._ensure_enabled()
-        agent_session = self.get_session(session_id)
-        if agent_session.operator_id != operator_id:
-            raise AppError(
-                ErrorCode.FORBIDDEN,
-                "Session belongs to another operator",
-                status_code=403,
-            )
+        agent_session = self.get_session_for_operator(session_id, operator_id)
         pending = agent_session.pending_approval
         if pending is None:
             raise AppError(
@@ -116,35 +119,23 @@ class IssueAgentCoordinator:
                 status_code=422,
             )
 
-        tools = IssueTools(
-            self._db,
-            self._workflow,
-            self._fulfillment,
-            agent_session.pseudonyms,
-        )
+        tools = self._tools_for(agent_session)
+        with self._tracing.turn_span(
+            session_id=str(session_id),
+            operator_id=operator_id,
+            agent_id=self.AGENT_ID,
+            action="resume_approved" if approved else "resume_denied",
+        ):
+            if not approved:
+                kind = pending.kind
+                agent_session.pending_approval = None
+                return self._complete_turn(agent_session, desk.approval_denied(kind))
 
-        if not approved:
-            agent_session.pending_approval = None
-            msg = "Action cancelled. You can continue or use the wizard."
-            agent_session.messages.append({"role": "assistant", "content": msg})
-            self._store.save(agent_session)
-            return AgentTurnResult(
-                session_id=agent_session.session_id,
-                assistant_message=msg,
-                pending_approval=None,
-                session_summary=self._session_summary(agent_session),
+            result_msg = self._execute_pending(
+                agent_session, tools, pending, operator_id=operator_id
             )
-
-        result_msg = self._execute_pending(agent_session, tools, pending, operator_id=operator_id)
-        agent_session.pending_approval = None
-        agent_session.messages.append({"role": "assistant", "content": result_msg})
-        self._store.save(agent_session)
-        return AgentTurnResult(
-            session_id=agent_session.session_id,
-            assistant_message=result_msg,
-            pending_approval=None,
-            session_summary=self._session_summary(agent_session),
-        )
+            agent_session.pending_approval = None
+            return self._complete_turn(agent_session, result_msg)
 
     def _apply_intent(
         self,
@@ -152,7 +143,7 @@ class IssueAgentCoordinator:
         tools: IssueTools,
         intent: ParsedIntent,
         *,
-        operator_id: str,
+        user_message: str,
     ) -> AgentTurnResult:
         if intent.action in {IntentAction.APPROVE, IntentAction.DENY}:
             raise AppError(
@@ -162,117 +153,149 @@ class IssueAgentCoordinator:
             )
 
         slots = agent_session.slots
+        self._apply_slot_updates(intent, slots)
 
-        if intent.fulfillment_mode is not None:
-            slots.fulfillment_mode = intent.fulfillment_mode
-        if intent.destination_notes:
-            slots.destination_notes = intent.destination_notes
-
-        tool_result_msg: str | None = None
-
-        if intent.action == IntentAction.SEARCH_PATRON:
-            if intent.card_barcode:
-                res = self._run_tool(
-                    agent_session,
-                    "resolve_patron",
-                    lambda: tools.resolve_patron(slots, card_barcode=intent.card_barcode),
-                )
-                tool_result_msg = res.message
-            elif intent.external_ref:
-                res = self._run_tool(
-                    agent_session,
-                    "resolve_patron",
-                    lambda: tools.resolve_patron(slots, external_ref=intent.external_ref),
-                )
-                tool_result_msg = res.message
-            elif intent.patron_query:
-                matches = self._run_tool(
-                    agent_session,
-                    "search_patrons",
-                    lambda: tools.search_patrons(intent.patron_query),
-                )
-                patrons = matches.data.get("patrons", [])
-                if len(patrons) == 1:
-                    pseudo = str(patrons[0]["pseudonym"])
-                    pid = agent_session.pseudonyms.resolve_patron(pseudo)
-                    if pid:
-                        res = self._run_tool(
-                            agent_session,
-                            "resolve_patron",
-                            lambda: tools.resolve_patron(slots, patron_id=pid),
-                        )
-                        tool_result_msg = res.message
-                    else:
-                        tool_result_msg = matches.message
-                else:
-                    tool_result_msg = matches.message
-            else:
-                tool_result_msg = "Provide a patron name, card, or admission number."
-        elif intent.action == IntentAction.SEARCH_CATALOG:
-            tool_result_msg = self._run_tool(
-                agent_session,
-                "search_lendable",
-                lambda: tools.search_lendable(slots, intent.catalog_query or ""),
-            ).message
-        elif intent.action == IntentAction.SELECT_BARCODE:
-            tool_result_msg = self._run_tool(
-                agent_session,
-                "select_barcode",
-                lambda: tools.select_barcode(slots, intent.holding_barcode or ""),
-            ).message
-        elif intent.action == IntentAction.SET_FULFILLMENT:
-            tool_result_msg = f"Fulfillment mode set to {slots.fulfillment_mode}."
-        elif intent.action == IntentAction.REQUEST_COMMIT:
-            if intent.patron_query:
-                self._run_tool(
-                    agent_session,
-                    "resolve_patron",
-                    lambda: tools.resolve_patron(slots, display_name=intent.patron_query),
-                )
-            if intent.catalog_query:
-                self._run_tool(
+        match intent.action:
+            case IntentAction.SEARCH_PATRON:
+                message = self._handle_search_patron(agent_session, tools, intent, slots)
+            case IntentAction.SEARCH_CATALOG:
+                message = self._run_tool(
                     agent_session,
                     "search_lendable",
-                    lambda: tools.search_lendable(slots, intent.catalog_query),
-                )
-            validation = self._run_tool(
-                agent_session,
-                "validate_issue",
-                lambda: tools.validate_issue(slots),
-            )
-            if not validation.ok:
-                return self._result(agent_session, validation.message)
-            return self._request_commit_approval(agent_session, operator_id)
-        elif intent.action == IntentAction.REQUEST_CANCEL_ISSUE:
-            return self._request_cancel_approval(agent_session)
-        elif intent.action == IntentAction.REQUEST_FULFILLMENT_TRANSITION:
-            status = intent.fulfillment_status or FulfillmentStatus.IN_TRANSIT
-            return self._request_fulfillment_approval(agent_session, status, operator_id)
-        else:
-            tool_result_msg = intent.reply_hint or (
-                "I can help issue a book. Try: "
-                "'Issue [title] to [patron name], deliver to Class 5A' "
-                "or identify a patron first."
-            )
+                    lambda: tools.search_lendable(
+                        slots,
+                        intent.catalog_query or "",
+                        action=intent.action,
+                    ),
+                ).message
+            case IntentAction.SELECT_BARCODE:
+                message = self._run_tool(
+                    agent_session,
+                    "select_barcode",
+                    lambda: tools.select_barcode(
+                        slots,
+                        intent.holding_barcode or "",
+                        action=intent.action,
+                    ),
+                ).message
+            case IntentAction.SET_FULFILLMENT:
+                message = desk.fulfillment_mode_set(slots.fulfillment_mode)
+            case IntentAction.REQUEST_COMMIT:
+                return self._handle_request_commit(agent_session, tools, intent, slots)
+            case IntentAction.REQUEST_CANCEL_ISSUE:
+                return self._request_cancel_approval(agent_session)
+            case IntentAction.REQUEST_FULFILLMENT_TRANSITION:
+                target = intent.fulfillment_status or FulfillmentStatus.IN_TRANSIT
+                return self._request_fulfillment_approval(agent_session, tools, slots, target)
+            case IntentAction.CHAT:
+                message = intent.reply_hint or desk.help_for_unknown_intent(user_message)
+            case _:
+                message = intent.reply_hint or desk.help_for_unknown_intent(user_message)
 
-        return self._result(agent_session, tool_result_msg or "Done.")
+        return self._result(agent_session, message or desk.turn_acknowledged(user_message))
 
-    def _request_commit_approval(
+    def _handle_search_patron(
         self,
         agent_session: AgentIssueSession,
-        operator_id: str,
-    ) -> AgentTurnResult:
-        slots = agent_session.slots
-        if slots.patron_id is None or slots.holding_id is None:
-            return self._result(agent_session, "Need patron and copy before commit.")
+        tools: IssueTools,
+        intent: ParsedIntent,
+        slots: IssueSlots,
+    ) -> str:
+        if intent.card_barcode:
+            return self._run_tool(
+                agent_session,
+                "resolve_patron",
+                lambda: tools.resolve_patron(slots, card_barcode=intent.card_barcode),
+            ).message
+        if intent.external_ref:
+            return self._run_tool(
+                agent_session,
+                "resolve_patron",
+                lambda: tools.resolve_patron(slots, external_ref=intent.external_ref),
+            ).message
+        if not intent.patron_query:
+            return desk.patron_search_empty()
 
-        summary = (
-            f"Issue {slots.catalog_title or 'copy'} "
-            f"({slots.holding_barcode}) to {slots.patron_display_name} "
-            f"via {slots.fulfillment_mode}."
+        patron_query = intent.patron_query
+        matches = self._run_tool(
+            agent_session,
+            "search_patrons",
+            lambda: tools.search_patrons(patron_query),
         )
-        idem = str(uuid4())
-        agent_session.pending_approval = PendingApproval(
+        patrons_raw = matches.data.get("patrons", [])
+        if not isinstance(patrons_raw, list):
+            return matches.message
+        patrons: list[dict[str, object]] = patrons_raw
+        if len(patrons) != 1:
+            return matches.message
+
+        pseudo = str(patrons[0]["pseudonym"])
+        patron_id = agent_session.pseudonyms.resolve_patron(pseudo)
+        if patron_id is None:
+            return matches.message
+
+        return self._run_tool(
+            agent_session,
+            "resolve_patron",
+            lambda: tools.resolve_patron(
+                slots,
+                patron_id=patron_id,
+                message_query=patron_query,
+            ),
+        ).message
+
+    def _handle_request_commit(
+        self,
+        agent_session: AgentIssueSession,
+        tools: IssueTools,
+        intent: ParsedIntent,
+        slots: IssueSlots,
+    ) -> AgentTurnResult:
+        if intent.patron_query:
+            self._run_tool(
+                agent_session,
+                "resolve_patron",
+                lambda: tools.resolve_patron(slots, display_name=intent.patron_query),
+            )
+        if intent.catalog_query:
+            catalog_query = intent.catalog_query
+            self._run_tool(
+                agent_session,
+                "search_lendable",
+                lambda: tools.search_lendable(
+                    slots,
+                    catalog_query,
+                    action=intent.action,
+                ),
+            )
+        validation = self._run_tool(
+            agent_session,
+            "validate_issue",
+            lambda: tools.validate_issue(slots, action=intent.action),
+        )
+        if not validation.ok:
+            return self._result(agent_session, validation.message)
+        return self._request_commit_approval(agent_session)
+
+    def _request_commit_approval(self, agent_session: AgentIssueSession) -> AgentTurnResult:
+        slots = agent_session.slots
+        if not slots.has_patron_and_holding:
+            return self._result(
+                agent_session,
+                desk.missing_slots_for_commit(
+                    missing_patron=slots.patron_id is None,
+                    missing_copy=slots.holding_id is None,
+                ),
+            )
+
+        summary = desk.commit_approval_summary(
+            slots.patron_display_name or "patron",
+            slots.catalog_title or "copy",
+            slots.holding_barcode or "barcode",
+            slots.fulfillment_mode,
+        )
+        self._set_pending_approval(
+            agent_session,
             kind=PendingActionKind.COMMIT_ISSUE,
             summary=summary,
             details={
@@ -281,26 +304,25 @@ class IssueAgentCoordinator:
                 "holding_barcode": slots.holding_barcode,
                 "fulfillment_mode": slots.fulfillment_mode.value,
             },
-            idempotency_key=idem,
         )
-        msg = summary + " Approve this issue?"
         return self._result(
             agent_session,
-            msg,
+            desk.commit_approval_prompt(summary),
             pending=self._pending_payload(agent_session.pending_approval),
         )
 
     def _request_cancel_approval(self, agent_session: AgentIssueSession) -> AgentTurnResult:
         slots = agent_session.slots
         if slots.loan_id is None:
-            return self._result(agent_session, "No open loan in this session to cancel.")
+            return self._result(agent_session, desk.no_open_loan_for_cancel())
 
-        summary = (
-            f"Cancel issue of {slots.catalog_title or 'copy'} "
-            f"({slots.holding_barcode}) to {slots.patron_display_name}?"
+        summary = desk.cancel_approval_summary(
+            slots.patron_display_name or "patron",
+            slots.catalog_title or "copy",
+            slots.holding_barcode or "barcode",
         )
-        idem = str(uuid4())
-        agent_session.pending_approval = PendingApproval(
+        self._set_pending_approval(
+            agent_session,
             kind=PendingActionKind.CANCEL_ISSUE,
             summary=summary,
             details={
@@ -308,42 +330,42 @@ class IssueAgentCoordinator:
                 "catalog_title": slots.catalog_title,
                 "holding_barcode": slots.holding_barcode,
             },
-            idempotency_key=idem,
         )
         return self._result(
             agent_session,
-            summary,
+            desk.cancel_approval_prompt(summary),
             pending=self._pending_payload(agent_session.pending_approval),
         )
 
     def _request_fulfillment_approval(
         self,
         agent_session: AgentIssueSession,
+        tools: IssueTools,
+        slots: IssueSlots,
         target: FulfillmentStatus,
-        operator_id: str,
     ) -> AgentTurnResult:
-        slots = agent_session.slots
-        status_result = IssueTools(
-            self._db,
-            self._workflow,
-            self._fulfillment,
-            agent_session.pseudonyms,
-        ).get_fulfillment_status(slots)
+        status_result = self._run_tool(
+            agent_session,
+            "get_fulfillment_status",
+            lambda: tools.get_fulfillment_status(slots),
+        )
         if not status_result.ok:
             return self._result(agent_session, status_result.message)
 
-        summary = f"Transition fulfillment to {target.value}?"
-        idem = str(uuid4())
-        agent_session.pending_approval = PendingApproval(
+        prompt = desk.fulfillment_transition_prompt(
+            target,
+            title=slots.catalog_title,
+        )
+        self._set_pending_approval(
+            agent_session,
             kind=PendingActionKind.TRANSITION_FULFILLMENT,
-            summary=summary,
+            summary=prompt,
             details={"target_status": target.value},
-            idempotency_key=idem,
         )
         slots.fulfillment_target_status = target
         return self._result(
             agent_session,
-            summary,
+            prompt,
             pending=self._pending_payload(agent_session.pending_approval),
         )
 
@@ -357,7 +379,7 @@ class IssueAgentCoordinator:
     ) -> str:
         slots = agent_session.slots
         if pending.kind == PendingActionKind.COMMIT_ISSUE:
-            result = self._run_tool(
+            return self._run_tool(
                 agent_session,
                 "commit_issue",
                 lambda: tools.commit_issue(
@@ -365,11 +387,10 @@ class IssueAgentCoordinator:
                     idempotency_key=pending.idempotency_key,
                     operator_id=operator_id,
                 ),
-            )
-            return result.message
+            ).message
         if pending.kind == PendingActionKind.TRANSITION_FULFILLMENT:
             target = slots.fulfillment_target_status or FulfillmentStatus.IN_TRANSIT
-            result = self._run_tool(
+            return self._run_tool(
                 agent_session,
                 "transition_fulfillment",
                 lambda: tools.transition_fulfillment(
@@ -377,21 +398,24 @@ class IssueAgentCoordinator:
                     target,
                     idempotency_key=pending.idempotency_key,
                 ),
-            )
-            return result.message
+            ).message
         if pending.kind == PendingActionKind.CANCEL_ISSUE:
-            result = self._run_tool(
+            return self._run_tool(
                 agent_session,
                 "cancel_issue",
                 lambda: tools.cancel_issue(
                     slots,
                     idempotency_key=pending.idempotency_key,
                 ),
-            )
-            return result.message
+            ).message
         raise AppError(ErrorCode.RETRIABLE_ERROR, "Unknown pending action", status_code=500)
 
-    def _run_tool(self, agent_session: AgentIssueSession, name: str, fn):  # type: ignore[no-untyped-def]
+    def _run_tool(
+        self,
+        agent_session: AgentIssueSession,
+        name: str,
+        fn: Callable[[], ToolResult],
+    ) -> ToolResult:
         if name in RESTRICTED_TOOL_NAMES:
             raise AppError(ErrorCode.FORBIDDEN, f"Tool {name} is restricted", status_code=403)
         if name not in AUTHORIZED_TOOL_NAMES:
@@ -403,7 +427,53 @@ class IssueAgentCoordinator:
                 "Too many tool calls this turn",
                 status_code=429,
             )
-        return fn()
+        with self._tracing.tool_span(
+            tool_name=name,
+            session_id=str(agent_session.session_id),
+            operator_id=agent_session.operator_id,
+            agent_id=self.AGENT_ID,
+        ):
+            return fn()
+
+    def _tools_for(self, agent_session: AgentIssueSession) -> IssueTools:
+        return IssueTools(
+            self._db,
+            self._workflow,
+            self._fulfillment,
+            agent_session.pseudonyms,
+        )
+
+    def _apply_slot_updates(self, intent: ParsedIntent, slots: IssueSlots) -> None:
+        if intent.fulfillment_mode is not None:
+            slots.fulfillment_mode = intent.fulfillment_mode
+        if intent.destination_notes:
+            slots.destination_notes = intent.destination_notes
+
+    def _set_pending_approval(
+        self,
+        agent_session: AgentIssueSession,
+        *,
+        kind: PendingActionKind,
+        summary: str,
+        details: dict[str, Any],
+    ) -> None:
+        agent_session.pending_approval = PendingApproval(
+            kind=kind,
+            summary=summary,
+            details=details,
+            idempotency_key=str(uuid4()),
+        )
+
+    def _complete_turn(self, agent_session: AgentIssueSession, message: str) -> AgentTurnResult:
+        redacted = redact_for_audit(message)
+        agent_session.messages.append({"role": "assistant", "content": redacted})
+        self._store.save(agent_session)
+        return AgentTurnResult(
+            session_id=agent_session.session_id,
+            assistant_message=redacted,
+            pending_approval=None,
+            session_summary=self._session_summary(agent_session),
+        )
 
     def _result(
         self,
@@ -419,7 +489,9 @@ class IssueAgentCoordinator:
             session_summary=self._session_summary(agent_session),
         )
 
-    def _pending_payload(self, pending: PendingApproval) -> dict[str, Any]:
+    def _pending_payload(self, pending: PendingApproval | None) -> dict[str, Any]:
+        if pending is None:
+            return {}
         return {
             "kind": pending.kind.value,
             "summary": pending.summary,
@@ -438,6 +510,18 @@ class IssueAgentCoordinator:
             "fulfillment_mode": slots.fulfillment_mode.value,
             "has_pending_approval": agent_session.pending_approval is not None,
         }
+
+    def _ensure_operator_owns_session(
+        self,
+        agent_session: AgentIssueSession,
+        operator_id: str,
+    ) -> None:
+        if agent_session.operator_id != operator_id:
+            raise AppError(
+                ErrorCode.FORBIDDEN,
+                "Session belongs to another operator",
+                status_code=403,
+            )
 
     def _ensure_enabled(self) -> None:
         if not self._settings.agent_issue_enabled:

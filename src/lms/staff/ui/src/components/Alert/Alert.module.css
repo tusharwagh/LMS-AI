@@ -1,0 +1,40 @@
+.alert {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-4);
+  font-size: var(--font-size-sm);
+  border: 1px solid transparent;
+}
+
+.error {
+  background: var(--color-danger-subtle);
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.success {
+  background: var(--color-success-subtle);
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.warn {
+  background: var(--color-warn-subtle);
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.info {
+  background: var(--color-primary-subtle);
+  border-color: #bfdbfe;
+  color: #1e40af;
+}
+
+.alert ul {
+  margin: var(--space-2) 0 0;
+  padding-left: 1.25rem;
+}
+
+.alert li {
+  margin-bottom: var(--space-1);
+}

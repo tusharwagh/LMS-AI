@@ -13,6 +13,14 @@ venv/
 .pytest_cache/
 .import_linter_cache/
 node_modules/
+src/lms/staff/ui/node_modules/
+src/lms/staff/ui/node_modules/.tmp/
+
+# Staff desk UI — Vite build output (built in CI, Docker, setup-native, deploy-native)
+src/lms/staff/static/assets/
+src/lms/staff/static/index.html
+src/lms/staff/static/app.js
+src/lms/staff/static/styles.css
 
 # Environment
 .env
@@ -21,9 +29,13 @@ node_modules/
 *.pem
 *.key
 
-# IDE
+# IDE (commit shared debug config; ignore local overrides)
 .idea/
-.vscode/
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
 *.swp
 
 # OS

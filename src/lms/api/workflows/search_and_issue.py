@@ -1,6 +1,7 @@
 """WF-01 — Search and issue a book (MVP.md §2.1, ADR-021)."""
 
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -29,7 +30,7 @@ class IssueStartResult:
     patron_id: UUID
     patron_display_name: str
     patron_validation: ValidationReport
-    search_results: list[dict]
+    search_results: list[dict[str, Any]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,7 +81,7 @@ class SearchAndIssueWorkflow:
             display_name=display_name,
         )
         validation = self._validator.validate_patron(patron.id)
-        search_results: list[dict] = []
+        search_results: list[dict[str, Any]] = []
         if search_query:
             hits = self._catalog.search_lendable(q=search_query)
             search_results = [

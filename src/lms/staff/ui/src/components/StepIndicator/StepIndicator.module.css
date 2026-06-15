@@ -1,0 +1,30 @@
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-pill);
+  background: #e2e8f0;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.done {
+  background: #bbf7d0;
+  color: #166534;
+}
+
+.upcoming {
+  color: var(--color-text-muted);
+}

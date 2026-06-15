@@ -36,8 +36,20 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
-      - name: npm audit
+      - name: Install staff UI dependencies
+        run: make staff-ui-install
+
+      - name: Build staff UI
+        run: make staff-ui-build
+
+      - name: Typecheck staff UI
+        run: make staff-ui-typecheck
+
+      - name: npm audit (root diagram deps)
         run: npm audit --audit-level=high
+
+      - name: npm audit (staff UI)
+        run: cd src/lms/staff/ui && npm audit --audit-level=high
 
       - name: Verify diagram script
         run: npm run diagram
@@ -51,6 +63,9 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
 
+      - name: Install Playwright browser
+        run: playwright install chromium --with-deps
+
       - name: Ruff
         run: ruff check src tests
 
@@ -58,6 +73,9 @@ jobs:
         run: lint-imports
         env:
           PYTHONPATH: src
+
+      - name: Mypy
+        run: mypy
 
       - name: Migrate database
         run: python -m alembic upgrade head

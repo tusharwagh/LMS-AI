@@ -24,8 +24,17 @@ class HoldingSnapshot:
     is_lendable: bool
 
 
+@dataclass(frozen=True, slots=True)
+class PatronEligibilitySnapshot:
+    patron_id: UUID
+    is_active: bool
+    is_blocked: bool
+    open_loan_count: int
+    patron_type_id: UUID
+
+
 class PatronEligibilityPort(Protocol):
-    def check(self, patron_id: UUID) -> object: ...
+    def check(self, patron_id: UUID) -> PatronEligibilitySnapshot: ...
 
 
 class HoldingCirculationPort(Protocol):

@@ -1,0 +1,15 @@
+.wrap {
+  margin-top: var(--space-4);
+}
+
+.name {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+}
+
+.meta {
+  margin: 0 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}

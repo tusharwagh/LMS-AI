@@ -1,0 +1,89 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "LMS API (breakpoints)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "lms.main:app",
+        "--app-dir",
+        "src",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000",
+        "--log-level",
+        "debug"
+      ],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "APP_DEBUG": "true"
+      },
+      "envFile": "${workspaceFolder}/.env",
+      "cwd": "${workspaceFolder}",
+      "jinja": true,
+      "justMyCode": true,
+      "preLaunchTask": "ensure-venv"
+    },
+    {
+      "name": "LMS API (reload + breakpoints)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "lms.main:app",
+        "--reload",
+        "--app-dir",
+        "src",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000",
+        "--log-level",
+        "debug"
+      ],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "APP_DEBUG": "true"
+      },
+      "envFile": "${workspaceFolder}/.env",
+      "cwd": "${workspaceFolder}",
+      "jinja": true,
+      "subProcess": true,
+      "justMyCode": true,
+      "preLaunchTask": "ensure-venv"
+    },
+    {
+      "name": "Pytest: current file",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["${file}", "-vv", "-s"],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      },
+      "envFile": "${workspaceFolder}/.env",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true,
+      "preLaunchTask": "ensure-venv"
+    },
+    {
+      "name": "Pytest: agent tests",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["tests/agent", "-vv", "-s"],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "AGENT_ISSUE_ENABLED": "true",
+        "AGENT_MOCK_LLM": "true"
+      },
+      "envFile": "${workspaceFolder}/.env",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true,
+      "preLaunchTask": "ensure-venv"
+    }
+  ]
+}
