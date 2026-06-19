@@ -156,3 +156,96 @@ Apply similar tiering to LangGraph graphs: different compiled graphs or conditio
 | Eval regression | Datasets, prompt versions, run scores |
 
 Environment: `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST` (self-hosted or cloud).
+
+## Twelve-Factor App (agentic AI)
+
+Reference: [12factor.net](https://12factor.net/). Use during architecture review alongside IMDA §3 lifecycle controls.
+
+### I. Codebase
+
+One repo per deployable agent product. Graph definitions, system prompts, tool schemas, and governance nodes ship together. Multi-agent systems may share a repo but deploy as separate processes or feature-flagged graphs — not ad-hoc forks per environment.
+
+### II. Config
+
+Strict separation of config from code:
+
+| Belongs in env / Settings | Must NOT live in code or prompts |
+|---------------------------|----------------------------------|
+| API keys (LLM, Langfuse, MCP) | Model routing secrets |
+| Feature flags (`agent_issue_enabled`) | Production toggles in Python constants |
+| Model IDs, temperature, token caps | Tier-specific limits hardcoded in nodes |
+| Database URLs, CORS origins | Environment-specific URLs in source |
+
+Validate production config at startup (fail fast on default secrets, wildcard CORS).
+
+### III. Dependencies
+
+Declare all dependencies in manifest (`pyproject.toml`, `package.json`). Pin versions for reproducible builds and eval regression. Treat LangChain/LangGraph/LiteLLM upgrades as release events with agent test suites.
+
+### IV. Backing services
+
+Postgres (checkpointer + app data), LLM providers, Langfuse, MCP hosts — all **attached resources** accessed via connection strings and credentials. No code changes when swapping staging Postgres for production or rotating LLM provider.
+
+**IMDA tie-in:** sandbox credentials in dev; least-privilege production keys; never embed prod DB URLs in graph nodes.
+
+### V. Build, release, run
+
+| Stage | Agent operations |
+|-------|-------------------|
+| **Build** | Lint, typecheck, unit/integration/agent tests on CI artifact |
+| **Release** | Immutable deploy with graph version tag, prompt hash, dependency lock |
+| **Run** | Start API workers only; no `pip install` or prompt edits at runtime |
+
+Phased rollout (cohort / feature flag) happens at **run** stage via config, not by maintaining parallel codebases.
+
+### VI. Processes
+
+Agent API workers are **stateless**. Conversation thread, HITL `interrupt` payloads, and pending approvals live in the checkpointer (Postgres), not worker memory. Any worker can `invoke` or `Command(resume=...)` for a given `thread_id`.
+
+### VII. Port binding
+
+Export the agent desk as a self-contained HTTP service (FastAPI/Uvicorn). Do not assume co-location with nginx/apache configuration in application code — the process binds a port and serves.
+
+### VIII. Concurrency
+
+Scale horizontally by adding worker processes. Complement with **in-request** bounds: `agent_max_tool_calls_per_turn`, rate limits on `/agent` routes, circuit breakers on external tool calls.
+
+### IX. Disposability
+
+- **Fast startup:** lazy-init LLM clients; optional Langfuse client only when keys present
+- **Graceful shutdown:** flush Langfuse buffer on SIGTERM; do not kill mid-HITL without checkpoint persist
+- **Bounded retries:** SOP halt-and-notify — no infinite tool retry loops (IMDA §2 operational workflows)
+
+### X. Dev/prod parity
+
+Same graph code and tool allowlists across environments. Differences **only** via config:
+
+| Environment | Typical config |
+|-------------|----------------|
+| CI / unit | `AGENT_MOCK_LLM=true`, in-memory or test DB |
+| Staging | Real graph, staging DB, staging LLM keys, Langfuse project |
+| Production | Same graph, prod keys, stricter rate limits, HITL enforced |
+
+Avoid "prod-only" governance nodes — if a control matters in production, test it in CI with config that enables the path.
+
+### XI. Logs
+
+Treat logs as **event streams** to stdout (structured JSON via structlog or equivalent). Do not write application logs to rotating files inside containers.
+
+| Stream | Content |
+|--------|---------|
+| stdout | Request IDs, agent_id, thread_id, tool names, outcomes — **redacted** |
+| Langfuse | Model/tool spans, HITL events, eval scores — retention per data class |
+
+Never log raw PII, secrets, or full chain-of-thought.
+
+### XII. Admin processes
+
+One-off management tasks run as separate release/ops steps, never as agent tools:
+
+- Database migrations (`alembic upgrade head`, `make migrate`)
+- Seed / demo data (`make seed`)
+- Langfuse connectivity check (`make validate-langfuse`)
+- Offline eval datasets and regression scoring
+
+Agent graphs must not expose `run_migration` or `drop_table` tools unless explicitly chartered, HITL-gated, and isolated to admin-only deployables.

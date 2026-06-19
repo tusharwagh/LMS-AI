@@ -1,9 +1,9 @@
 # Research — architecture & design discovery
 
-This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–I) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E), **ops/CI hardening** (§13 E17, session F), **agent desk spec** (§13 E18, session G), **Phase 8 implementation + quality pass** (§13 E19, session H), **agent desk UX / messages / refactor** (§13 E20, session I), **friendly query+intent desk copy** (§13 E21, session I cont.), **Langfuse validation + React staff UI MVC** (§13 E22, session I cont.), **agent return + catalog issue workflows + AI assist UI layout** (§13 E24, session I cont.), and **guided desk flows + multi-provider LLM + comprehensive intent prompt** (§13 E25, session I cont.). **Context handoff** for the latest thread: [§0](#0-current-state-snapshot-jun-2026) + [§13 E25](#e25--session-i-cont-guided-desk-flows-multi-provider-llm--intent-prompt-jun-2026). Prior handoff: [§13 E24](#e24--session-i-cont-agent-return-catalog-issue--ai-assist-ui-jun-2026). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
+This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–I) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E), **ops/CI hardening** (§13 E17, session F), **agent desk spec** (§13 E18, session G), **Phase 8 implementation + quality pass** (§13 E19, session H), **agent desk UX / messages / refactor** (§13 E20, session I), **friendly query+intent desk copy** (§13 E21, session I cont.), **Langfuse validation + React staff UI MVC** (§13 E22, session I cont.), **agent return + catalog issue workflows + AI assist UI layout** (§13 E24, session I cont.), **guided desk flows + multi-provider LLM + comprehensive intent prompt** (§13 E25, session I cont.), **Twelve-Factor + IMDA governance skill alignment** (§13 E26, session I cont.), and **governance audit + code hardening** (§13 E27, session I cont.). **Context handoff** for the latest thread: [§0](#0-current-state-snapshot-jun-2026) + [§13 E27](#e27--session-i-cont-governance-audit--code-hardening-jun-2026). Prior handoff: [§13 E26](#e26--session-i-cont-twelve-factor--imda-governance-skill-jun-2026). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
 
 **Go-live gate (summary):** [§14](#14-go-live-checklist-summary) — full matrix in [go-live-checklist.md](go-live-checklist.md).  
-**Agent governance (summary):** [§15](#15-agent-governance-imda-mgf--enterprise-charter) — IMDA MGF v1.5 skill with Langfuse observability.  
+**Agent governance (summary):** [§15](#15-agent-governance-imda-mgf--enterprise-charter) — IMDA MGF v1.5 + **Twelve-Factor App** deployment discipline; Langfuse observability.  
 **Engineering craft (summary):** [§16](#16-clean-code-ddd--implementation-patterns) — Uncle Bob, Kent Beck, Vaughn Vernon for Python / FastAPI / LangGraph.
 
 **Canonical implementation spec:** [MVP.md](MVP.md) (requirements, architecture §8–§10, traceability §11, staff workflows §2.1, status §14).  
@@ -24,17 +24,19 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 | **Agent WF-02** | Done | Return by barcode / title / patron; multi-loan list; HITL select + commit; rollback on failure |
 | **Patron desk** | Done | “What books are issued to [patron]?” → list loans → next action (return / issue / catalog / done) |
 | **Guided flows** | Done | Issue, return, catalog browse, patron lookup — step-by-step with cancel (`decline_continue`) |
-| **LLM routing** | Done | LiteLLM multi-provider (`llm.py`): Groq, OpenAI, Anthropic, Together, Hugging Face; primary + chain + fallback |
+| **LLM routing** | Done | **`src/lms/shared/llm/`** gateway — routing, fallbacks, cache, rate limit, guardrails, cost; agent facade `llm.py` |
 | **Intent prompt** | Done | `llm_intent_prompt.py` — all 33 `IntentAction` values, 8 workflows, session_context table, 40+ examples |
 | **Staff UI** | Done | `src/lms/staff/ui/` → `make staff-ui-build`; AI assist: left compose / right conversation scroll |
 | **Desk copy** | Done | Intent-aware helpers in `messages.py`; UI renders API text verbatim |
 | **Langfuse (G13)** | Wired + validated | `make validate-langfuse`; runs on `make build`; `LANGFUSE_HOST` or `LANGFUSE_BASE_URL` |
-| **Tests** | **171 collected** | `make ci-native`; `make test-agent` → **32**; `tests/agent/` → **58**; 5 Playwright |
+| **Governance skills** | Updated | IMDA MGF v1.5 + **Twelve-Factor App** in `.cursor/skills/imda-agentic-ai-governance/`; rules cross-refs in security, API design, SonarQube |
+| **Governance code** | Hardened | Production `Settings` validation; LLM input + session history redaction; HITL blocks new messages; sanitized approval `details`; `intent_span` / `hitl_event` audit |
+| **Tests** | **178 collected** | `make ci-native`; `make test-agent` → **33**; `tests/agent/` → **59**; 5 Playwright |
 | **Go-live** | Pending | G1–G10 unchecked; **G13 charter sign-off** still operational |
 
-**Session I arc (post-E19):** rules/skills → messages → intent-aware copy → React CRM → Playwright → Langfuse → WF-02 return → catalog-first issue → **guided desk flows** → **issued-books inquiry** → **multi-provider LLM** → **comprehensive intent prompt**. Detail: §3.11, §13 E20–E25.
+**Session I arc (post-E19):** rules/skills → messages → intent-aware copy → React CRM → Playwright → Langfuse → WF-02 return → catalog-first issue → **guided desk flows** → **issued-books inquiry** → **multi-provider LLM** → **comprehensive intent prompt** → **Twelve-Factor + IMDA skill** → **governance audit + code hardening**. Detail: §3.11, §13 E20–E27.
 
-**Open next:** G13 IMDA charter sign-off (§15.8); eval datasets; live LLM staging outside mock CI; optional legacy `static/app.js` git cleanup.
+**Open next:** G13 IMDA charter sign-off (§15.8); **durable agent session store** (Postgres/Redis for multi-worker); eval datasets; live LLM staging outside mock CI.
 
 ---
 
@@ -42,7 +44,7 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 
 | Use | How |
 |-----|-----|
-| **Context recovery** | Start [§0](#0-current-state-snapshot-jun-2026); then §3 (A–I), §13 (E1–E25), §14–§16 |
+| **Context recovery** | Start [§0](#0-current-state-snapshot-jun-2026); then §3 (A–I), §13 (E1–E27), §14–§16 |
 | **User profile** | §2 + §3.5 (early product intent) + §13 (locked tech + workflow decisions) |
 | **Feeder for AI / docs** | Paste or reference sections when generating ADRs, code, or phase‑2 plans |
 | **Avoid duplicate debate** | §6 lists resolved vs deferred; §3.6 / §13 note what landed in repo vs chat-only |
@@ -624,8 +626,8 @@ Governance: research.md §15; craft: §16 + clean-code-ddd-lms-ai skill.
 | [library_domain_model_final.md](library_domain_model_final.md) | Cross-domain overview |
 | [cursor_key_workflows_for_k_12_library_m.md](cursor_key_workflows_for_k_12_library_m.md) | Consolidated index (points to domain docs) |
 | [diagrams/lms-architecture.tldr](diagrams/lms-architecture.tldr) | tldraw architecture diagram (`make diagram`) |
-| [.cursor/skills/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/imda-agentic-ai-governance/SKILL.md) | IMDA MGF v1.5 + enterprise agent charter for LangGraph agents |
-| [.cursor/skills/imda-agentic-ai-governance/reference.md](../.cursor/skills/imda-agentic-ai-governance/reference.md) | Risk factors, multi-agent risks, Langfuse observability mapping |
+| [.cursor/skills/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/imda-agentic-ai-governance/SKILL.md) | IMDA MGF v1.5 + Twelve-Factor App + enterprise agent charter |
+| [.cursor/skills/imda-agentic-ai-governance/reference.md](../.cursor/skills/imda-agentic-ai-governance/reference.md) | Risk factors, multi-agent risks, Twelve-Factor appendix, Langfuse mapping |
 | [.cursor/skills/clean-code-ddd-python/SKILL.md](../.cursor/skills/clean-code-ddd-python/SKILL.md) | Clean Code, Kent Beck patterns, Vernon DDD — Python / FastAPI / LangGraph |
 | [.cursor/skills/clean-code-ddd-lms-ai/SKILL.md](../.cursor/skills/clean-code-ddd-lms-ai/SKILL.md) | LMS-AI addendum — module map, import-linter, workflows, agent desk |
 | [.cursor/skills/clean-code-ddd-python/reference.md](../.cursor/skills/clean-code-ddd-python/reference.md) | Context map, entity vs value object, module placement |
@@ -958,7 +960,7 @@ If production load exceeds MVP baselines (100k catalogs, 250k holdings, 25 concu
 |------|----------------|
 | **G11** | Conversational issue via agent with mandatory HITL commit (incl. barcode select, issue cancel) |
 | **G12** | Agentic fulfillment transitions with HITL |
-| **G13** | IMDA charter signed; Langfuse audit; adversarial tests |
+| **G13** | IMDA charter signed; Langfuse audit; Twelve-Factor ops (config in env, `make ci-native`, stdout logs); runtime controls (§15.10); adversarial tests |
 
 See [go-live-checklist.md](go-live-checklist.md) §Agent desk criteria.
 
@@ -972,9 +974,9 @@ Blank table in [go-live-checklist.md](go-live-checklist.md) for **Engineering**,
 
 **Session focus (Jun 2026):** Codify responsible agent deployment guidance for future LangChain/LangGraph work in this repo — aligned with Singapore IMDA **Model AI Governance Framework for Agentic AI (MGF v1.5, May 2026)** and enterprise security guardrails.
 
-**Canonical skill:** [.cursor/skills/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/imda-agentic-ai-governance/SKILL.md)  
-**Supplement:** [.cursor/skills/imda-agentic-ai-governance/reference.md](../.cursor/skills/imda-agentic-ai-governance/reference.md)  
-**Cross-reference:** [.cursor/rules/security-and-hardening.md](../.cursor/rules/security-and-hardening.md) (app security patterns for agent guardrails)
+**Canonical skill:** [.cursor/skills/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/imda-agentic-ai-governance/SKILL.md) — IMDA MGF v1.5 **and Twelve-Factor App** deployment checklist for agent services  
+**Supplement:** [.cursor/skills/imda-agentic-ai-governance/reference.md](../.cursor/skills/imda-agentic-ai-governance/reference.md) — risk factors, multi-agent risks, **Twelve-Factor factor-by-factor notes**, Langfuse mapping  
+**Cross-reference:** [.cursor/rules/security-and-hardening.md](../.cursor/rules/security-and-hardening.md) (Factors II, XI); [.cursor/rules/api-and-interface-design.md](../.cursor/rules/api-and-interface-design.md) (Factor IV backing services)
 
 **Status:** Phase 8 agent desk **implemented** in `lms/agent/` and `/api/v1/agent/issue/*`. Charter in §15.8 remains the governance authority for go-live.
 
@@ -1033,7 +1035,37 @@ Observability stack standardized on **Langfuse**:
 2. **Rule-based** — governance nodes, input validation, rate limits  
 3. **Model / prompt-layer** — output filters, LLM judges (last resort)
 
-**Anti-patterns called out:** prompt-only "don't use tool X"; approve after irreversible action; unredacted PII in traces; infinite tool retries; direct prod deploy from agent output.
+**Anti-patterns called out:** prompt-only "don't use tool X"; approve after irreversible action; unredacted PII in traces; infinite tool retries; direct prod deploy from agent output; secrets or feature flags in prompts/graph state; dev-only graph forks; HITL tied to one server instance.
+
+### 15.9 Twelve-Factor deployment (operational baseline)
+
+Governance controls must survive production operations. The IMDA skill integrates [Twelve-Factor App](https://12factor.net/) discipline alongside MGF §3 lifecycle controls.
+
+| Factor | LMS-AI agent pattern |
+|--------|----------------------|
+| **II. Config** | `src/lms/config.py` (`Settings`) — `AGENT_*`, `LLM_*`, `LANGFUSE_*`; never in prompts or checkpoints |
+| **IV. Backing services** | Postgres (circulation DB), LiteLLM providers, Langfuse — attached via env URLs/keys |
+| **V. Build, release, run** | `make ci-native` (build+test) → deploy artifact → `make deploy-native` / run only |
+| **VI. Processes** | Stateless API workers; agent session/HITL in **in-process `SessionStore` (MVP)** — single worker per desk until Postgres/Redis store |
+| **X. Dev/prod parity** | Same graph/coordinator code; `AGENT_MOCK_LLM=true` in CI only |
+| **XI. Logs** | `tracing.py` → structlog stdout + optional Langfuse spans (redacted args) |
+| **XII. Admin** | `make migrate`, `make seed`, `make validate-langfuse` — not agent tools |
+
+Full factor map and anti-patterns: IMDA skill §“12-Factor agent deployment”; reference.md §“Twelve-Factor App (agentic AI)”.
+
+### 15.10 Runtime governance controls (code-enforced)
+
+Structural controls shipped in `src/lms/agent/` and `config.py` (E27 audit):
+
+| Control | Implementation |
+|---------|----------------|
+| Production config | `Settings.validate_production_security()` — default DB URL forbidden; agent enabled requires live LLM key + Langfuse + `AGENT_MOCK_LLM=false` |
+| LLM input privacy | `redact_for_audit()` on message before LiteLLM intent JSON (`intent_parser.py`) |
+| Session history | User turns stored redacted (`coordinator.py`) |
+| HITL exclusivity | New `/message` blocked while `pending_approval`; staff use Approve/Deny (`pending_approval_blocks_message`) |
+| API detail hygiene | `sanitize_approval_details()` strips UUIDs from HITL `details` exposed on API |
+| Audit spans | `AgentTracing.intent_span`, `hitl_event`; tool logs mark `args_redacted=True` |
+| Session durability | **MVP gap:** in-process `SessionStore` — single API worker per desk; Postgres/Redis store deferred |
 
 ### 15.6 Relevance to LMS-AI
 
@@ -1055,6 +1087,11 @@ Observability stack standardized on **Langfuse**:
 - [x] HITL before `commit_issue`, `cancel_issue`, `transition_fulfillment` (`pending_approval` + `/resume`)
 - [x] SOP error path halts and notifies — no unbounded retry loops (`AGENT_MAX_TOOL_CALLS_PER_TURN`)
 - [x] Groq API key + optional HF fallback documented in runbook §10
+- [x] Twelve-Factor config: secrets/flags in `Settings` only; structlog + Langfuse (§15.9)
+- [x] Production `Settings` rejects default DB URL; agent enabled requires live LLM + Langfuse keys (§15.10)
+- [x] LLM intent input redacted; user turns stored redacted; HITL blocks new messages while pending (§15.10)
+- [x] API-facing approval `details` strip internal UUIDs (`sanitize_approval_details`)
+- [x] CI gate before run — `make ci-native` passes (lint + full pytest)
 - [ ] Eval datasets for policy adherence; audit cadence defined
 - [ ] Wizard G7–G10 regression passes with `AGENT_ISSUE_ENABLED=true`
 
@@ -1769,6 +1806,98 @@ Agent: Done — … checked in. [refreshed desk list or next actions]
 
 ---
 
+### E26 — Session I (cont.): Twelve-Factor + IMDA governance skill (Jun 2026)
+
+**User ask:** Incorporate **Twelve-Factor App** design guidelines into the IMDA agent governance Cursor skill; upgrade related rules.
+
+#### E26.1 Skill updates
+
+| File | Change |
+|------|--------|
+| `.cursor/skills/imda-agentic-ai-governance/SKILL.md` | New §“12-Factor agent deployment” — 12-item checklist, factor map (IMDA ↔ 12-factor), LMS-AI conventions table, anti-patterns; extended implementation checklist and lifecycle §3 |
+| `.cursor/skills/imda-agentic-ai-governance/reference.md` | Full appendix §“Twelve-Factor App (agentic AI)” — all 12 factors with agent-specific guidance |
+
+**Rationale:** IMDA covers **governance and accountability**; Twelve-Factor covers **operational discipline** (config in env, stateless workers, build/release/run separation, stdout logs). Together they prevent governance controls from eroding under deploy drift.
+
+#### E26.2 Rule cross-references
+
+| Rule | Update |
+|------|--------|
+| `security-and-hardening.md` | Twelve-Factor Config in Secrets Management; AI section Factors II, X, XI |
+| `api-and-interface-design.md` | §6 Backing Services as Attached Resources (Factor IV) |
+| `sonarqube-quality.md` | Agent smells: secrets in prompts, dev graph forks, container log files |
+| `clean-code-ddd-lms-ai/SKILL.md` | Governance overlap mentions Twelve-Factor |
+| `python-code-analysis/SKILL.md` | Observability points to Factor XI |
+
+#### E26.3 LMS-AI mapping (authoritative paths)
+
+| Twelve-Factor concern | Implementation |
+|-----------------------|----------------|
+| Config (II) | `src/lms/config.py` — Pydantic `Settings`; production validator rejects default secret / wildcard CORS |
+| Backing services (IV) | `DATABASE_URL`, provider API keys, `LANGFUSE_*` |
+| Build / release / run (V) | `make ci-native` → deploy → `make deploy-native` / `run-dev` |
+| Stateless processes (VI) | `session.py` in-process store (MVP); HITL resume via `session_id` on same worker |
+| Dev/prod parity (X) | `AGENT_MOCK_LLM=true` in CI; same coordinator/graph in all envs |
+| Logs (XI) | `tracing.py` — structlog + optional Langfuse |
+| Admin (XII) | `make migrate`, `make seed`, `make validate-langfuse` |
+
+#### E26.4 Docs updated (this session)
+
+`research.md` §0, §15.9, E26; `MVP.md` §13.8; `runbook.md` §10; `go-live-checklist.md`; `plan-mvp.md`.
+
+#### E26.5 Still open
+
+| Item | Notes |
+|------|-------|
+| G13 charter sign-off | §15.8 residual risk line |
+| Live LLM staging | `AGENT_MOCK_LLM=false` with chosen `LLM_PROVIDERS` chain |
+| Eval datasets | Langfuse regression on tool selection / policy adherence |
+
+---
+
+### E27 — Session I (cont.): Governance audit + code hardening (Jun 2026)
+
+**User ask:** Verify the codebase against updated IMDA + Twelve-Factor skills/rules; modify accordingly; then summarize context and update docs.
+
+#### E27.1 Audit scope
+
+Applied: `.cursor/skills/imda-agentic-ai-governance/SKILL.md`, `clean-code-ddd-lms-ai`, `security-and-hardening.md`, `api-and-interface-design.md`. Focus: `src/lms/agent/`, `config.py`, `tracing.py`, agent API.
+
+**Already compliant:** tool allowlist, HITL on writes, RESTRICTED tools never bound, secrets via `Settings`, import-linter boundaries, stdout structlog, centralized `messages.py`, bounded tool calls.
+
+#### E27.2 Code changes (shipped)
+
+| Area | File(s) | Change |
+|------|---------|--------|
+| Production config (Factor II) | `config.py` | Reject default `DATABASE_URL`; when `agent_issue_enabled` in prod: require `agent_mock_llm=false`, LLM API key, Langfuse keys |
+| PII to LLM (IMDA §4) | `intent_parser.py` | `redact_for_audit()` on message before LiteLLM JSON payload; `intent_span` tracing |
+| Session history | `coordinator.py` | User turns stored redacted |
+| HITL integrity | `coordinator.py`, `messages.py` | Block new `/message` while `pending_approval`; `pending_approval_blocks_message()` |
+| API leakage | `masking.py`, `coordinator.py` | `sanitize_approval_details()` strips UUIDs from HITL `details` on API |
+| Observability (Factor XI) | `tracing.py` | `intent_span`, `hitl_event`, `args_redacted=True` on tool logs |
+| Composition | `agent_composition.py` | Shared `AgentTracing` for coordinator + parser |
+| Desk copy | `messages.py` | Plain language — no `LOAN_N` / `COPY_N` / `PATRON_N` in staff strings |
+| Session store doc | `session.py` | Documented in-process MVP limit (Factor VI gap) |
+| Tests | `test_security.py`, `test_agent_issue.py`, `test_intent_and_masking.py` | Production config, pending block, redaction/sanitize |
+
+#### E27.3 Known gap (documented, not implemented)
+
+**Durable session store:** `SessionStore` remains in-process RAM. Restart or horizontal scale loses sessions and pending approvals. Next structural step: Postgres/Redis-backed store with TTL for multi-worker production.
+
+#### E27.4 Verification
+
+| Gate | Result |
+|------|--------|
+| `make ci-native` | **pass** |
+| `make test-agent` | **33** tests |
+| `tests/hardening/test_security.py` | production agent config guards |
+
+#### E27.5 Docs updated
+
+`research.md` §0, §15.7, §15.9–§15.10, E27; `MVP.md` §13.8; `runbook.md` §10; `go-live-checklist.md`; `plan-mvp.md`; [README.md](../README.md).
+
+---
+
 ## 16. Clean Code, DDD & implementation patterns
 
 **Session focus (Jun 2026):** Codify engineering craft for this repo — **Clean Code** (Robert C. Martin), **Implementation Patterns** (Kent Beck), **Implementing DDD** (Vaughn Vernon) — applied to **Python 3.12**, **FastAPI**, **SQLAlchemy**, **LangChain / LangGraph**, and **Langfuse**.
@@ -1783,8 +1912,9 @@ Agent: Done — … checked in. [refreshed desk list or next actions]
 | Static & dynamic analysis | [.cursor/skills/python-code-analysis/SKILL.md](../.cursor/skills/python-code-analysis/SKILL.md) | ruff, mypy, import-linter, pytest markers |
 | Analysis addendum | [.cursor/skills/python-code-analysis/lms-ai.md](../.cursor/skills/python-code-analysis/lms-ai.md) | Makefile, CI, change-type test scope |
 | SonarQube rules | [.cursor/rules/sonarqube-quality.md](../.cursor/rules/sonarqube-quality.md) | Quality gate, bugs, smells, security hotspots |
+| Agent governance | [.cursor/skills/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/imda-agentic-ai-governance/SKILL.md) | IMDA MGF v1.5 + Twelve-Factor deployment |
 
-**Overlaps:** §8 design principles (EMC), §15 agent governance (tools/HITL), `.cursor/rules/code-simplification.md`, `.cursor/rules/api-and-interface-design.md`, `.cursor/rules/sonarqube-quality.md`.
+**Overlaps:** §8 design principles (EMC), §15 agent governance (tools/HITL, Twelve-Factor), `.cursor/rules/code-simplification.md`, `.cursor/rules/api-and-interface-design.md`, `.cursor/rules/sonarqube-quality.md`.
 
 ### 16.1 Unified decision workflow
 
@@ -1863,6 +1993,7 @@ When implementing or reviewing code:
 - **Plain desk copy** — all staff strings in `messages.py`; ban UUIDs, pseudonyms, tool names, “slots”, “HITL”, internal IDs in `assistant_message`.
 - **Composed Method guards** — `_patron_id` / `_holding_id` / `_patron_and_holding(action)`; `IssueSlots.has_patron_and_holding` for commit preconditions; first missing slot wins with its action-specific message.
 - Langfuse via `AgentTracing` at coordinator boundary; PII via pseudonyms + `redact_for_audit`; ops check via `make validate-langfuse`.
+- **Twelve-Factor:** config via `Settings` only; stateless workers + DB session; structlog stdout + Langfuse spans — see §15.9.
 
 ### 16.7 Staff desk UI — React MVC (Phase 6 + Session I)
 
@@ -1901,6 +2032,7 @@ Cross-context data flows through **ports + adapters** or **workflow orchestratio
 - [ ] Pydantic at API edge; frozen dataclasses in application
 - [ ] New cross-context need → port + adapter
 - [ ] Agent tools delegate to workflows; writes behind HITL
+- [ ] Agent config in env (`Settings`); no secrets in prompts/checkpoints (Twelve-Factor II)
 - [ ] Tests + strict mypy; PII masked in agent paths
 
 **Verify:** `ruff check`, `mypy`, `lint-imports`, `pytest` with appropriate markers (`unit`, `integration`, `agent`). See [python-code-analysis](../python-code-analysis/SKILL.md).

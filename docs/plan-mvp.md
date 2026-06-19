@@ -2,7 +2,7 @@
 
 Execution plan for the LMS-AI K‑12 Library Management MVP.
 
-**Scope authority:** [MVP.md](MVP.md) §1–§6, §2.1–§2.2 (staff workflows + agent desk), §8–§14. **Domain rules:** [reference.md](reference.md), [catalog.md](catalog.md), [loan.md](loan.md). **Agent governance:** [research.md §15](research.md).
+**Scope authority:** [MVP.md](MVP.md) §1–§6, §2.1–§2.2 (staff workflows + agent desk), §8–§14. **Domain rules:** [reference.md](reference.md), [catalog.md](catalog.md), [loan.md](loan.md). **Agent governance:** [research.md §15](research.md) (IMDA + Twelve-Factor).
 
 **Out of scope (do not implement):** guardian portals, fines ledger, bulk class issue, renewals, procurement integration, full OPAC polish (MVP.md §1, ADR-011).
 
@@ -22,7 +22,7 @@ Execution plan for the LMS-AI K‑12 Library Management MVP.
 | **5B Fulfillment** | **Done** | Delivery/pick-up in MVP scope (MVP.md §5.1) |
 | 6 Staff UI | **Done** | Issue/return wizards at `/staff/` |
 | 7 Hardening | **Done** | Concurrency, idempotency, SLO tests; [runbook.md](runbook.md), [go-live-checklist.md](go-live-checklist.md) |
-| **8 Agent desk** | **Done** | Guided flows + WF-02 return + patron desk; multi-provider LiteLLM; `llm_intent_prompt.py`; `make test-agent` (32) |
+| **8 Agent desk** | **Done** | Guided flows + patron desk; multi-provider LiteLLM; governance hardening (E27); `make test-agent` (33) |
 
 ---
 
@@ -48,7 +48,7 @@ Deliver a **coherent circulation slice**: register patrons → configure loan ru
 | **G10** | Rule preview returns all violations | Unit/integration: blocked patron + unavailable holding → 2+ `rule_id`s (REQ-29) |
 | **G11** | Conversational circulation desk with HITL | E2E: guided issue, issued-books inquiry, return, catalog — approval card → commit (REQ-31) |
 | **G12** | Agentic fulfillment follow-up with HITL | E2E: delivery issue → agent proposes transition → confirm → `COMPLETED` / in-transit (REQ-32) |
-| **G13** | IMDA agent governance charter complete | Charter signed; Langfuse audit; tool allowlist; adversarial tests pass (REQ-34) |
+| **G13** | IMDA agent governance charter + Twelve-Factor ops complete | Charter signed; Langfuse audit; config in env; tool allowlist; adversarial tests pass (REQ-34) |
 
 **Note:** G1–G10 gate **Phases 0–7** (wizard + workflow APIs). G11–G13 gate **Phase 8** (agent channel). G6 extends to REQ-34 when Phase 8 ships.
 
@@ -312,7 +312,7 @@ src/lms/api/workflows/router.py
 
 ### Phase 8 — Agent desk (conversational circulation + agentic fulfillment)
 
-**Goal:** Question-driven WF-01/WF-02 and guided desk flows (MVP.md §2.2) without changing the circulation kernel. Governed per IMDA MGF v1.5 ([research.md §15](research.md)).
+**Goal:** Question-driven WF-01/WF-02 and guided desk flows (MVP.md §2.2) without changing the circulation kernel. Governed per IMDA MGF v1.5 + Twelve-Factor App ([research.md §15](research.md)).
 
 **Prerequisites:** Phases 5A/5B/6 complete; enterprise agent charter drafted; at least one provider API key in non-committed env (e.g. `GROQ_API_KEY`).
 
@@ -363,6 +363,9 @@ src/lms/api/workflows/router.py
 | LangGraph SOP graph | **Partial** — compiles; business logic in `IssueAgentCoordinator` |
 | Staff desk copy (`messages.py`) | **Done** — centralized plain-language copy; intent-aware guards; CHAT routing |
 | Langfuse integration | **Done** — `tracing.py` + `AgentTracing` in coordinator; charter sign-off still pending |
+| Twelve-Factor ops baseline | **Done** — config in `Settings`; `make ci-native` gate; structlog stdout; admin via Makefile |
+| Governance runtime controls (E27) | **Done** — production config validation; LLM/history redaction; HITL message block; sanitized approval details; audit spans |
+| Durable agent session store | **Pending** — in-process MVP; Postgres/Redis for multi-worker |
 | Charter sign-off + eval datasets | **Pending** — G13 operational gate |
 
 ---
@@ -423,7 +426,7 @@ Mark each REQ during Phase 7 with phase and test id.
 | Performance | Checkout/return and search at MVP.md §13.6 scale | `make test-performance` |
 | Hardening | Concurrency + idempotency regression | `make test-hardening` |
 | Security | Headers, rate limits, production config guards, error disclosure | `pytest tests/hardening/test_security.py` |
-| Agent (Phase 8) | SOP adherence, HITL gates, tool allowlist, guided flows, issued-books inquiry, multi-provider LLM, mocked-LLM E2E | `make test-agent` → **32**; `pytest tests/agent/` → **58** |
+| Agent (Phase 8) | SOP adherence, HITL gates, tool allowlist, guided flows, issued-books inquiry, multi-provider LLM, governance hardening, mocked-LLM E2E | `make test-agent` → **33**; `pytest tests/agent/` → **59** |
 
 **CI gate (MVP.md §10.6):** no deploy if migration or circulation tests fail; CI also runs `npm audit --audit-level=high`. Agent tests use **mocked LLM** — no live Groq/HF in CI.
 
@@ -464,6 +467,6 @@ Bulk class issue, renewals, fines, guardian/notices, full OPAC, procurement — 
 | [reference.md](reference.md) | Patron rules, entities |
 | [catalog.md](catalog.md) | Catalog/holding rules |
 | [loan.md](loan.md) | Loan rules, circulation |
-| [research.md](research.md) | Deferred decisions (OQ-1 self-checkout); agent governance §15 |
-| [.cursor/skills/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/imda-agentic-ai-governance/SKILL.md) | IMDA MGF v1.5 implementation checklist |
+| [research.md](research.md) | Deferred decisions (OQ-1 self-checkout); agent governance §15 (IMDA + Twelve-Factor) |
+| [.cursor/skills/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/imda-agentic-ai-governance/SKILL.md) | IMDA MGF v1.5 + Twelve-Factor implementation checklist |
 | [library_domain_model_final.md](library_domain_model_final.md) | Cross-domain overview |

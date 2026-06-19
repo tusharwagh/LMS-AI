@@ -108,34 +108,47 @@ def test_llm_intent_parser_passes_session_context(monkeypatch: pytest.MonkeyPatc
     parser = LLMIntentParser(settings)
     captured: dict[str, object] = {}
 
-    def _fake_completion(
-        _settings: Settings,
-        *,
-        messages: list[dict[str, str]],
-        max_tokens: int,
-        temperature: float,
-    ) -> tuple[object, object]:
-        captured["messages"] = messages
-        captured["max_tokens"] = max_tokens
-        payload = json.loads(messages[1]["content"])
-        assert payload["message"] == "What books are issued to Riya Sharma?"
-        assert payload["session_context"]["has_pending_desk_patron"] is True
-        assert "start_patron_desk" in messages[0]["content"]
-        assert "session_context" in messages[0]["content"]
-        response = SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content='{"action":"start_patron_desk","patron_query":"Riya Sharma"}'))]
-        )
-        return response, SimpleNamespace(provider="groq", model="groq/test")
+    class _FakeGateway:
+        def complete(self, **kwargs: object) -> object:
+            messages = kwargs["messages"]
+            assert isinstance(messages, list)
+            captured["messages"] = messages
+            captured["max_tokens"] = kwargs["max_tokens"]
+            captured["session_id"] = kwargs.get("session_id")
+            captured["operator_id"] = kwargs.get("operator_id")
+            payload = json.loads(messages[1]["content"])  # type: ignore[index]
+            assert payload["message"] == "What books are issued to Riya Sharma?"
+            assert payload["session_context"]["has_pending_desk_patron"] is True
+            assert "start_patron_desk" in messages[0]["content"]  # type: ignore[index]
+            assert "session_context" in messages[0]["content"]  # type: ignore[index]
+            llm_json = '{"action":"start_patron_desk","patron_query":"Riya Sharma"}'
+            response = SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content=llm_json))]
+            )
+            from lms.shared.llm.models import LlmCompletionResult, LlmEndpoint
 
-    monkeypatch.setattr("lms.agent.intent_parser.completion_with_fallback", _fake_completion)
+            return LlmCompletionResult(
+                response=response,
+                endpoint=LlmEndpoint(provider="groq", model="groq/test", api_key="k"),
+                purpose="intent_parse",
+            )
+
+    monkeypatch.setattr(
+        "lms.agent.intent_parser.LlmGateway.from_settings",
+        lambda _settings: _FakeGateway(),
+    )
     intent = parser.parse_with_context(
         "What books are issued to Riya Sharma?",
         has_pending_approval=False,
         has_return_candidates=False,
         has_pending_desk_patron=True,
+        trace_session_id="sess-desk-1",
+        trace_operator_id="lib-42",
     )
     assert intent.action == IntentAction.START_PATRON_DESK
     assert intent.patron_query == "Riya Sharma"
+    assert captured["session_id"] == "sess-desk-1"
+    assert captured["operator_id"] == "lib-42"
     messages = captured["messages"]
     assert isinstance(messages, list)
     assert messages[0]["content"] == LLM_INTENT_SYSTEM
@@ -214,6 +227,37 @@ def test_fulfillment_transition_prompt_includes_title() -> None:
     )
     assert "Harry Potter" in msg
     assert "in transit" in msg.lower()
+
+
+def test_redact_for_audit_masks_card_patterns() -> None:
+    raw = "Card 4111-1111-1111-1111 for patron"
+    assert "[CARD_REDACTED]" in redact_for_audit(raw)
+
+
+def test_sanitize_approval_details_strips_internal_ids() -> None:
+    from uuid import uuid4
+
+    from lms.agent.masking import sanitize_approval_details
+
+    loan_id = uuid4()
+    details = sanitize_approval_details(
+        {
+            "candidate": {
+                "loan_id": loan_id,
+                "title": "Harry Potter",
+                "barcode": "ABC-123",
+            }
+        }
+    )
+    assert "loan_id" not in details["candidate"]
+    assert details["candidate"]["title"] == "Harry Potter"
+
+
+def test_pending_approval_blocks_message_mentions_card_actions() -> None:
+    msg = desk.pending_approval_blocks_message("Issue Harry Potter to Riya")
+    assert "Approve" in msg
+    assert "Deny" in msg
+    assert "Harry Potter" in msg
 
 
 def test_issue_committed_is_friendly_not_technical() -> None:

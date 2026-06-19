@@ -131,6 +131,33 @@ def test_agent_conversational_desk_issue(
     assert len(open_loans.json()) >= 1
 
 
+def test_agent_pending_approval_blocks_new_message(
+    client: TestClient,
+    admin_headers: dict[str, str],
+    agent_env: None,
+) -> None:
+    tag = _uid()
+    fx = _seed(client, admin_headers, tag)
+    session_id = client.post("/api/v1/agent/issue/sessions").json()["session_id"]
+
+    pending = client.post(
+        f"/api/v1/agent/issue/sessions/{session_id}/message",
+        json={"message": f"Issue {fx['title']} to {fx['patron_name']}, desk pickup"},
+    )
+    assert pending.status_code == 200
+    assert pending.json()["pending_approval"]["kind"] == "commit_issue"
+
+    blocked = client.post(
+        f"/api/v1/agent/issue/sessions/{session_id}/message",
+        json={"message": "search Harry Potter"},
+    )
+    assert blocked.status_code == 200
+    body = blocked.json()
+    assert body["pending_approval"]["kind"] == "commit_issue"
+    assert "approve" in body["assistant_message"].lower()
+    assert "deny" in body["assistant_message"].lower()
+
+
 def test_agent_delivery_fulfillment_transition(
     client: TestClient,
     admin_headers: dict[str, str],

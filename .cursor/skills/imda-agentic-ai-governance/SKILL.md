@@ -1,6 +1,6 @@
 ---
 name: imda-agentic-ai-governance
-description: Applies Singapore IMDA Model AI Governance Framework for Agentic AI (MGF v1.5) when designing, building, reviewing, or deploying LangChain/LangGraph agents. Use when implementing agentic AI, human-in-the-loop workflows, tool access controls, multi-agent systems, MCP integrations, agent guardrails, Langfuse observability, data/app security guardrails, or when the user mentions IMDA, MGF, agent governance, or responsible agent deployment.
+description: Applies Singapore IMDA Model AI Governance Framework for Agentic AI (MGF v1.5) and the Twelve-Factor App methodology when designing, building, reviewing, or deploying LangChain/LangGraph agents. Use when implementing agentic AI, human-in-the-loop workflows, tool access controls, multi-agent systems, MCP integrations, agent guardrails, Langfuse observability, data/app security guardrails, cloud-native deployment, environment configuration, or when the user mentions IMDA, MGF, 12-factor, twelve-factor, agent governance, or responsible agent deployment.
 ---
 
 # IMDA Agentic AI Governance (LangChain / LangGraph)
@@ -42,6 +42,86 @@ Governance progress:
 ```
 
 Treat the four dimensions as **iterative**. If monitoring surfaces anomalies, revisit earlier dimensions.
+
+---
+
+## 12-Factor agent deployment
+
+Apply [Twelve-Factor App](https://12factor.net/) discipline alongside IMDA §3 (technical controls and lifecycle). Governance controls must survive production operations — config drift, sticky sessions, and non-reproducible releases undermine structural guardrails.
+
+```
+12-Factor progress (agent deploy):
+- [ ] I. Codebase — one repo; graph/prompt/tools versioned together
+- [ ] II. Config — secrets and toggles in environment only
+- [ ] III. Dependencies — explicit, lockfile-pinned manifests
+- [ ] IV. Backing services — DB, LLM, Langfuse as attached resources
+- [ ] V. Build, release, run — immutable releases; no runtime compiles
+- [ ] VI. Processes — stateless workers; durable state in backing services
+- [ ] VII. Port binding — self-contained HTTP/gRPC export
+- [ ] VIII. Concurrency — scale processes; bound in-process tool loops
+- [ ] IX. Disposability — fast startup, graceful shutdown, bounded retries
+- [ ] X. Dev/prod parity — same graph code; mock LLM only in test config
+- [ ] XI. Logs — stdout event streams + Langfuse traces (redacted)
+- [ ] XII. Admin — migrations, seeds, evals as one-off release tasks
+```
+
+### Factor map (IMDA ↔ 12-factor)
+
+| Factor | Agent / LangGraph requirement | IMDA alignment |
+|--------|------------------------------|----------------|
+| **I. Codebase** | One deployable per agent product; graph, prompts, tool schemas in git | Change management; audit trail for graph versions |
+| **II. Config** | `Settings` / env vars for keys, feature flags, model IDs — never in prompts or checkpoints | Secrets excluded from state; tier toggles without redeploying logic |
+| **III. Dependencies** | `pyproject.toml` + lockfile; pin LangChain/LangGraph/LiteLLM versions | Supply-chain hygiene; reproducible eval runs |
+| **IV. Backing services** | Postgres checkpointer, Langfuse, LLM APIs via URLs/keys — swappable without code change | Sandbox vs prod credentials; least-privilege per environment |
+| **V. Build, release, run** | CI builds artifact → tagged release → `run` starts processes only | Pre-deploy tests on immutable artifact; phased rollout |
+| **VI. Processes** | API workers hold no in-memory session authority; thread state in DB checkpointer | Checkpoint security; tenant isolation |
+| **VII. Port binding** | Uvicorn/FastAPI (or gRPC) binds port; no external web-server coupling | Agent exposed as attachable service behind auth |
+| **VIII. Concurrency** | Scale web workers horizontally; cap `agent_max_tool_calls_per_turn` per request | Rate limits; circuit breakers on tool path |
+| **IX. Disposability** | SIGTERM drains in-flight turns; SOP halt-and-notify instead of infinite retry | Bounded autonomy; no zombie agent loops |
+| **X. Dev/prod parity** | Same compiled graph in all envs; `AGENT_MOCK_LLM=true` only in CI/dev config | Realistic pre-deploy tests without prod keys in dev |
+| **XI. Logs** | `structlog` → stdout; Langfuse for tool/model spans with redacted args | Audit cadence; no PII in log files |
+| **XII. Admin** | `make migrate`, `make seed`, eval datasets — not mixed into request path | Admin tasks audited separately from agent traces |
+
+### LMS-AI conventions
+
+| Concern | Where enforced |
+|---------|----------------|
+| Config in environment | `src/lms/config.py` — `agent_issue_enabled`, `agent_mock_llm`, `llm_provider(s)`, Langfuse keys |
+| Backing services | `DATABASE_URL`, provider API keys, `LANGFUSE_*` — attach/detach per deploy |
+| Build / release / run | `make ci-native` (build+test) → deploy script / `make deploy-native` (run only) |
+| Stateless processes | Session + HITL state in DB via agent session layer, not worker RAM |
+| Dev/prod parity | `make test-agent` with mock LLM; production requires real keys + `agent_issue_enabled` |
+| Logs & traces | `src/lms/agent/tracing.py` — structlog audit + optional Langfuse spans |
+| Admin one-offs | `make migrate`, `make seed`, `make validate-langfuse` — never invoked from graph nodes |
+
+```python
+# II. Config — feature flags and secrets from Settings, not code or prompts
+from lms.config import get_settings
+
+settings = get_settings()
+if not settings.agent_issue_enabled:
+    raise AgentDisabledError()
+# AGENT_MOCK_LLM, LLM_PROVIDER, LANGFUSE_* all come from env / .env (not committed)
+
+# VI. Processes — durable state in backing service, not process memory
+# thread_id + checkpointer resume HITL; workers remain interchangeable
+
+# XI. Logs — event stream to stdout; traces to Langfuse when configured
+logger.info("agent_tool_invoked", tool=tool_name, thread_id=thread_id, args_redacted=True)
+```
+
+**Anti-patterns (12-factor):**
+
+| Anti-pattern | Fix |
+|--------------|-----|
+| API keys in system prompt or graph state | Env vars via `Settings`; redact from checkpoints |
+| Different graph topology in dev vs prod | Same code path; mock LLM / stub tools via config |
+| Session stickiness required for HITL | Durable checkpointer + `thread_id`; any worker can resume |
+| Writing logs to local files in containers | Stdout JSON; aggregate externally |
+| Running migrations from agent tool nodes | Admin release step (`make migrate`) before run |
+| Unpinned LLM library versions | Lock dependencies; tag releases with prompt/graph hash |
+
+For factor-by-factor review notes, see [reference.md](reference.md#twelve-factor-app-agentic-ai).
 
 ---
 
@@ -430,9 +510,9 @@ Use Langfuse scores/datasets for evals, `langgraph dev` test threads, and determ
 
 **LMS-AI automated gate:** `make test-agent` with `AGENT_MOCK_LLM=true` — see [python-code-analysis/lms-ai.md](../python-code-analysis/lms-ai.md). Static: ruff + import-linter on `lms/agent/` (no infrastructure imports).
 
-**Deployment:** phased rollout (user cohort / feature flag), continuous monitoring, versioned graph definitions.
+**Deployment:** phased rollout (user cohort / feature flag), continuous monitoring, versioned graph definitions. Follow **12-Factor V** — build and test in CI (`make ci-native`), promote immutable artifact, run processes separately; no hot-editing graph code in production.
 
-**Change management:** treat graph, tool, and prompt changes as releases; assess cascade impact in multi-agent systems.
+**Change management:** treat graph, tool, and prompt changes as releases; assess cascade impact in multi-agent systems. Tag releases with graph/prompt version in Langfuse metadata for trace correlation.
 
 ### Checkpoint security
 
@@ -494,6 +574,15 @@ Surface in UI: agent status, pending approvals from `interrupt` payloads, audit 
 - [ ] Audit cadence defined (weekly/monthly compliance review)
 - [ ] Third-party components documented with residual risk
 
+### 12-Factor deployment
+- [ ] Config (keys, flags, model IDs) in environment — not prompts, code constants, or graph state
+- [ ] Same graph/prompt code in dev, CI, and prod; mocks only via config (`AGENT_MOCK_LLM`)
+- [ ] Backing services (DB, LLM, Langfuse) attached via URLs/keys; swappable per environment
+- [ ] Stateless API workers; session/HITL in durable checkpointer
+- [ ] Logs to stdout (structured); Langfuse for spans with redacted args
+- [ ] Admin tasks (migrate, seed, eval) as one-off release steps — not agent tools
+- [ ] Dependencies pinned; CI gate before run (`make ci-native` or equivalent)
+
 ### Testing & rollout
 - [ ] End-to-end workflow tests including tool calls
 - [ ] Adversarial / disallowed-action tests verify blocks work
@@ -527,12 +616,16 @@ Surface in UI: agent status, pending approvals from `interrupt` payloads, audit 
 | Unredacted PII in Langfuse traces | Redact before span export; shorten retention for sensitive traces |
 | Agent retries failed tools indefinitely | SOP halt-and-notify; bounded retries with escalation |
 | Direct prod deploy from agent output | Write to `/output` sandbox; HITL before promote |
+| Secrets or feature flags baked into prompts | `Settings` / env vars; validate production config at startup |
+| Dev-only graph fork for "easier testing" | Same graph; `AGENT_MOCK_LLM` and stub backends via config |
+| HITL tied to one server instance | Durable checkpointer + `thread_id`; resume on any worker |
 
 ---
 
 ## Additional resources
 
-- [reference.md](reference.md) — risk factors, multi-agent risks, related frameworks (CSA, GovTech ARCF, OWASP Agentic AI)
+- [reference.md](reference.md) — risk factors, multi-agent risks, Twelve-Factor mapping, related frameworks (CSA, GovTech ARCF, OWASP Agentic AI)
+- [Twelve-Factor App](https://12factor.net/) — cloud-native operational baseline
 - [python-code-analysis/SKILL.md](../python-code-analysis/SKILL.md) — static & dynamic analysis for Python (pytest, ruff, mypy, import-linter)
 - `.cursor/rules/security-and-hardening.md` — app security patterns (injection, auth, PII)
 - IMDA MGF for Agentic AI (v1.5): https://www.imda.gov.sg/-/media/imda/files/about/emerging-tech-and-research/artificial-intelligence/mgf-for-agentic-ai.pdf

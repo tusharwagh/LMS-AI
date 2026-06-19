@@ -225,6 +225,17 @@ Conversational circulation desk ([MVP.md §2.2](MVP.md)): guided issue, return, 
 | `LLM_FALLBACK_ENABLED` | `false` | Legacy fallback when `LLM_PROVIDERS` unset |
 | `LLM_FALLBACK_PROVIDER` | `together` | Pin provider; no `:fastest` in production |
 | `LLM_FALLBACK_MODEL` | `Qwen/Qwen2.5-72B-Instruct` | Pin model id |
+| `LLM_MAX_PROMPT_CHARS` | `12000` | Guardrail — max total prompt characters |
+| `LLM_MAX_TOKENS_CAP` | `4096` | Guardrail — max `max_tokens` per request |
+| `LLM_CACHE_ENABLED` | `true` | LiteLLM response cache (`LLM_CACHE_TYPE`) |
+| `LLM_CACHE_TYPE` | `local` | `local` or `redis` |
+| `LLM_CACHE_TTL_SECONDS` | `600` | Cache entry lifetime |
+| `LLM_CACHE_REDIS_URL` | — | Redis URL when `LLM_CACHE_TYPE=redis` |
+| `LLM_RATE_LIMIT_ENABLED` | `true` | Router deployment RPM budget |
+| `LLM_RATE_LIMIT_MAX` | `120` | Max gateway calls per window |
+| `LLM_RATE_LIMIT_WINDOW_SECONDS` | `60` | Rate limit window (converted to RPM) |
+| `LLM_PROXY_URL` | — | Optional LiteLLM Proxy pass-through base URL |
+| `LLM_PROXY_API_KEY` | — | Optional proxy virtual/master key |
 | `AGENT_MAX_TOOL_CALLS_PER_TURN` | `5` | Lower if abuse observed |
 | `LANGFUSE_PUBLIC_KEY` | — | Required for agent audit in production |
 | `LANGFUSE_SECRET_KEY` | — | Never commit |
@@ -249,7 +260,28 @@ GROQ_API_KEY=...
 OPENAI_API_KEY=...
 ```
 
-Routing implementation: `src/lms/agent/llm.py` (`completion_with_fallback`). Intent classification prompt: `src/lms/agent/llm_intent_prompt.py`.
+Routing implementation: `src/lms/shared/llm/` (`LlmGateway` via LiteLLM `Router`, Langfuse callbacks, Postgres spend in `llm_spend_logs`). Intent classification prompt: `src/lms/agent/llm_intent_prompt.py`.
+
+**Cost reporting (staff/admin):** `GET /api/v1/llm-spend/logs` (paginated list with optional `from_date`, `to_date`, `purpose`, `model`, `session_id`, `operator_id`) and `GET /api/v1/llm-spend/summary` (aggregates by purpose/model). Requires librarian or admin JWT.
+
+### Twelve-Factor deployment (agent)
+
+Operational baseline aligned with IMDA skill §“12-Factor agent deployment” and [research.md §15.9](research.md).
+
+| Stage | Command / practice |
+|-------|-------------------|
+| **Build + test** | `make ci-native` — ruff, mypy, import-linter, full pytest (mock LLM) |
+| **Release** | Tag deploy with graph/prompt version; set env on target host (never edit code at runtime) |
+| **Run** | `make deploy-native` or `make run-dev` — starts Uvicorn only; migrations already applied |
+| **Config** | All agent toggles in `.env` / process env — see table above; validate production rejects defaults |
+| **Logs** | Aggregate stdout JSON from API process; Langfuse for tool/model audit when keys set |
+| **Admin** | Run `make migrate` and `make seed` as release steps — not from agent chat |
+
+**Stateless workers (MVP):** agent session and HITL state live in an **in-process `SessionStore`** (`session.py`). Run **one API worker** per desk deployment; restart clears sessions. Durable Postgres/Redis store is the next production step — see [research.md §15.10](research.md).
+
+**Production startup** (`APP_ENV=production`): rejects default `DATABASE_URL`; when `AGENT_ISSUE_ENABLED=true`, requires `AGENT_MOCK_LLM=false`, at least one LLM provider key, and `LANGFUSE_*` keys.
+
+**Governance behaviors:** LLM intent input redacted; new chat messages blocked while approval pending; HITL `details` on API omit internal UUIDs.
 
 ### Authorized agent tools
 
@@ -315,5 +347,5 @@ Expect `auth_ok: True` and a test `turn:validate` / `tool:search_patrons` span i
 | [go-live-checklist.md](go-live-checklist.md) | G1–G13 sign-off |
 | [plan-mvp.md](plan-mvp.md) | Phase plan (incl. Phase 8) |
 | [MVP.md §2.2, §13.8](MVP.md) | Agent desk spec + LLM security |
-| [research.md §15](research.md) | IMDA agent governance charter |
+| [research.md §15](research.md) | IMDA + Twelve-Factor agent governance charter |
 | [Makefile](../Makefile) | Local commands |

@@ -8,6 +8,7 @@ import { AdminPanel } from "@/views/AdminPanel/AdminPanel";
 import { AgentChatView } from "@/views/AgentChat/AgentChatView";
 import { CatalogSearch } from "@/views/CatalogSearch/CatalogSearch";
 import { IssueWizardView } from "@/views/IssueWizard/IssueWizardView";
+import { LlmSpendPanel } from "@/views/LlmSpendPanel/LlmSpendPanel";
 import { OverdueList } from "@/views/OverdueList/OverdueList";
 import { PatronLookup } from "@/views/PatronLookup/PatronLookup";
 import { ReturnWizardView } from "@/views/ReturnWizard/ReturnWizardView";
@@ -19,6 +20,7 @@ const VIEW_COMPONENTS: Record<StaffView, (props: { active?: boolean }) => ReactN
   search: () => <CatalogSearch />,
   overdue: ({ active }) => <OverdueList active={active ?? false} />,
   patron: () => <PatronLookup />,
+  spend: ({ active }) => <LlmSpendPanel active={active ?? false} />,
   admin: ({ active }) => <AdminPanel active={active ?? false} />,
 };
 
@@ -49,7 +51,7 @@ function StaffApp() {
       onNavigate={setView}
       onLogout={logout}
     >
-      <ViewComponent active={view === "overdue" || view === "admin"} />
+      <ViewComponent active={view === "overdue" || view === "admin" || view === "spend"} />
     </AppLayout>
   );
 }

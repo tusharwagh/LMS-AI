@@ -10,6 +10,7 @@ const VIEW_ICONS: Record<StaffView, string> = {
   search: "🔍",
   overdue: "⏱",
   patron: "👤",
+  spend: "💰",
   admin: "⚙",
 };
 

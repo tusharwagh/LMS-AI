@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from lms.agent import messages as desk
 from lms.agent.intent_parser import LLMIntentParser
-from lms.agent.masking import redact_for_audit
+from lms.agent.masking import redact_for_audit, sanitize_approval_details
 from lms.agent.schemas import IntentAction, ParsedIntent
 from lms.agent.session import (
     AgentIssueSession,
@@ -91,7 +91,20 @@ class IssueAgentCoordinator:
         self._ensure_enabled()
         agent_session = self.get_session_for_operator(session_id, operator_id)
         agent_session.tool_calls_this_turn = 0
-        agent_session.messages.append({"role": "user", "content": message})
+        redacted_user = redact_for_audit(message)
+        agent_session.messages.append({"role": "user", "content": redacted_user})
+
+        if agent_session.pending_approval is not None:
+            block_msg = desk.pending_approval_blocks_message(
+                agent_session.pending_approval.summary,
+            )
+            agent_session.messages.append({"role": "assistant", "content": block_msg})
+            self._store.save(agent_session)
+            return self._result(
+                agent_session,
+                block_msg,
+                pending=self._pending_payload(agent_session.pending_approval),
+            )
 
         tools = self._issue_tools_for(agent_session)
         return_tools = self._return_tools_for(agent_session)
@@ -138,6 +151,8 @@ class IssueAgentCoordinator:
                     agent_session.slots.guided_patron_lookup_active
                     and agent_session.pending_approval is None
                 ),
+                trace_session_id=str(session_id),
+                trace_operator_id=operator_id,
             )
             reply = self._apply_intent(
                 agent_session,
@@ -176,6 +191,13 @@ class IssueAgentCoordinator:
             agent_id=self.AGENT_ID,
             action="resume_approved" if approved else "resume_denied",
         ):
+            self._tracing.hitl_event(
+                session_id=str(session_id),
+                operator_id=operator_id,
+                agent_id=self.AGENT_ID,
+                decision="approved" if approved else "denied",
+                kind=pending.kind.value,
+            )
             if not approved:
                 kind = pending.kind
                 agent_session.pending_approval = None
@@ -705,10 +727,12 @@ class IssueAgentCoordinator:
     ) -> AgentTurnResult:
         slots.awaiting_desk_patron = False
         data = result.data if result.ok else {}
+        raw_count = data.get("count", 0)
+        loan_count = raw_count if isinstance(raw_count, int) else 0
         if data.get("auto_selected") and data.get("return_intent"):
             slots.awaiting_desk_next_action = False
             slots.awaiting_desk_return_pick = False
-        elif data.get("return_intent") and int(data.get("count", 0)) > 1:
+        elif data.get("return_intent") and loan_count > 1:
             slots.awaiting_desk_return_pick = True
             slots.awaiting_desk_next_action = False
         else:
@@ -1608,7 +1632,7 @@ class IssueAgentCoordinator:
         return {
             "kind": pending.kind.value,
             "summary": pending.summary,
-            "details": pending.details,
+            "details": sanitize_approval_details(pending.details),
         }
 
     def session_summary(self, agent_session: AgentIssueSession) -> dict[str, Any]:

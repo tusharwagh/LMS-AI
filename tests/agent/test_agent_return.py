@@ -207,8 +207,6 @@ def test_agent_return_by_patron_name_with_multi_select_hitl(
     assert search_body["session_summary"]["return_candidate_count"] == 2
     assert fx["barcode"] in search_body["assistant_message"]
     assert f"RBC2-{tag}" in search_body["assistant_message"]
-    assert "LOAN_1" in search_body["assistant_message"]
-    assert "LOAN_2" in search_body["assistant_message"]
 
     pick = client.post(
         f"/api/v1/agent/issue/sessions/{session_id}/message",

@@ -64,6 +64,7 @@ class AgentTracing:
             session_id=session_id,
             operator_id=operator_id,
             agent_id=agent_id,
+            args_redacted=True,
         )
         if self._client is None:
             yield
@@ -118,3 +119,68 @@ class AgentTracing:
             yield
         finally:
             self.flush()
+
+    @contextmanager
+    def intent_span(
+        self,
+        *,
+        session_id: str,
+        operator_id: str,
+        agent_id: str,
+    ) -> Iterator[None]:
+        logger.info(
+            "agent_intent_parse",
+            session_id=session_id,
+            operator_id=operator_id,
+            agent_id=agent_id,
+            args_redacted=True,
+        )
+        if self._client is None:
+            yield
+            return
+        try:
+            with self._client.start_as_current_observation(
+                name="intent:parse",
+                as_type="generation",
+                metadata={
+                    "session_id": session_id,
+                    "operator_id": operator_id,
+                    "agent_id": agent_id,
+                },
+            ):
+                yield
+        except (ImportError, OSError, ValueError, RuntimeError) as exc:
+            logger.warning("langfuse_intent_span_failed", error=str(exc))
+            yield
+
+    def hitl_event(
+        self,
+        *,
+        session_id: str,
+        operator_id: str,
+        agent_id: str,
+        decision: str,
+        kind: str,
+    ) -> None:
+        logger.info(
+            "agent_hitl",
+            session_id=session_id,
+            operator_id=operator_id,
+            agent_id=agent_id,
+            hitl_decision=decision,
+            kind=kind,
+        )
+        if self._client is None:
+            return
+        try:
+            self._client.create_event(
+                name=f"hitl:{decision}",
+                metadata={
+                    "session_id": session_id,
+                    "operator_id": operator_id,
+                    "agent_id": agent_id,
+                    "kind": kind,
+                },
+            )
+        except (ImportError, OSError, ValueError, RuntimeError, AttributeError) as exc:
+            logger.warning("langfuse_hitl_event_failed", error=str(exc))

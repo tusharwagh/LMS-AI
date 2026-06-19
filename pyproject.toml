@@ -74,6 +74,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/**" = ["E501"]
+"src/lms/agent/llm_intent_prompt.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"

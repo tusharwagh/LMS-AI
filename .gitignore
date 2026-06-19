@@ -12,6 +12,7 @@ venv/
 .ruff_cache/
 .pytest_cache/
 .import_linter_cache/
+.playwright-browsers/
 node_modules/
 src/lms/staff/ui/node_modules/
 src/lms/staff/ui/node_modules/.tmp/

@@ -3,20 +3,15 @@
 from __future__ import annotations
 
 import pytest
+from tests.helpers import isolated_settings
 
-from lms.agent.llm import (
+from lms.shared.llm import (
     iter_llm_endpoints,
     litellm_model_id,
     llm_live_enabled,
 )
-from lms.config import Settings
 
 pytestmark = pytest.mark.unit
-
-
-def _isolated_settings(**overrides: object) -> Settings:
-    """Build Settings without loading local .env (keeps CI/dev keys out of unit tests)."""
-    return Settings(_env_file=None, **overrides)
 
 
 def test_litellm_model_id_prefixes_provider() -> None:
@@ -35,9 +30,9 @@ def test_litellm_model_id_passes_through_full_path() -> None:
 
 
 def test_llm_live_enabled_requires_key() -> None:
-    assert not llm_live_enabled(_isolated_settings(agent_mock_llm=True, groq_api_key="k"))
+    assert not llm_live_enabled(isolated_settings(agent_mock_llm=True, groq_api_key="k"))
     assert not llm_live_enabled(
-        _isolated_settings(
+        isolated_settings(
             agent_mock_llm=False,
             groq_api_key=None,
             openai_api_key=None,
@@ -46,11 +41,11 @@ def test_llm_live_enabled_requires_key() -> None:
             hf_token=None,
         )
     )
-    assert llm_live_enabled(_isolated_settings(agent_mock_llm=False, groq_api_key="k"))
+    assert llm_live_enabled(isolated_settings(agent_mock_llm=False, groq_api_key="k"))
 
 
 def test_iter_llm_endpoints_primary_groq() -> None:
-    settings = _isolated_settings(
+    settings = isolated_settings(
         agent_mock_llm=False,
         llm_provider="groq",
         groq_api_key="gk-test",
@@ -63,7 +58,7 @@ def test_iter_llm_endpoints_primary_groq() -> None:
 
 
 def test_iter_llm_endpoints_provider_chain() -> None:
-    settings = _isolated_settings(
+    settings = isolated_settings(
         agent_mock_llm=False,
         llm_providers="groq,openai",
         groq_api_key="gk-test",
@@ -76,7 +71,7 @@ def test_iter_llm_endpoints_provider_chain() -> None:
 
 
 def test_iter_llm_endpoints_per_provider_model_override() -> None:
-    settings = _isolated_settings(
+    settings = isolated_settings(
         agent_mock_llm=False,
         llm_providers="groq:llama-3.3-70b-versatile,openai:gpt-4o-mini",
         groq_api_key="gk-test",
@@ -88,7 +83,7 @@ def test_iter_llm_endpoints_per_provider_model_override() -> None:
 
 
 def test_iter_llm_endpoints_fallback_when_enabled() -> None:
-    settings = _isolated_settings(
+    settings = isolated_settings(
         agent_mock_llm=False,
         llm_provider="groq",
         groq_api_key="gk-test",
@@ -104,10 +99,14 @@ def test_iter_llm_endpoints_fallback_when_enabled() -> None:
 
 
 def test_iter_llm_endpoints_skips_missing_keys() -> None:
-    settings = _isolated_settings(
+    settings = isolated_settings(
         agent_mock_llm=False,
         llm_providers="groq,openai",
         groq_api_key="gk-test",
+        openai_api_key=None,
+        anthropic_api_key=None,
+        together_api_key=None,
+        hf_token=None,
         llm_model="llama-3.3-70b-versatile",
     )
     endpoints = list(iter_llm_endpoints(settings))
@@ -128,7 +127,7 @@ def test_iter_llm_endpoints_other_providers(
     key_field: str,
     key_value: str,
 ) -> None:
-    settings = _isolated_settings(
+    settings = isolated_settings(
         agent_mock_llm=False,
         llm_provider=provider,
         llm_model="test-model",

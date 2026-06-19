@@ -21,6 +21,7 @@ from lms.loan.infrastructure.models.models import (  # noqa: F401
     LoanRuleSetModel,
 )
 from lms.shared.infrastructure.models.api_user import ApiUserModel  # noqa: F401
+from lms.shared.llm.spend import LlmSpendLog  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

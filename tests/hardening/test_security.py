@@ -83,6 +83,53 @@ def test_production_rejects_debug(monkeypatch: pytest.MonkeyPatch) -> None:
         Settings()
 
 
+def test_production_rejects_default_database_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("APP_SECRET_KEY", "production-secret-key")
+    monkeypatch.setenv("CORS_ORIGINS", "https://library.example.com")
+    get_settings.cache_clear()
+    with pytest.raises(ValueError, match="DATABASE_URL"):
+        Settings(_env_file=None)
+
+
+def test_production_agent_requires_live_llm_and_langfuse(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("APP_ENV", "production")
+    get_settings.cache_clear()
+    with pytest.raises(ValueError, match="AGENT_MOCK_LLM"):
+        Settings(
+            _env_file=None,
+            app_env="production",
+            app_secret_key="production-secret-key",
+            cors_origins="https://library.example.com",
+            database_url="postgresql+psycopg://prod:secret@db.example.com:5432/lms",
+            agent_issue_enabled=True,
+            agent_mock_llm=True,
+        )
+
+
+def test_production_agent_requires_llm_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_ENV", "production")
+    get_settings.cache_clear()
+    with pytest.raises(ValueError, match="LLM provider"):
+        Settings(
+            _env_file=None,
+            app_env="production",
+            app_secret_key="production-secret-key",
+            cors_origins="https://library.example.com",
+            database_url="postgresql+psycopg://prod:secret@db.example.com:5432/lms",
+            agent_issue_enabled=True,
+            agent_mock_llm=False,
+            groq_api_key=None,
+            openai_api_key=None,
+            anthropic_api_key=None,
+            together_api_key=None,
+            hf_token=None,
+            azure_api_key=None,
+        )
+
+
 def test_auth_rate_limit(monkeypatch: pytest.MonkeyPatch, dev_password: str) -> None:
     monkeypatch.setenv("RATE_LIMIT_ENABLED", "true")
     monkeypatch.setenv("AUTH_RATE_LIMIT_MAX", "3")

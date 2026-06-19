@@ -183,8 +183,11 @@ Cross-reference: [.cursor/rules/api-and-interface-design.md](api-and-interface-d
 | Multi-slot guard in one helper | Split `_patron_id` / `_holding_id`; compose in `_patron_and_holding` |
 | Scattered staff-facing strings | Centralize in `lms/agent/messages.py`; intent + query-echo builders |
 | Technical jargon in desk copy | No UUIDs, pseudonyms, tool names, "slots", "HITL" in `assistant_message` |
+| Secrets or flags in prompts/graph state | Env via `Settings`; validate at startup |
+| Dev-only graph fork | Same graph; `AGENT_MOCK_LLM` / stub tools in config |
+| Log files inside containers | Structured stdout + Langfuse spans (redacted) |
 
-Cross-reference: [imda-agentic-ai-governance](../skills/imda-agentic-ai-governance/SKILL.md).
+Cross-reference: [imda-agentic-ai-governance](../skills/imda-agentic-ai-governance/SKILL.md) (IMDA + Twelve-Factor).
 
 ---
 

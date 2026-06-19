@@ -327,6 +327,8 @@ app.use('/api/auth/', rateLimit({
 
 ## Secrets Management
 
+Follow **Twelve-Factor Config (III)**: store secrets and environment-specific toggles in the process environment, never in source code, committed config files, or LLM prompts. For agent deployments, also see [imda-agentic-ai-governance](../skills/imda-agentic-ai-governance/SKILL.md) §12-Factor (config in `Settings`, not graph state).
+
 ```
 .env files:
   ├── .env.example  → Committed (template with placeholder values)
@@ -359,6 +361,12 @@ If your app calls an LLM — chatbots, summarizers, agents, RAG — it inherits 
 - **Constrain tool and agent permissions (LLM06: Excessive Agency).** Scope tools to the minimum, require confirmation for destructive or irreversible actions, and validate every tool argument.
 - **Bound consumption (LLM10: Unbounded Consumption).** Cap tokens, request rate, and loop/recursion depth so a crafted input can't run up cost or hang the system.
 - **Isolate retrieval data (LLM08: Vector and Embedding Weaknesses).** In RAG, treat the vector store as a trust boundary: partition embeddings per tenant so one user can't retrieve another's data, and validate documents before indexing so poisoned content can't steer answers.
+
+**Twelve-Factor alignment for AI features:**
+
+- **Config (II):** LLM keys, model IDs, and agent feature flags via environment (`process.env`, Pydantic `Settings`) — not hardcoded or embedded in prompts.
+- **Logs (XI):** Emit structured audit events to stdout; use Langfuse (or equivalent) for trace spans. Redact PII before export — logs are event streams, not local files in containers.
+- **Dev/prod parity (X):** Same agent/API code in all environments; use config (`AGENT_MOCK_LLM`, stub backends) for CI — do not fork graph logic per environment.
 
 ```typescript
 // BAD: trusting model output as a command or as markup

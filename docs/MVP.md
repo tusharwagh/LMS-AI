@@ -2,7 +2,7 @@
 
 This document collects **MVP / minimal-scope** behavior across the three bounded contexts. Authoritative rules, entities, APIs, and diagrams remain in **[reference.md](reference.md)**, **[catalog.md](catalog.md)**, and **[loan.md](loan.md)**.
 
-**Staff desk workflows** (search & issue, return, optional delivery/pick-up) → **§2.1**. **Conversational issue & agentic fulfillment** (Phase 8) → **§2.2**. **Knowledge graph (ontology layers)** for the MVP slice → **§7**. **Architecture, design decisions, and traceability** → **§8–§10**. **Phased implementation plan** → **[plan-mvp.md](plan-mvp.md)**. **Discovery conversation and user intent** → **[research.md](research.md)**. **Agent governance** → **[research.md §15](research.md)** + IMDA skill.
+**Staff desk workflows** (search & issue, return, optional delivery/pick-up) → **§2.1**. **Conversational issue & agentic fulfillment** (Phase 8) → **§2.2**. **Knowledge graph (ontology layers)** for the MVP slice → **§7**. **Architecture, design decisions, and traceability** → **§8–§10**. **Phased implementation plan** → **[plan-mvp.md](plan-mvp.md)**. **Discovery conversation and user intent** → **[research.md](research.md)**. **Agent governance** → **[research.md §15](research.md)** + IMDA / Twelve-Factor skill.
 
 ---
 
@@ -778,7 +778,7 @@ When `APP_DEBUG=false`, validation `details` and 500 `message` are generic (no i
 | **REQ-31** | Conversational WF-01 via agent (§2.2) | ADR-025, ADR-027 | `IssueAgentCoordinator`, `POST /api/v1/agent/issue/*`; same workflow tools as wizard |
 | **REQ-32** | Agentic fulfillment follow-up (§2.2 step 7) | ADR-025, ADR-022 | Fulfillment subgraph; HITL before `transition_fulfillment` |
 | **REQ-33** | PII masking & token-minimized agent prompts | ADR-026 | Pseudonym session map; compact tool payloads; no secrets in checkpoints |
-| **REQ-34** | IMDA-governed agent deployment | ADR-027, ADR-028; [research.md §15](research.md) | Enterprise charter, Langfuse audit, tool allowlist, phased rollout |
+| **REQ-34** | IMDA-governed agent deployment | ADR-027, ADR-028; [research.md §15](research.md) | Enterprise charter, Langfuse audit, tool allowlist, Twelve-Factor config/ops, phased rollout |
 
 ### 11.1 Traceability — quality attributes & principles
 
@@ -824,7 +824,7 @@ When `APP_DEBUG=false`, validation `details` and 500 `message` are generic (no i
 | [plan-mvp.md](plan-mvp.md) | Phased implementation plan, verify gates, REQ checklist |
 | [go-live-checklist.md](go-live-checklist.md) | G1–G13 sign-off and verification commands |
 | [runbook.md](runbook.md) | Deploy, backup, migration rollback, incidents, LLM config (§10) |
-| [research.md §15](research.md) | IMDA agent governance + desk agent charter |
+| [research.md §15](research.md) | IMDA + Twelve-Factor agent governance + desk agent charter |
 
 ---
 
@@ -925,21 +925,35 @@ Operational security controls shipped with the API (see `.cursor/rules/security-
 
 ### 13.8 Agent and LLM security (Phase 8)
 
-Extends §13.7 for hosted LLM desk agents (OWASP LLM Top 10; IMDA MGF v1.5). Authority: [research.md §15](research.md), `.cursor/skills/imda-agentic-ai-governance/SKILL.md`.
+Extends §13.7 for hosted LLM desk agents (OWASP LLM Top 10; IMDA MGF v1.5; Twelve-Factor App). Authority: [research.md §15](research.md), `.cursor/skills/imda-agentic-ai-governance/SKILL.md`.
 
 | Control | Implementation | Config / notes |
 |---------|----------------|----------------|
 | LLM output untrusted | Pydantic-validated tool args only; no raw LLM → SQL/shell/orchestrator | Governance node on tool path |
 | Prompt injection | Catalog titles / patron text treated as data; structural tool allowlist | Not prompt-only restrictions |
-| PII in prompts | Pseudonyms in LLM context; full IDs in server session only | ADR-026 |
-| HITL on writes | `pending_approval` + `/resume` before commit, cancel, fulfillment transition | ADR-027; deny-by-default |
+| PII in prompts | Pseudonyms in LLM context; intent input redacted via `redact_for_audit`; full IDs in server session only | ADR-026 |
+| HITL on writes | `pending_approval` + `/resume` before commit, cancel, fulfillment transition; new messages blocked while pending | ADR-027; deny-by-default |
 | Bounded consumption | `max_tokens`, max tool calls/turn, API + LLM rate limits | `AGENT_MAX_TOOL_CALLS_PER_TURN` |
-| Secrets | Never in prompts, graph checkpoints, or Langfuse spans | `GROQ_API_KEY`, `HF_TOKEN` in env only |
-| Observability | Langfuse: `agent_id`, `thread_id`, redacted args, HITL events | Correlate with `X-Correlation-Id` (ADR-018) |
+| Secrets | Never in prompts, graph checkpoints, or Langfuse spans | `GROQ_API_KEY`, `HF_TOKEN` in env only; production validator enforces keys when agent enabled |
+| Observability | Langfuse: `agent_id`, `thread_id`, redacted args, HITL events; intent + HITL audit spans | Correlate with `X-Correlation-Id` (ADR-018) |
 | Third-party LLM | Document Groq/HF residual risk; pin model versions | ADR-028; no `:fastest` HF routing in prod |
 | Supply chain | No remote MCP for circulation; local tools only | Groq Compound / HF MCP disabled for desk agent |
 | Checkpoint store | Encrypt Postgres checkpointer; retention TTL; no JWT in state | Same classification as app DB |
 | Feature flag | `AGENT_ISSUE_ENABLED` — extension edge | Circulation kernel unchanged when off (ADR-020) |
+
+**Twelve-Factor deployment (agent service):**
+
+| Factor | Control | LMS-AI surface |
+|--------|---------|----------------|
+| II. Config | Secrets and toggles in environment only | `src/lms/config.py`; `.env.example`; production startup validation (DB URL, agent + Langfuse when enabled) |
+| IV. Backing services | DB, LLM, Langfuse as attached resources | `DATABASE_URL`, provider keys, `LANGFUSE_*` |
+| V. Build, release, run | CI test gate before run | `make ci-native` → deploy → `make deploy-native` |
+| VI. Processes | Stateless API workers | Agent session/HITL in **in-process `SessionStore` (MVP)** — one worker per desk; durable store deferred |
+| X. Dev/prod parity | Same code; mocks via config | `AGENT_MOCK_LLM=true` in CI; rule parser fallback |
+| XI. Logs | Event streams, not log files | `tracing.py` → structlog stdout + Langfuse spans (`intent_span`, `hitl_event`; redacted) |
+| XII. Admin | One-off release tasks | `make migrate`, `make seed`, `make validate-langfuse` — not agent tools |
+
+Runtime controls (redaction, HITL block, sanitized approval payloads): [research.md §15.10](research.md).
 
 **Verify (Phase 8):** agent security tests + IMDA charter sign-off in [go-live-checklist.md](go-live-checklist.md) §Agent criteria (G11–G13).
 
@@ -961,4 +975,4 @@ Current codebase vs planned work. Authoritative execution tracking: **[plan-mvp.
 | Phase 5B — Fulfillment | **Done** | Delivery/pick-up in MVP scope (§5.1) |
 | Phase 6 — Staff UI | **Done** | Issue/return wizards at `/staff/` |
 | Phase 7 — Hardening | **Done** | Concurrency, idempotency, SLO, security tests (`test_security.py`); [runbook.md](runbook.md), [go-live-checklist.md](go-live-checklist.md) |
-| Phase 8 — Agent desk | **Done** | Guided issue/return/catalog/patron lookup + patron desk loan inquiry; WF-02 return + catalog-first issue; multi-provider LiteLLM; comprehensive intent prompt; HITL via `/resume`; ADR-025–028 |
+| Phase 8 — Agent desk | **Done** | Guided flows + patron desk; multi-provider LiteLLM; governance hardening (E27); HITL via `/resume`; ADR-025–028 |

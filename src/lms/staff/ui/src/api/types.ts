@@ -151,4 +151,45 @@ export type StaffView =
   | "search"
   | "overdue"
   | "patron"
-  | "admin";
+  | "admin"
+  | "spend";
+
+export interface LlmSpendLog {
+  id: string;
+  purpose: string;
+  model: string;
+  provider: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cost_usd: number | null;
+  cached: boolean;
+  session_id: string | null;
+  operator_id: string | null;
+  created_at: string;
+}
+
+export interface LlmSpendLogListResponse {
+  items: LlmSpendLog[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface LlmSpendSummaryGroup {
+  purpose: string;
+  model: string;
+  provider: string;
+  request_count: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cost_usd: number;
+}
+
+export interface LlmSpendSummaryResponse {
+  groups: LlmSpendSummaryGroup[];
+  total_cost_usd: number;
+  total_requests: number;
+  total_tokens: number;
+}

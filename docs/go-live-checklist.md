@@ -60,13 +60,13 @@ Sign-off against [plan-mvp.md §1.2](plan-mvp.md) success criteria (**G1–G13**
 
 ## Agent desk criteria (Phase 8 — G11–G13)
 
-Requires [MVP.md §2.2](MVP.md), §13.8, and [research.md §15](research.md) (IMDA MGF v1.5). Enable with `AGENT_ISSUE_ENABLED=true`.
+Requires [MVP.md §2.2](MVP.md), §13.8, and [research.md §15](research.md) (IMDA MGF v1.5 + Twelve-Factor). Enable with `AGENT_ISSUE_ENABLED=true`.
 
 | # | Criterion | Verify command / check | Status |
 |---|-----------|----------------------|--------|
 | **G11** | Conversational circulation desk with HITL | `make test-agent` — guided issue, patron desk (issued books), return, catalog browse, patron lookup; friendly desk copy | ☐ |
 | **G12** | Agentic fulfillment transitions with HITL | `make test-agent` — delivery issue → transition with HITL | ☐ |
-| **G13** | IMDA agent charter + observability | Charter signed; Langfuse traces with redacted args; adversarial tests | ☐ |
+| **G13** | IMDA agent charter + observability + Twelve-Factor ops | Charter signed; Langfuse traces with redacted args; config in env only; adversarial tests | ☐ |
 
 ### Agent operational readiness (MVP.md §13.8)
 
@@ -81,6 +81,12 @@ Requires [MVP.md §2.2](MVP.md), §13.8, and [research.md §15](research.md) (IM
 | Wizard mode still passes G7–G10 with agent enabled | Regression E2E | ☐ |
 | HF / Together fallback provider pinned (if enabled) | ADR-028; prefer `LLM_PROVIDERS` chain | ☐ |
 | Residual risk (PII to hosted LLM provider(s)) accepted in writing | Charter | ☐ |
+| `make ci-native` green on release candidate | Build/test gate before deploy (Twelve-Factor V) | ☐ |
+| Migrations applied before agent run (not via agent tools) | `make migrate` (Twelve-Factor XII) | ☐ |
+| Logs aggregated from stdout (not container log files only) | Ops / school IT log pipeline | ☐ |
+| Same agent code path in staging and prod (mock LLM off in staging only via config) | Twelve-Factor X | ☐ |
+| Single API worker per desk (in-process session store) or durable store deployed | [research.md §15.10](research.md) | ☐ |
+| Production rejects default DB URL and mock LLM when agent enabled | `Settings.validate_production_security()` | ☐ |
 
 ---
 

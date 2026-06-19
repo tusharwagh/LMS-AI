@@ -8,6 +8,7 @@ const NAV_ITEMS: Array<{ view: StaffView; label: string; adminOnly?: boolean }> 
   { view: "search", label: "Catalog search" },
   { view: "overdue", label: "Overdue" },
   { view: "patron", label: "Patron lookup" },
+  { view: "spend", label: "LLM costs" },
   { view: "admin", label: "Admin", adminOnly: true },
 ];
 

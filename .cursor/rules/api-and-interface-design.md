@@ -153,6 +153,22 @@ interface CreateTaskInput {
 | Boolean fields | is/has/can prefix | `isComplete`, `hasAttachments` |
 | Enum values | UPPER_SNAKE | `"IN_PROGRESS"`, `"COMPLETED"` |
 
+### 6. Backing Services as Attached Resources (Twelve-Factor IV)
+
+Databases, caches, message queues, LLM providers, and observability backends are **attached resources** — accessed via connection strings and credentials in config, not hardcoded into module logic.
+
+```python
+# GOOD: database URL from Settings; swappable per deploy
+from lms.config import get_settings
+
+engine = create_engine(get_settings().database_url)
+
+# BAD: production host embedded in application code
+engine = create_engine("postgresql+psycopg://lms:lms@prod-db.internal:5432/lms")
+```
+
+Design API and agent modules so backing services can be replaced (staging Postgres → production, mock LLM → LiteLLM chain) without code changes — only config. Cross-reference: [imda-agentic-ai-governance](../skills/imda-agentic-ai-governance/SKILL.md) §12-Factor.
+
 ## REST API Patterns
 
 ### Resource Design

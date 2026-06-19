@@ -175,6 +175,14 @@ def approval_denied(kind: PendingActionKind) -> str:
             )
 
 
+def pending_approval_blocks_message(summary: str) -> str:
+    return (
+        "There is already an action waiting for your approval. "
+        f"Pending: {summary} "
+        "Use Approve or Deny on the card — I can't take new steps until you decide."
+    )
+
+
 def no_patron_found(query: str) -> str:
     return (
         f"No patrons matched '{query}'. "
@@ -270,7 +278,7 @@ def desk_patron_no_loans(patron_name: str) -> str:
 
 def desk_next_actions_prompt(*, patron_name: str, has_loans: bool) -> str:
     actions = [
-        "• Return a book — say 'return' and pick from the list (barcode or LOAN_N)",
+        "• Return a book — say 'return' and pick from the list by title or barcode",
         "• Issue another book — say 'issue a book'",
         "• Browse the catalog — say 'search catalog'",
         "• Finished — say 'done'",
@@ -297,7 +305,7 @@ def desk_return_no_loans(patron_name: str) -> str:
 def desk_return_pick_from_list(patron_name: str) -> str:
     return (
         f"Which book is {patron_name} returning? "
-        "Tell me the title, barcode, or loan label (e.g. LOAN_1) from the list above."
+        "Tell me the title or barcode from the list above."
     )
 
 
@@ -318,8 +326,8 @@ def desk_return_single_book_ready(
 
 def desk_pick_book_to_return() -> str:
     return (
-        "Which book should we return? Tell me the title, barcode, or loan label "
-        "(e.g. LOAN_1) from the list above."
+        "Which book should we return? Tell me the title or barcode "
+        "(from the list above)."
     )
 
 
@@ -375,7 +383,7 @@ def catalog_browse_candidates_list(
     return (
         f"{lead}\n"
         + "\n".join(lines)
-        + "\nTell me which copy — by barcode, title, or copy label (e.g. COPY_1)."
+        + "\nTell me which copy — by barcode or title."
     )
 
 
@@ -446,7 +454,7 @@ def guided_patron_lookup_candidates_list(
     return (
         f"{lead}\n"
         + "\n".join(lines)
-        + "\nTell me which patron — by name, card, or patron label (e.g. PATRON_1)."
+        + "\nWhich patron should borrow it? Tell me their name or card number."
     )
 
 
@@ -468,7 +476,7 @@ def guided_patron_lookup_declined() -> str:
 def patron_selection_not_found(hint: str) -> str:
     return (
         f"No patron in this session matched '{hint}'. "
-        "Use a name or patron label from the list, or search again."
+        "Use a name from the list, or search again."
     )
 
 
@@ -524,7 +532,7 @@ def catalog_candidates_list(
     return (
         f"{lead}\n"
         + "\n".join(lines)
-        + "\nWhich copy should we issue? Tell me the barcode, title, or copy label (e.g. COPY_1)."
+        + "\nWhich copy should we issue? Tell me the barcode or title."
     )
 
 
@@ -539,7 +547,7 @@ def catalog_single_copy_ask_issue(
     return (
         f"Found one lendable copy of '{title}' ({barcode}){shelf_note} matching '{query}'. "
         "Would you like to issue it? Say 'issue to [patron name]' — "
-        "add 'desk pickup' or 'deliver to Class 5A' for fulfillment."
+        "add 'desk pickup' or 'deliver to Class 5A' for delivery."
     )
 
 
@@ -554,7 +562,7 @@ def catalog_copy_selected_ask_patron(title: str, barcode: str) -> str:
 def catalog_selection_not_found(hint: str) -> str:
     return (
         f"No lendable copy in this session matched '{hint}'. "
-        "Use a barcode or copy label from the list, or search the catalog again."
+        "Use a barcode or title from the list, or search the catalog again."
     )
 
 
@@ -802,9 +810,9 @@ def return_candidates_list(
 ) -> str:
     """Items: (loan_label, title, barcode, patron, due_date, is_overdue)."""
     lines: list[str] = []
-    for loan_label, title, barcode, patron, due_date, is_overdue in items[:5]:
+    for _loan_label, title, barcode, patron, due_date, is_overdue in items[:5]:
         overdue = " (overdue)" if is_overdue else ""
-        lines.append(f"• {title} ({barcode}) — {patron}, due {due_date}{overdue} [{loan_label}]")
+        lines.append(f"• {title} ({barcode}) — {patron}, due {due_date}{overdue}")
     lead = f"I found {len(items)} open loans"
     if query:
         lead += f" matching '{query}'"
@@ -812,7 +820,7 @@ def return_candidates_list(
     return (
         f"{lead}\n"
         + "\n".join(lines)
-        + "\nTell me which copy — by title, barcode, or loan label (e.g. LOAN_1). "
+        + "\nTell me which copy — by title or barcode. "
         "I'll ask you to confirm before check-in."
     )
 
@@ -836,14 +844,14 @@ def return_selection_ambiguous(count: int) -> str:
     noun = "loan" if count == 1 else "loans"
     return (
         f"That still matches {count} open {noun}. "
-        "Be more specific — use the barcode or loan label from the list."
+        "Be more specific — use the barcode or title from the list."
     )
 
 
 def return_selection_not_found(hint: str) -> str:
     return (
         f"No open loan in this session matched '{hint}'. "
-        "Use a barcode or loan label from the list, or search again."
+        "Use a barcode or title from the list, or search again."
     )
 
 

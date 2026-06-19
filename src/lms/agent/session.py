@@ -85,7 +85,12 @@ class AgentIssueSession:
 
 
 class SessionStore:
-    """Process-local session store for agent threads."""
+    """In-memory session store for agent threads (MVP single-process).
+
+    Twelve-Factor VI note: production horizontal scale requires a durable backing
+    service (Postgres/Redis) for session + HITL state. Until then, run one API worker
+    per desk deployment or accept session loss on restart.
+    """
 
     def __init__(self) -> None:
         self._sessions: dict[UUID, AgentIssueSession] = {}

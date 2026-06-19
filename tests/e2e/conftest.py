@@ -12,10 +12,10 @@ import pytest
 import uvicorn
 from fastapi.testclient import TestClient
 from playwright.sync_api import Page
+from tests.conftest import AuthenticatedTestClient
 
 from lms.api.app import create_app
 from lms.config import get_settings
-from tests.conftest import AuthenticatedTestClient
 
 pytestmark = pytest.mark.e2e
 
@@ -85,7 +85,11 @@ def api_client(admin_headers: dict[str, str]) -> AuthenticatedTestClient:
     return AuthenticatedTestClient(create_app(), default_headers=admin_headers)
 
 
-def seed_issue_fixture(client: TestClient, admin_headers: dict[str, str], tag: str) -> dict[str, str]:
+def seed_issue_fixture(
+    client: TestClient,
+    admin_headers: dict[str, str],
+    tag: str,
+) -> dict[str, str]:
     """Seed patron + lendable copy for desk issue wizard flows."""
     rule_id = client.post(
         "/api/v1/loan/loan-rule-sets",
@@ -127,7 +131,10 @@ def seed_issue_fixture(client: TestClient, admin_headers: dict[str, str], tag: s
 
 
 @pytest.fixture
-def issue_fixture(api_client: AuthenticatedTestClient, admin_headers: dict[str, str]) -> dict[str, str]:
+def issue_fixture(
+    api_client: AuthenticatedTestClient,
+    admin_headers: dict[str, str],
+) -> dict[str, str]:
     tag = uuid.uuid4().hex[:8]
     return seed_issue_fixture(api_client, admin_headers, tag)
 
@@ -153,7 +160,12 @@ def issued_loan_fixture(
     return issue_fixture
 
 
-def staff_login(page: Page, base_url: str, username: str = "librarian", password: str = "changeme") -> None:
+def staff_login(
+    page: Page,
+    base_url: str,
+    username: str = "librarian",
+    password: str = "changeme",
+) -> None:
     page.goto(f"{base_url}/staff/")
     page.get_by_label("Username").fill(username)
     page.get_by_label("Password").fill(password)

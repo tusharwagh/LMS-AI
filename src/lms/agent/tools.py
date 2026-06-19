@@ -180,12 +180,12 @@ class IssueTools:
                 ),
                 {"patron_pseudonym": pseudo},
             )
-        query_hint = message_query or display_name or card_barcode or external_ref
+        eligibility_query = message_query or display_name or card_barcode or external_ref
         return ToolResult(
             True,
             desk.patron_eligible(
                 result.patron_display_name,
-                query=redact_for_audit(query_hint) if query_hint else None,
+                query=redact_for_audit(eligibility_query) if eligibility_query else None,
             ),
             {"patron_pseudonym": pseudo},
         )

@@ -136,7 +136,7 @@ def test_issue_start_requires_auth(bare_client):
 ### Runtime observability (production dynamic)
 
 - Correlation id on responses; structured logs on errors.
-- Langfuse traces for agent turns (redacted args) — see [imda-agentic-ai-governance](../imda-agentic-ai-governance/SKILL.md).
+- Langfuse traces for agent turns (redacted args); structured stdout logs — see [imda-agentic-ai-governance](../imda-agentic-ai-governance/SKILL.md) (IMDA + Twelve-Factor XI).
 
 ---
 

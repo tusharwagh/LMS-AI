@@ -9,11 +9,14 @@ import structlog
 from litellm.exceptions import LITELLM_EXCEPTION_TYPES
 
 from lms.agent import messages as desk
+from lms.agent.llm_intent_prompt import LLM_INTENT_SYSTEM
+from lms.agent.masking import redact_for_audit
 from lms.agent.schemas import IntentAction, ParsedIntent
+from lms.agent.tracing import AgentTracing
 from lms.config import Settings
 from lms.loan.domain.enums import FulfillmentMode, FulfillmentStatus
-from lms.agent.llm import completion_with_fallback, llm_live_enabled
-from lms.agent.llm_intent_prompt import LLM_INTENT_SYSTEM
+from lms.shared.llm import LlmGateway, llm_live_enabled
+from lms.shared.llm.models import LlmGatewayError
 
 _APPROVE_RE = re.compile(r"^(yes|y|approve|confirm|go ahead|proceed|ok)\.?$", re.I)
 _DENY_RE = re.compile(r"^(no|n|deny|cancel|stop)\.?$", re.I)
@@ -173,6 +176,7 @@ _LLM_INTENT_PARSE_ERRORS: tuple[type[BaseException], ...] = (
     TypeError,
     ValueError,
     IndexError,
+    LlmGatewayError,
     *LITELLM_EXCEPTION_TYPES,
 )
 
@@ -531,7 +535,7 @@ class IntentParser:
             title = issue_match.group("title").strip()
             if title.lower() not in {"a book", "book", "the book"}:
                 mode = FulfillmentMode.DESK
-                dest: str | None = None
+                dest = None
                 if _DELIVER_RE.search(text):
                     mode = FulfillmentMode.DELIVERY
                     dest = text
@@ -555,7 +559,7 @@ class IntentParser:
             else:
                 patron_query = patron_raw or None
             mode = FulfillmentMode.DESK
-            dest: str | None = None
+            dest = None
             if _DELIVER_RE.search(text):
                 mode = FulfillmentMode.DELIVERY
                 dest = text
@@ -627,33 +631,55 @@ class IntentParser:
 class LLMIntentParser(IntentParser):
     """Optional LiteLLM-backed parser; falls back to rules on failure."""
 
-    def __init__(self, settings: Settings) -> None:
+    AGENT_ID = "LMS Desk Circulation Agent"
+
+    def __init__(self, settings: Settings, *, tracing: AgentTracing | None = None) -> None:
         self._settings = settings
         self._rules = IntentParser()
+        self._tracing = tracing or AgentTracing(settings)
 
-    def parse(self, message: str, *, has_pending_approval: bool) -> ParsedIntent:
-        if not llm_live_enabled(self._settings):
-            return self._rules.parse(
-                message,
-                has_pending_approval=has_pending_approval,
-                has_return_candidates=False,
-            )
-        try:
-            return self._parse_llm(
-                message,
-                has_pending_approval=has_pending_approval,
-                session_context={
-                    "has_pending_approval": has_pending_approval,
-                    "has_return_candidates": False,
-                },
-            )
-        except _LLM_INTENT_PARSE_ERRORS as exc:
-            logger.warning("llm_intent_parse_failed", error=str(exc))
-            return self._rules.parse(
-                message,
-                has_pending_approval=has_pending_approval,
-                has_return_candidates=False,
-            )
+    def parse(
+        self,
+        message: str,
+        *,
+        has_pending_approval: bool,
+        has_return_candidates: bool = False,
+        has_catalog_candidates: bool = False,
+        has_selected_copy_no_patron: bool = False,
+        ready_to_issue: bool = False,
+        has_pending_book_criteria_prompt: bool = False,
+        has_pending_patron_prompt: bool = False,
+        has_pending_desk_patron: bool = False,
+        has_pending_desk_next_action: bool = False,
+        has_pending_desk_return_pick: bool = False,
+        has_pending_catalog_criteria: bool = False,
+        has_pending_patron_lookup: bool = False,
+        has_patron_candidates: bool = False,
+        has_guided_issue_context: bool = False,
+        has_guided_return_context: bool = False,
+        has_guided_catalog_context: bool = False,
+        has_guided_patron_lookup_context: bool = False,
+    ) -> ParsedIntent:
+        return self.parse_with_context(
+            message,
+            has_pending_approval=has_pending_approval,
+            has_return_candidates=has_return_candidates,
+            has_catalog_candidates=has_catalog_candidates,
+            has_selected_copy_no_patron=has_selected_copy_no_patron,
+            ready_to_issue=ready_to_issue,
+            has_pending_book_criteria_prompt=has_pending_book_criteria_prompt,
+            has_pending_patron_prompt=has_pending_patron_prompt,
+            has_pending_desk_patron=has_pending_desk_patron,
+            has_pending_desk_next_action=has_pending_desk_next_action,
+            has_pending_desk_return_pick=has_pending_desk_return_pick,
+            has_pending_catalog_criteria=has_pending_catalog_criteria,
+            has_pending_patron_lookup=has_pending_patron_lookup,
+            has_patron_candidates=has_patron_candidates,
+            has_guided_issue_context=has_guided_issue_context,
+            has_guided_return_context=has_guided_return_context,
+            has_guided_catalog_context=has_guided_catalog_context,
+            has_guided_patron_lookup_context=has_guided_patron_lookup_context,
+        )
 
     def parse_with_context(
         self,
@@ -676,6 +702,8 @@ class LLMIntentParser(IntentParser):
         has_guided_return_context: bool = False,
         has_guided_catalog_context: bool = False,
         has_guided_patron_lookup_context: bool = False,
+        trace_session_id: str = "",
+        trace_operator_id: str = "",
     ) -> ParsedIntent:
         ctx = {
             "has_pending_approval": has_pending_approval,
@@ -703,6 +731,8 @@ class LLMIntentParser(IntentParser):
                 message,
                 has_pending_approval=has_pending_approval,
                 session_context=ctx,
+                trace_session_id=trace_session_id,
+                trace_operator_id=trace_operator_id,
             )
         except _LLM_INTENT_PARSE_ERRORS as exc:
             logger.warning("llm_intent_parse_failed", error=str(exc))
@@ -714,29 +744,39 @@ class LLMIntentParser(IntentParser):
         *,
         has_pending_approval: bool,
         session_context: dict[str, bool] | None = None,
+        trace_session_id: str = "",
+        trace_operator_id: str = "",
     ) -> ParsedIntent:
-        user = json.dumps(
-            {
-                "message": message,
-                "has_pending_approval": has_pending_approval,
-                "session_context": session_context or {},
-            }
-        )
-        max_tokens = self._settings.max_tokens or 256
-        temperature = (
-            self._settings.temperature if self._settings.temperature is not None else 0
-        )
-        response, _endpoint = completion_with_fallback(
-            self._settings,
-            messages=[
-                {"role": "system", "content": LLM_INTENT_SYSTEM},
-                {"role": "user", "content": user},
-            ],
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
-        content = response.choices[0].message.content or "{}"
-        data = json.loads(content)
+        redacted_message = redact_for_audit(message)
+        with self._tracing.intent_span(
+            session_id=trace_session_id,
+            operator_id=trace_operator_id,
+            agent_id=self.AGENT_ID,
+        ):
+            user = json.dumps(
+                {
+                    "message": redacted_message,
+                    "has_pending_approval": has_pending_approval,
+                    "session_context": session_context or {},
+                }
+            )
+            max_tokens = self._settings.max_tokens or 256
+            temperature = (
+                self._settings.temperature if self._settings.temperature is not None else 0
+            )
+            result = LlmGateway.from_settings(self._settings).complete(
+                messages=[
+                    {"role": "system", "content": LLM_INTENT_SYSTEM},
+                    {"role": "user", "content": user},
+                ],
+                max_tokens=max_tokens,
+                temperature=temperature,
+                purpose="intent_parse",
+                session_id=trace_session_id or None,
+                operator_id=trace_operator_id or None,
+            )
+            content = result.response.choices[0].message.content or "{}"
+            data = json.loads(content)
         mode = data.get("fulfillment_mode")
         fmode = FulfillmentMode(mode) if mode else None
         fstatus_raw = data.get("fulfillment_status")

@@ -13,6 +13,7 @@ VENV ?= .venv
 BIN := $(VENV)/bin
 NODE ?= node
 NPM ?= npm
+PLAYWRIGHT_BROWSERS_PATH ?= $(CURDIR)/.playwright-browsers
 COMPOSE := docker compose
 IMAGE ?= lms-ai:local
 API_HOST ?= 127.0.0.1
@@ -127,13 +128,13 @@ test-integration:
 	PYTHONPATH=src $(BIN)/pytest -m integration
 
 test-e2e: ensure-staff-ui
-	PYTHONPATH=src $(BIN)/pytest -m e2e
+	PYTHONPATH=src $(BIN)/pytest -m "e2e and not playwright"
 
 test-e2e-playwright: ensure-staff-ui ensure-playwright
-	PYTHONPATH=src $(BIN)/pytest -m playwright
+	PLAYWRIGHT_BROWSERS_PATH=$(PLAYWRIGHT_BROWSERS_PATH) PYTHONPATH=src $(BIN)/pytest -m playwright
 
 ensure-playwright:
-	@$(BIN)/playwright install chromium
+	PLAYWRIGHT_BROWSERS_PATH=$(PLAYWRIGHT_BROWSERS_PATH) $(BIN)/playwright install chromium
 
 test-agent:
 	AGENT_ISSUE_ENABLED=true AGENT_MOCK_LLM=true PYTHONPATH=src $(BIN)/pytest -m agent

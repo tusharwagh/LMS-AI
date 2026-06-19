@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 from uuid import UUID
 
 _PII_PATTERNS: list[tuple[re.Pattern[str], str]] = [
@@ -15,6 +16,39 @@ def redact_for_audit(text: str) -> str:
     for pattern, replacement in _PII_PATTERNS:
         text = pattern.sub(replacement, text)
     return text
+
+
+_INTERNAL_DETAIL_KEYS = frozenset(
+    {
+        "patron_id",
+        "holding_id",
+        "loan_id",
+        "fulfillment_id",
+        "id",
+        "operator_id",
+        "session_id",
+    }
+)
+
+
+def sanitize_approval_details(details: dict[str, Any]) -> dict[str, Any]:
+    """Strip internal UUIDs from HITL payloads exposed on the API."""
+
+    def _clean(value: Any) -> Any:
+        if isinstance(value, dict):
+            cleaned: dict[str, Any] = {
+                key: _clean(item)
+                for key, item in value.items()
+                if key not in _INTERNAL_DETAIL_KEYS
+            }
+            return cleaned
+        if isinstance(value, list):
+            return [_clean(item) for item in value]
+        return value
+
+    result = _clean(details)
+    assert isinstance(result, dict)
+    return result
 
 
 class PseudonymMap:

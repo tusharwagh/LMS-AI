@@ -6,7 +6,6 @@ import re
 
 import pytest
 from playwright.sync_api import Page, expect
-
 from tests.e2e.conftest import staff_login
 
 pytestmark = [pytest.mark.e2e, pytest.mark.playwright]

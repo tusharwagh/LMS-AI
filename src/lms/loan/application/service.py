@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import bindparam, select, text
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Executable
+from sqlalchemy.sql.elements import BindParameter
 
 from lms.api.errors import AppError, ErrorCode
 from lms.loan.api.schemas import LoanRuleSetCreate, LoanRuleSetUpdate
@@ -98,7 +99,7 @@ class LoanService:
     ) -> list[LoanDetailRow]:
         clauses = ["l.returned_at IS NULL"]
         params: dict[str, Any] = {"limit": min(limit, 20)}
-        bind_params: list[bindparam] = [bindparam("limit")]
+        bind_params: list[BindParameter[Any]] = [bindparam("limit")]
         if patron_ids:
             clauses.append("l.patron_id IN :patron_ids")
             params["patron_ids"] = patron_ids

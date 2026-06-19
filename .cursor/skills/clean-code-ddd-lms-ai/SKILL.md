@@ -227,7 +227,7 @@ Agent/LLM/Langfuse config via `Settings`: `groq_api_key`, `llm_model`, `agent_mo
 
 ### Governance overlap
 
-For agent guardrails, human accountability, and tool allowlists, also apply [imda-agentic-ai-governance](../imda-agentic-ai-governance/SKILL.md).
+For agent guardrails, human accountability, tool allowlists, and Twelve-Factor deployment (config in `Settings`, stateless workers, stdout logs), also apply [imda-agentic-ai-governance](../imda-agentic-ai-governance/SKILL.md).
 
 ### Agent desk copy (`messages.py`)
 
