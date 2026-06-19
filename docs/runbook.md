@@ -205,26 +205,51 @@ See [go-live-checklist.md](go-live-checklist.md) for criterion-by-criterion sign
 
 ## 10. Agent desk — LLM and observability (Phase 8)
 
-Conversational WF-01 and agentic fulfillment ([MVP.md §2.2](MVP.md)). **No local LLM** for MVP — hosted Groq primary, optional Hugging Face Inference fallback (ADR-028).
+Conversational circulation desk ([MVP.md §2.2](MVP.md)): guided issue, return, catalog browse, patron lookup, and **patron-at-desk loan inquiry** (“what books are issued to …?”). **No local LLM** for MVP — hosted providers via **LiteLLM** (ADR-028).
 
 ### Environment variables (agent)
 
 | Variable | Default (dev) | Production guidance |
 |----------|---------------|---------------------|
 | `AGENT_ISSUE_ENABLED` | `false` | Enable only after G11–G13 sign-off |
-| `AGENT_MOCK_LLM` | `true` (tests/CI) | Set `false` + `GROQ_API_KEY` for live Groq intent parsing |
-| `GROQ_API_KEY` | — | Required when agent enabled with live LLM; never commit |
-| `LLM_MODEL` | `llama-3.3-70b-versatile` | Pin version; change via LiteLLM config |
+| `AGENT_MOCK_LLM` | `true` (tests/CI) | Set `false` + at least one provider API key for live intent parsing |
+| `LLM_PROVIDER` | `groq` | Primary: `groq`, `openai`, `anthropic`, `together`, `huggingface` |
+| `LLM_PROVIDERS` | *(empty)* | Optional chain, e.g. `groq,openai` or `groq:llama-3.3-70b-versatile,openai:gpt-4o-mini` (overrides `LLM_PROVIDER` + legacy fallback) |
+| `GROQ_API_KEY` | — | Set if using Groq; never commit |
+| `OPENAI_API_KEY` | — | Set if using OpenAI |
+| `ANTHROPIC_API_KEY` | — | Set if using Anthropic |
+| `TOGETHER_API_KEY` | — | Set if using Together |
+| `HF_TOKEN` | — | Hugging Face Inference; also used for legacy `LLM_FALLBACK_*` |
+| `LLM_MODEL` | `llama-3.3-70b-versatile` | Default model for primary provider |
 | `LLM_MODEL_FAST` | `llama-3.1-8b-instant` | Optional; short clarifications only |
-| `LLM_FALLBACK_ENABLED` | `false` | Keep off unless HF fallback tested |
-| `HF_TOKEN` | — | Only if fallback enabled |
-| `LLM_FALLBACK_MODEL` | — | Pin model id (e.g. `Qwen/Qwen2.5-72B-Instruct`) |
-| `LLM_FALLBACK_PROVIDER` | — | **Pin** provider; no `:fastest` in production |
+| `LLM_FALLBACK_ENABLED` | `false` | Legacy fallback when `LLM_PROVIDERS` unset |
+| `LLM_FALLBACK_PROVIDER` | `together` | Pin provider; no `:fastest` in production |
+| `LLM_FALLBACK_MODEL` | `Qwen/Qwen2.5-72B-Instruct` | Pin model id |
 | `AGENT_MAX_TOOL_CALLS_PER_TURN` | `5` | Lower if abuse observed |
 | `LANGFUSE_PUBLIC_KEY` | — | Required for agent audit in production |
 | `LANGFUSE_SECRET_KEY` | — | Never commit |
 | `LANGFUSE_HOST` | `https://cloud.langfuse.com` | Self-hosted if required by school IT |
 | `LANGFUSE_BASE_URL` | *(alias)* | Same as `LANGFUSE_HOST` (e.g. `https://us.cloud.langfuse.com`) |
+
+**Example — Groq only:**
+
+```env
+AGENT_ISSUE_ENABLED=true
+AGENT_MOCK_LLM=false
+LLM_PROVIDER=groq
+GROQ_API_KEY=...
+LLM_MODEL=llama-3.3-70b-versatile
+```
+
+**Example — Groq with OpenAI fallback:**
+
+```env
+LLM_PROVIDERS=groq,openai
+GROQ_API_KEY=...
+OPENAI_API_KEY=...
+```
+
+Routing implementation: `src/lms/agent/llm.py` (`completion_with_fallback`). Intent classification prompt: `src/lms/agent/llm_intent_prompt.py`.
 
 ### Authorized agent tools
 
@@ -232,11 +257,25 @@ Enforced in `IssueAgentCoordinator._run_tool` (`src/lms/agent/tools.py`):
 
 | Class | Tool names |
 |-------|------------|
-| **Read** | `search_patrons`, `resolve_patron`, `search_lendable`, `select_barcode`, `validate_issue`, `get_fulfillment_status` |
-| **Write (HITL)** | `commit_issue`, `cancel_issue`, `transition_fulfillment` |
+| **Read** | `search_patrons`, `resolve_patron`, `search_lendable`, `search_catalog`, `select_catalog_copy`, `select_patron`, `select_barcode`, `validate_issue`, `get_fulfillment_status`, `lookup_return`, `search_return_loans`, `list_patron_loans_at_desk`, `select_return_loan` |
+| **Write (HITL)** | `commit_issue`, `cancel_issue`, `transition_fulfillment`, `commit_desk_return`, `initiate_return_pickup`, `apply_return_selection` |
 | **Restricted** | `direct_checkout`, `direct_db`, `admin_api`, `remote_mcp` |
 
 Writes require librarian approval via `pending_approval` and `POST /api/v1/agent/issue/sessions/{id}/resume`.
+
+### Conversational workflows (intent → coordinator)
+
+| Workflow | Staff examples | Key intents |
+|----------|----------------|-------------|
+| Guided issue | “I want to issue a book”, “science fiction” (after prompts) | `start_issue_to_patron`, `provide_patron_for_issue`, `provide_book_criteria`, `request_commit` |
+| One-shot issue | “Issue Harry Potter to Riya, desk pickup” | `request_commit` |
+| Patron desk / issued books | “What books are issued to Riya?”, “List open loans for Sharma” | `start_patron_desk`, `provide_patron_for_desk`, `desk_start_*` |
+| Return | “Return barcode ABC-123”, “I want to return a book” | `lookup_return`, `start_return`, `request_commit_return` |
+| Catalog browse | “Browse catalog”, “mystery novels” | `start_catalog_search`, `provide_catalog_criteria` |
+| Patron lookup | “Lookup patron”, “Riya Sharma” | `start_patron_lookup`, `provide_patron_lookup` |
+| Cancel guided flow | “cancel”, “never mind” | `decline_continue` |
+
+Full action list and LLM examples: `src/lms/agent/llm_intent_prompt.py`. Rule-based fallback: `src/lms/agent/intent_parser.py` (used when `AGENT_MOCK_LLM=true` or LLM unavailable).
 
 ### Staff-facing messages
 
@@ -245,7 +284,7 @@ Librarians see `assistant_message` and approval `summary` from the API — built
 ### Pre-enable checklist
 
 - [ ] Enterprise agent charter signed ([research.md §15.2](research.md))
-- [ ] Residual risk accepted (student/patron data pseudonymized but sent to Groq/HF)
+- [ ] Residual risk accepted (student/patron data pseudonymized but sent to hosted LLM provider(s))
 - [ ] Langfuse project created; retention policy set
 - [ ] `AGENT_ISSUE_ENABLED=true` only on pilot cohort
 - [ ] Wizard workflows (G7–G10) regression-tested with agent flag on
@@ -264,7 +303,7 @@ Expect `auth_ok: True` and a test `turn:validate` / `tool:search_patrons` span i
 |---------|--------|
 | Runaway LLM spend | Set `AGENT_ISSUE_ENABLED=false`; review Langfuse token metrics |
 | Wrong issue after approval | Use agent `"Cancel the issue"` (HITL) or WF-01 cancel API; review HITL audit trace |
-| Groq / HF outage | Agent returns 503; fall back to wizard UI at `/staff/` |
+| Groq / OpenAI / other provider outage | Agent falls back to next `LLM_PROVIDERS` entry; if all fail, rule parser or 503; use wizard UI at `/staff/` |
 | Suspected prompt injection | Disable agent; review Langfuse trace + governance blocks |
 
 ---

@@ -17,16 +17,16 @@ export function useAgentChatController() {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const chatRef = useRef<HTMLDivElement>(null);
+  const conversationRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = useCallback(() => {
-    const el = chatRef.current;
+  const scrollConversationToBottom = useCallback(() => {
+    const el = conversationRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, pendingApproval, scrollToBottom]);
+    scrollConversationToBottom();
+  }, [messages, pendingApproval, scrollConversationToBottom]);
 
   const ensureSession = useCallback(async () => {
     if (sessionId) return sessionId;
@@ -96,7 +96,7 @@ export function useAgentChatController() {
   );
 
   return {
-    chatRef,
+    conversationRef,
     messages,
     pendingApproval,
     disclosure,

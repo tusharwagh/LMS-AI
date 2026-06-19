@@ -1,0 +1,10 @@
+{
+  "owner": "tusharwagh",
+  "repo": "LMS-AI",
+  "branch": "main",
+  "path": "package-lock.json",
+  "message": "chore: add package-lock.json for Node 24 diagram deps",
+  "contentLength": 81049,
+  "contentStart": "{\n  \"name\": \"lms-ai\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": ",
+  "contentEnd": ".0\",\n      \"license\": \"MIT\"\n    }\n  }\n}\n"
+}

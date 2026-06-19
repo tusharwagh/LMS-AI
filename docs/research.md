@@ -1,6 +1,6 @@
 # Research — architecture & design discovery
 
-This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–I) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E), **ops/CI hardening** (§13 E17, session F), **agent desk spec** (§13 E18, session G), **Phase 8 implementation + quality pass** (§13 E19, session H), **agent desk UX / messages / refactor** (§13 E20, session I), **friendly query+intent desk copy** (§13 E21, session I cont.), and **Langfuse validation + React staff UI MVC** (§13 E22, session I cont.). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
+This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–I) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E), **ops/CI hardening** (§13 E17, session F), **agent desk spec** (§13 E18, session G), **Phase 8 implementation + quality pass** (§13 E19, session H), **agent desk UX / messages / refactor** (§13 E20, session I), **friendly query+intent desk copy** (§13 E21, session I cont.), **Langfuse validation + React staff UI MVC** (§13 E22, session I cont.), **agent return + catalog issue workflows + AI assist UI layout** (§13 E24, session I cont.), and **guided desk flows + multi-provider LLM + comprehensive intent prompt** (§13 E25, session I cont.). **Context handoff** for the latest thread: [§0](#0-current-state-snapshot-jun-2026) + [§13 E25](#e25--session-i-cont-guided-desk-flows-multi-provider-llm--intent-prompt-jun-2026). Prior handoff: [§13 E24](#e24--session-i-cont-agent-return-catalog-issue--ai-assist-ui-jun-2026). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
 
 **Go-live gate (summary):** [§14](#14-go-live-checklist-summary) — full matrix in [go-live-checklist.md](go-live-checklist.md).  
 **Agent governance (summary):** [§15](#15-agent-governance-imda-mgf--enterprise-charter) — IMDA MGF v1.5 skill with Langfuse observability.  
@@ -12,11 +12,37 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 
 ---
 
+## 0. Current state snapshot (Jun 2026)
+
+**Phases 0–8 are code-complete.** Circulation workflows, JWT auth, staff desk (React MVC), and the **agent circulation desk** (WF-01 issue + WF-02 return + catalog browse + patron lookup + **patron-at-desk loan inquiry**) ship behind `AGENT_ISSUE_ENABLED`.
+
+| Area | Status | Key paths / commands |
+|------|--------|----------------------|
+| **Backend** | Done | `src/lms/` — Reference, Catalog, Loan, workflows, agent |
+| **Agent desk** | Done | `coordinator.py`, `tools.py`, `messages.py`, `tracing.py`, `llm.py`, `llm_intent_prompt.py` |
+| **Agent WF-01** | Done | Guided + one-shot issue; catalog search → copy → patron → HITL commit → fulfillment |
+| **Agent WF-02** | Done | Return by barcode / title / patron; multi-loan list; HITL select + commit; rollback on failure |
+| **Patron desk** | Done | “What books are issued to [patron]?” → list loans → next action (return / issue / catalog / done) |
+| **Guided flows** | Done | Issue, return, catalog browse, patron lookup — step-by-step with cancel (`decline_continue`) |
+| **LLM routing** | Done | LiteLLM multi-provider (`llm.py`): Groq, OpenAI, Anthropic, Together, Hugging Face; primary + chain + fallback |
+| **Intent prompt** | Done | `llm_intent_prompt.py` — all 33 `IntentAction` values, 8 workflows, session_context table, 40+ examples |
+| **Staff UI** | Done | `src/lms/staff/ui/` → `make staff-ui-build`; AI assist: left compose / right conversation scroll |
+| **Desk copy** | Done | Intent-aware helpers in `messages.py`; UI renders API text verbatim |
+| **Langfuse (G13)** | Wired + validated | `make validate-langfuse`; runs on `make build`; `LANGFUSE_HOST` or `LANGFUSE_BASE_URL` |
+| **Tests** | **171 collected** | `make ci-native`; `make test-agent` → **32**; `tests/agent/` → **58**; 5 Playwright |
+| **Go-live** | Pending | G1–G10 unchecked; **G13 charter sign-off** still operational |
+
+**Session I arc (post-E19):** rules/skills → messages → intent-aware copy → React CRM → Playwright → Langfuse → WF-02 return → catalog-first issue → **guided desk flows** → **issued-books inquiry** → **multi-provider LLM** → **comprehensive intent prompt**. Detail: §3.11, §13 E20–E25.
+
+**Open next:** G13 IMDA charter sign-off (§15.8); eval datasets; live LLM staging outside mock CI; optional legacy `static/app.js` git cleanup.
+
+---
+
 ## 1. Purpose of this document
 
 | Use | How |
 |-----|-----|
-| **Context recovery** | Read §3 (all sessions A–I) + §4 (architecture log) + §13 (implementation E1–E22) + §14 (go-live) + §15 (agent governance) + §16 (clean code / DDD) + §5–§6 |
+| **Context recovery** | Start [§0](#0-current-state-snapshot-jun-2026); then §3 (A–I), §13 (E1–E25), §14–§16 |
 | **User profile** | §2 + §3.5 (early product intent) + §13 (locked tech + workflow decisions) |
 | **Feeder for AI / docs** | Paste or reference sections when generating ADRs, code, or phase‑2 plans |
 | **Avoid duplicate debate** | §6 lists resolved vs deferred; §3.6 / §13 note what landed in repo vs chat-only |
@@ -44,7 +70,7 @@ Signals from the discovery conversation—not a formal persona, but useful for p
 | **Workflow rollback** | WF-01 must support **step back** before commit and **cancel issuance** after commit (reverse via orchestrator) |
 | **Auth** | JWT Bearer on all domain APIs; Swagger token entry; seed users for local dev |
 | **Ops** | Makefile for local deploy (with/without Docker), DDL + sample data, destroy scripts |
-| **Desk UX evolution (Jun 2026)** | WF-01 as **conversational questions**; **agentic fulfillment** follow-up; **hosted LLM** (Groq primary, HF fallback) — **no local inference**; IMDA MGF governance |
+| **Desk UX evolution (Jun 2026)** | WF-01 as **conversational questions**; **agentic fulfillment** follow-up; **hosted LLM** (LiteLLM multi-provider) — **no local inference**; IMDA MGF governance |
 | **Product direction (stated, some post-MVP)** | Interest in multi-tenant SaaS, compliance-aware privacy, audit, group checkouts, offline—then **scoped out of MVP doc** when aligning to `MVP.md` |
 | **Geography & pedagogy (early sessions)** | **India K‑12**; **CBSE**, bilingual; languages English, Hindi, Marathi, Sanskrit, French, German |
 | **Deployment (early vs later)** | Early: **single school per deploy**, unique **rack** location; later chat: multi-tenant SaaS intent (deferred from MVP.md) |
@@ -70,7 +96,7 @@ Signals from the discovery conversation—not a formal persona, but useful for p
 | **F** | `3f82c968-9594-409a-9ef6-8e0201676ab4` | **Ops & CI** — destroy-native FK, Node 24, lint/import boundaries, CI Postgres, pytest smoke | `Makefile`, `package.json`, CI, `loan/application/service.py`, `tests/conftest.py` |
 | **G** | *(spec session)* | **Agent desk spec** — conversational WF-01, agentic fulfillment, Groq/HF, IMDA charter (docs) | `MVP.md` §2.2, ADR-025–028, `plan-mvp.md` Phase 8 |
 | **H** | `3f82c968-9594-409a-9ef6-8e0201676ab4` | **Phase 8 ship + quality** — agent module/API/UI, allowlist fixes, DDD refactor, mypy/lint, Cursor debug | `src/lms/agent/`, `tests/agent/`, `.vscode/`, §13 E19 |
-| **I** | *(post-E19 thread)* | **Agent desk UX + messages** — slot guards, `messages.py`, intent-aware copy, Langfuse tracing, rules/skills pass | `messages.py`, `tracing.py`, `tools.py`, `session.py`, §13 E20 |
+| **I** | *(post-E19 thread)* | **Agent UX + frontend + ops** — messages, tracing, React MVC, Playwright, Langfuse validate | §13 E20–E23; `staff/ui/`, `messages.py`, `tracing.py` |
 
 *Full logs: `.cursor/projects/.../agent-transcripts/<uuid>/<uuid>.jsonl` on your machine. In Cursor chat, cite a parent session as [title ≤6 words](uuid).*
 
@@ -231,8 +257,11 @@ Fully summarized in **§4** below. Canonical output: `MVP.md` §8–§11.
 | Playwright browser E2E | `tests/e2e/test_staff_playwright.py` — login, issue wizard, return wizard, agent HITL (5 tests); `make test-e2e-playwright` |
 | Staff UI build strategy | Vite output **not committed** — `make staff-ui-build` in CI, Docker, `setup-native`, `deploy-native` |
 | Langfuse validation | `LANGFUSE_BASE_URL` alias fix; `scripts/validate_langfuse.py`; `make validate-langfuse`; runs on **`make build`** (SKIP if keys unset) |
+| Agent WF-02 return | Barcode / patron / title search; multi-loan `LOAN_N` list; HITL `select_return` + `commit_return`; idempotency + DB rollback on failure |
+| Catalog-first issue | `search_catalog` without patron; `COPY_N` labels; `issue to [patron]` → HITL; delivery transitions unchanged |
+| AI assist UI layout | Left compose panel; right single scrollable conversation (user + assistant + approvals); `overflow-y: scroll` |
 
-**Verify:** `make lint && make test-agent && make ci-native` — **100 passed** (**32** in `tests/agent/` including `test_tracing.py`; **7** with `-m agent`; **5** Playwright); `make validate-langfuse` — auth OK when US/EU host matches keys.
+**Verify:** `make lint && make test-agent && make ci-native` — **105 passed** (**17** with `-m agent`; **5** Playwright); `make validate-langfuse` — auth OK when US/EU host matches keys.
 
 ### 3.9 Extraction coverage matrix
 
@@ -544,7 +573,7 @@ Full text: [MVP.md §10](MVP.md#10-architecture--design-decisions).
 | ADR-025 | Agent edge module (LLM never writes directly) |
 | ADR-026 | PII pseudonymization & token-minimized prompts |
 | ADR-027 | Mandatory HITL on agent writes |
-| ADR-028 | Hosted LLM — Groq primary, HF fallback; no local inference |
+| ADR-028 | Hosted LLM — LiteLLM multi-provider; no local inference |
 
 ---
 
@@ -566,24 +595,14 @@ Success criteria **G1–G10:** [plan-mvp.md §1.2](plan-mvp.md).
 When resuming work with an AI assistant or new developer, provide:
 
 ```
-Read LMS/docs/research.md §2–§3 (sessions A–I), §4 (architecture), §13 (implementation E1–E22), §14 (go-live).
-Canonical spec: MVP.md §1–§14.
-Execution plan: plan-mvp.md §0 — phases 0–8 complete.
-Domain: reference.md, catalog.md, loan.md.
-Shipped: src/lms/api/workflows/ (WF-01/02), src/lms/staff/ (desk UI); JWT on all /api/v1/*.
-Phase 8: MVP.md §2.2 — Groq/HF, LangGraph SOP, HITL; charter research.md §15.8; behind `AGENT_ISSUE_ENABLED`.
-Verify: make phase8 && make ci-native (100 tests); checklist: go-live-checklist.md (G1–G13).
-Staff UI: src/lms/staff/ui/ (React MVC) — build with make staff-ui-build; not committed.
-Langfuse: make validate-langfuse or make build (SKIP without keys); US cloud needs LANGFUSE_BASE_URL=https://us.cloud.langfuse.com.
-Agent code: src/lms/agent/ (coordinator, tools, graph, messages, tracing); composition: api/agent_composition.py.
-Desk copy: messages.py — intent-aware helpers (missing_patron_for(action=), ready_to_issue, approval prompts); coordinator passes intent.action.
-HITL: pending_approval + POST .../resume — not LangGraph interrupt() in production path.
-Phase-2 / chat-only intent: research.md §6.2.
-Agent governance (IMDA MGF, Langfuse, HITL): research.md §15 + .cursor/skills/imda-agentic-ai-governance/SKILL.md.
-Engineering craft (Clean Code, Beck, Vernon DDD): research.md §16 + .cursor/skills/clean-code-ddd-python/ + clean-code-ddd-lms-ai/.
-Open questions: research.md §6.3 (OQ-1–OQ-8).
-Local auth: POST /api/v1/auth/token — admin/librarian/patron, password changeme.
-Node 24: make install-node for make diagram; Python 3.12+; Postgres 16 for full test suite.
+Read LMS/docs/research.md §0 (snapshot) + §13 E24 (latest handoff) + §3.11 (Session I).
+Canonical spec: MVP.md §1–§14; plan-mvp.md §0 — phases 0–8 complete.
+Verify: make ci-native (105 tests); make test-agent (17); G13: make validate-langfuse.
+Agent: src/lms/agent/ — WF-01 catalog issue + WF-02 return + HITL via pending_approval/resume.
+Staff UI: src/lms/staff/ui/ — AI assist left compose / right conversation scroll.
+Langfuse US: LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
+HITL: pending_approval + POST .../resume — not LangGraph interrupt().
+Governance: research.md §15; craft: §16 + clean-code-ddd-lms-ai skill.
 ```
 
 **To pull more detail from a past session:** open the transcript JSONL for that session ID (§3.1) or ask the agent to “read research.md §3.x and expand.”
@@ -1023,7 +1042,7 @@ Observability stack standardized on **Langfuse**:
 | Desk circulation | Wizard + WF-01/WF-02 coordinators (deterministic APIs) | **Conversational WF-01** via `IssueAgentCoordinator`; wizard remains |
 | Fulfillment | `FulfillmentService` state machine via workflow API | **Agent subgraph** proposes transitions; HITL before write |
 | Patron PII | JWT RBAC, enriched read models (§E16) | Pseudonyms in Groq/HF prompts; redacted Langfuse spans |
-| LLM | None | Groq primary; HF Inference fallback; rule-based parser in CI (`AGENT_MOCK_LLM`) |
+| LLM | None | LiteLLM multi-provider; rule-based parser in CI (`AGENT_MOCK_LLM`) |
 | Procurement / recommendations | Out of MVP §1 (Session A) | Future — separate charter; higher risk tier |
 | Audit | Correlation id on writes (ADR-018) | Langfuse + HITL events correlated to `X-Correlation-Id` |
 
@@ -1371,9 +1390,9 @@ make lint && make test-agent && make validate-langfuse
 |------|--------|
 | `pytest tests/agent/` | **28 passed** |
 | `make test-agent` | **7 passed** (`-m agent` E2E subset) |
-| `make ci-native` | **91 passed** (full suite) |
+| `make ci-native` | **100 passed** (full suite) |
 
-Primary regression file for copy changes: `tests/agent/test_intent_and_masking.py` (intent guards, query echo, CHAT routing, no technical jargon in `issue_committed`).
+Primary regression files: `tests/agent/test_intent_and_masking.py` (copy); `tests/agent/test_tracing.py` (Langfuse); `tests/e2e/test_staff_playwright.py` (browser).
 
 ---
 
@@ -1430,6 +1449,323 @@ Primary regression file for copy changes: `tests/agent/test_intent_and_masking.p
 | Full suite | **100 passed** |
 
 **Open:** G13 charter sign-off; Langfuse eval datasets; remove legacy tracked `static/app.js` from git if still present.
+
+---
+
+### E23 — Session I handoff: context summary (Jun 2026)
+
+**Purpose:** Single entry point for resuming work after clearing chat context. Superseded for latest state by [§13 E24](#e24--session-i-cont-agent-return-catalog-issue--ai-assist-ui-jun-2026); retained for E20–E22 chronology.
+
+#### E23.1 What was built (chronological)
+
+| Phase | User intent | Delivered |
+|-------|-------------|-----------|
+| **Quality pass** | Run all rules/skills; fix gaps | `tracing.py`, Sonar fix in `intent_parser.py`, skills/rules updated; mypy strict green |
+| **Slot guards** | Composed Method; specific messages | `_patron_id`, `_holding_id`, `_patron_and_holding(action)`; `IssueSlots.has_patron_and_holding` |
+| **Desk copy** | Issue + next action; not generic | `messages.py` — centralized staff strings |
+| **Intent-aware** | Tie messages to `IntentAction` | `schemas.py` `IntentAction`/`ParsedIntent`; coordinator passes `intent.action` |
+| **Friendly responses** | Query echo; no jargon; CHAT routing | `greeting_reply`, `help_reply`, `patron_search_results(query)`, etc. |
+| **Docs/skills** | Encode guidelines | `MVP.md` §2.2, skills, `frontend-ui-engineering.md`, runbook |
+| **Staff UI** | React + TS; CRM layout; MVC | `src/lms/staff/ui/` — models/controllers/views; `AppSidebar`, `AppHeader`, `PageShell` |
+| **E2E** | Beyond smoke | Playwright: login, issue, return, agent HITL (5 tests) |
+| **Build strategy** | Don't commit static | `.gitignore` assets; `staff-ui-build` in CI/Docker/deploy |
+| **Langfuse** | Validate integration | `LANGFUSE_BASE_URL` alias; `validate_langfuse.py`; `make build` gate |
+
+#### E23.2 Architecture locked in
+
+```
+Staff browser → /staff/ (React MVC) → /api/v1/* (FastAPI)
+Agent tab → coordinator → intent_parser → tools (allowlist) → workflows
+Writes → pending_approval → POST .../resume (HITL)
+Observability → structlog always; Langfuse when LANGFUSE_* set
+Desk copy → messages.py only (never duplicate in frontend)
+```
+
+#### E23.3 Verification commands
+
+```bash
+make lint                    # ruff + import-linter + mypy
+make ci-native               # full suite (105 tests)
+make test-agent              # agent subset (17)
+make test-e2e-playwright     # browser desk (5)
+make validate-langfuse       # G13 auth + test span (SKIP if no keys)
+make staff-ui-build          # React → static/
+make build                   # validate-langfuse + Docker image
+```
+
+#### E23.4 Still open (do not re-debate)
+
+| Item | Owner / gate |
+|------|----------------|
+| G13 IMDA charter sign-off | §15.8 residual risk line |
+| Langfuse eval datasets + override review | Operational |
+| Live Groq path (non-mock) | Staging with `AGENT_MOCK_LLM=false` |
+| G1–G10 go-live sign-off | [go-live-checklist.md](go-live-checklist.md) |
+
+---
+
+### E24 — Session I (cont.): Agent return, catalog issue, AI assist UI (Jun 2026)
+
+**Transcript:** [Phase 8 ship + quality](3f82c968-9594-409a-9ef6-8e0201676ab4) — continuation of Session I after E23.
+
+**User asks (sequence):** Extend agentic AI for **WF-02 return book**; support return by patron/title with multi-loan selection and HITL; maintain idempotency and rollback on failure; incorporate **catalog search** into issue flow (find lendable copies → confirm issue → patron name → fulfillment); refine **AI assist staff UI** (split panels, scrollable conversation).
+
+#### E24.1 Agent desk scope (renamed mentally to “circulation agent”)
+
+| Flow | API surface | Coordinator |
+|------|-------------|-------------|
+| WF-01 Issue | Same `/api/v1/agent/issue/sessions/*` | `IssueAgentCoordinator` (`AGENT_ID = "LMS Desk Circulation Agent"`) |
+| WF-02 Return | Same endpoints | `ReturnTools` + return intents |
+| Catalog browse | Same endpoints | `search_catalog` / `select_catalog_copy` when no patron |
+
+HITL pattern unchanged: `pending_approval` on message response → `POST .../resume` with `{ "approved": true|false }`. Staff UI `ApprovalCard` renders `summary` verbatim from `messages.py`.
+
+#### E24.2 WF-02 — Agent return book
+
+**Workflow delegation:** `ReturnBookWorkflow` (`api/workflows/return_book.py`) — agent tools must not import domain infrastructure (import-linter ignore for workflow imports only).
+
+| Step | Staff says (examples) | Intent / tool | HITL |
+|------|----------------------|---------------|------|
+| Barcode lookup | `Return barcode RBC-123` | `LOOKUP_RETURN` → `lookup_return` | — |
+| Search by patron | `Return from Riya Sharma` | `SEARCH_RETURN` → `search_return_loans` | — |
+| Search by title + patron | `Return Harry Potter from Riya` | `SEARCH_RETURN` (filters) | — |
+| Multi-loan list | *(2+ open loans)* | Lists title, barcode, patron, due, `LOAN_N` | — |
+| Pick copy | `barcode ABC-123` / `LOAN_1` / title snippet | `SELECT_RETURN_LOAN` → `select_return_loan` | `select_return` |
+| Desk check-in | `Complete return` / `Desk return` | `REQUEST_COMMIT_RETURN` | `commit_return` |
+| Class pick-up | `Schedule pickup` | `REQUEST_RETURN_PICKUP` | `initiate_return_pickup` |
+
+**Session state:** `IssueSlots.return_candidates` (list of dict snapshots); `active_flow: return`; `catalog_candidate_count` / `return_candidate_count` in `session_summary`.
+
+**Idempotency & rollback:** `commit_desk_return` and `initiate_return_pickup` use workflow/orchestrator idempotency keys from `PendingApproval.idempotency_key`. On `AppError`, tools call `session.rollback()` and `_restore_selection()` so slots are unchanged — staff see `return_workflow_rolled_back(reason)`.
+
+**Tests:** `tests/agent/test_agent_return.py` (6 tests) — barcode HITL, multi-loan select, title+patron single match, parser, allowlist.
+
+#### E24.3 WF-01 — Catalog-first issue (new)
+
+Previously `search_lendable` required a resolved patron. Session I added **patron-independent catalog browse** then **patron confirmation**.
+
+| Step | Staff says | Intent / tool | HITL |
+|------|------------|---------------|------|
+| Search catalog | `Search Harry Potter` / `Find book …` | `SEARCH_CATALOG` → `search_catalog` | — |
+| List copies | *(0 / 1 / N lendable)* | Shows barcode, shelf, `COPY_N` | — |
+| Select copy | `barcode ABC-123` / `COPY_1` | `SELECT_CATALOG_COPY` | — |
+| Issue to patron | `Issue to Riya Sharma, desk pickup` | `ISSUE_TO_PATRON` → resolve + validate | `commit_issue` |
+| Patron only (copy selected) | `Riya Sharma` | `ISSUE_TO_PATRON` → ready message | — |
+| Proceed | `issue` / `yes issue` | `REQUEST_COMMIT` when `ready_to_issue` | `commit_issue` |
+| Delivery follow-up | `Mark ready` / `in transit` / `complete` | `REQUEST_FULFILLMENT_TRANSITION` | `transition_fulfillment` |
+
+**Workflow:** `SearchAndIssueWorkflow.search_catalog_lendable(query)` wraps `CatalogService.search_lendable` — no patron required.
+
+**Session state:** `IssueSlots.catalog_candidates`; single-match auto-select clears list and prompts for patron.
+
+**Tools added:** `search_catalog`, `select_catalog_copy` (READ); existing `resolve_patron`, `validate_issue`, `commit_issue` (WRITE + HITL).
+
+**Intents added:** `SELECT_CATALOG_COPY`, `ISSUE_TO_PATRON`; parser context flags: `has_catalog_candidates`, `has_selected_copy_no_patron`, `ready_to_issue`.
+
+**Tests:** `tests/agent/test_agent_catalog_issue.py` (4 tests) — search→issue HITL, multi-copy select, parser, allowlist.
+
+#### E24.4 Intent parser context (multi-flow desk)
+
+`LLMIntentParser.parse_with_context()` passes session flags so rule parser disambiguates:
+
+| Flag | Effect |
+|------|--------|
+| `has_return_candidates` | Bare text → `SELECT_RETURN_LOAN`; barcode / `LOAN_N` selection |
+| `has_catalog_candidates` | Bare text → `SELECT_CATALOG_COPY`; barcode / `COPY_N` selection |
+| `has_selected_copy_no_patron` | Short name or `issue to …` → `ISSUE_TO_PATRON` |
+| `ready_to_issue` | `issue` / `yes issue` → `REQUEST_COMMIT` |
+| `has_pending_approval` | `yes`/`no` routed to resume endpoint only (not inline parse) |
+
+Rule order matters: return-by-name patterns before generic barcode; `Search [title]` before default patron search on short strings.
+
+#### E24.5 Staff messages (`messages.py`)
+
+New helpers for return: `return_candidates_list`, `return_select_approval_*`, `return_workflow_rolled_back`, `no_open_loans_for_return_search`, etc.
+
+New helpers for catalog: `catalog_candidates_list`, `catalog_single_copy_ask_issue`, `catalog_copy_selected_ask_patron`, `issue_patron_resolved_ready`.
+
+`DEFAULT_HELP` and `help_reply` updated for catalog-first and return phrases.
+
+#### E24.6 AI assist UI layout (`AgentChatView`)
+
+**User preference (Session I):** Input on the **left**; **one framed, scrollable conversation** on the **right** containing **both** user and assistant messages **plus** pending approval cards. Scrollbar always visible (`overflow-y: scroll`, `scrollbar-gutter: stable`).
+
+| Panel | Content |
+|-------|---------|
+| Left — “Your message” | Textarea (`Type here`), Send, New session |
+| Right — “Conversation” | Chronological user + assistant bubbles; `ApprovalCard` inside scroll area |
+
+**Controller:** single `conversationRef` with auto-scroll on new messages / approvals.
+
+**E2E:** `tests/e2e/test_staff_playwright.py` — `get_by_role("log", name="Agent conversation")`; label `Type here` for compose field.
+
+#### E24.7 File map (changed in E24)
+
+| Area | Paths |
+|------|-------|
+| Agent coordinator | `src/lms/agent/coordinator.py` — return/catalog handlers, `parse_with_context` flags |
+| Agent tools | `src/lms/agent/tools.py` — `ReturnTools`, `search_catalog`, `select_catalog_copy` |
+| Agent session | `src/lms/agent/session.py` — `catalog_candidates`, `SELECT_RETURN` pending kind |
+| Agent schemas | `src/lms/agent/schemas.py` — `SELECT_CATALOG_COPY`, `ISSUE_TO_PATRON`, `copy_pseudonym` |
+| Agent parser | `src/lms/agent/intent_parser.py` — return + catalog patterns, context-aware routing |
+| Agent messages | `src/lms/agent/messages.py` — return + catalog desk copy |
+| Workflows | `search_and_issue.py` (`search_catalog_lendable`), `return_book.py` (`search_candidates`) |
+| Loan service | `loan/application/service.py` — `search_open_loan_details` |
+| Staff UI | `staff/ui/src/views/AgentChat/*`, `useAgentChatController.ts` |
+| Tests | `tests/agent/test_agent_return.py`, `test_agent_catalog_issue.py` |
+
+#### E24.8 Verification
+
+| Gate | Result |
+|------|--------|
+| `make test-agent` | **17 passed** (`-m agent`) |
+| `pytest tests/agent/` | **32+** (issue, return, catalog, intent, tracing) |
+| `make ci-native` | **105 passed** |
+| `make staff-ui-build` | Pass |
+| `make lint` (agent paths) | Pass |
+
+#### E24.9 Example end-to-end transcripts
+
+**Return (multi-loan):**
+
+```text
+Staff: Return from Catalog Patron
+Agent: I found 2 open loans: … [LOAN_1] [LOAN_2] …
+Staff: barcode RBC-abc
+Agent: Confirm return of … [select_return HITL]
+Staff: [Approve]
+Agent: Selected … Say 'complete return' …
+Staff: Complete return
+Agent: Return … [commit_return HITL]
+Staff: [Approve]
+Agent: Done — … is checked in from …
+```
+
+**Catalog issue:**
+
+```text
+Staff: Search Harry Potter
+Agent: Found N lendable copies … [COPY_1] …
+Staff: barcode ABC-123
+Agent: Selected … Say 'issue to [patron name]' …
+Staff: Issue to Riya Sharma, desk pickup
+Agent: Issue … [commit_issue HITL]
+Staff: [Approve]
+Agent: Done — … is now issued to …
+```
+
+#### E24.10 Still open (unchanged from E23)
+
+| Item | Notes |
+|------|-------|
+| G13 charter sign-off | §15.8 — agent covers issue **and** return + desk inquiry; charter text may need scope update |
+| Agent Playwright for catalog/return NL paths | Issue HITL covered; return/catalog agent browser tests optional |
+| Live LLM (`AGENT_MOCK_LLM=false`) | Staging validation with chosen provider chain |
+
+---
+
+### E25 — Session I (cont.): Guided desk flows, multi-provider LLM, intent prompt (Jun 2026)
+
+**Transcript:** [Phase 8 ship + quality](3f82c968-9594-409a-9ef6-8e0201676ab4) — continuation after E24.
+
+**User asks (sequence):** Generic conversational **guided issue** (patron → book criteria → search → select); **no-patron** and **cancel** paths; similar guided flows for **return**, **catalog browse**, and **patron lookup**; **patron-at-desk** view (“what books are issued to …?”) with next-action menu; return-intent fast path; **multi-provider LLM** (Groq + others via LiteLLM); **comprehensive LLM system prompt** documenting all workflows, actions, and examples.
+
+#### E25.1 Guided conversational flows (coordinator + session flags)
+
+All flows use `IssueAgentCoordinator._apply_intent` with `parse_with_context()` session flags. Staff can say **cancel / stop / never mind** → `decline_continue` when a guided context flag is active.
+
+| Flow | Opener (examples) | Session flags | Steps |
+|------|-------------------|---------------|-------|
+| **Guided issue** | “I want to issue a book”, “checkout a book to Riya” | `guided_issue_active`, `awaiting_patron`, `awaiting_book_criteria` | Patron → book criteria (subject/title/DDC) → catalog search → copy select → HITL commit |
+| **Guided return** | “I want to return a book” | `guided_return_active`, `desk_return_intent` | Patron → list/pick loan → HITL select → HITL commit |
+| **Patron desk / issued books** | “What books are issued to Riya?”, “List open loans for Sharma” | `guided_return_active`, `desk_return_intent=false` | List loans → next action: return / issue / catalog / done |
+| **Catalog browse** | “Browse catalog”, “Find a book” | `guided_catalog_active`, `awaiting_catalog_criteria` | Criteria → search → copy list (no issue until patron chosen) |
+| **Patron lookup** | “Lookup patron”, “Who is the patron” | `guided_patron_lookup_active`, `awaiting_patron_lookup` | Name/card/adm → eligibility display |
+
+**Key intents added:** `START_ISSUE_TO_PATRON`, `PROVIDE_PATRON_FOR_ISSUE`, `PROVIDE_BOOK_CRITERIA`, `START_PATRON_DESK`, `PROVIDE_PATRON_FOR_DESK`, `DESK_START_RETURN`, `DESK_START_ISSUE`, `DESK_START_CATALOG`, `DESK_SESSION_DONE`, `START_CATALOG_SEARCH`, `PROVIDE_CATALOG_CRITERIA`, `START_PATRON_LOOKUP`, `PROVIDE_PATRON_LOOKUP`, `DECLINE_CONTINUE`.
+
+**Tool:** `list_patron_loans_at_desk` (READ) — lists open loans for patron at desk; on return intent with single loan, auto-selects and prompts `complete return`.
+
+**Tests:** `tests/agent/test_agent_guided_issue.py`, `test_agent_guided_flows.py`.
+
+#### E25.2 Issued-books inquiry vs return vs catalog (intent disambiguation)
+
+| Staff question | Correct action | Wrong action to avoid |
+|----------------|----------------|----------------------|
+| “What books are issued to Riya?” | `start_patron_desk` + `patron_query` | `search_catalog`, `start_return` |
+| “Which books are checked out to me?” | `start_patron_desk` (then ask patron) | `search_patron` |
+| “List open loans for Sharma” | `start_patron_desk` | `search_return` |
+| “I want to return a book” | `start_return` | `start_patron_desk` |
+| “Search Harry Potter” | `search_catalog` | `start_patron_desk` |
+
+Rule parser patterns in `intent_parser.py`; LLM guidance in `llm_intent_prompt.py` § workflows C + disambiguation + examples.
+
+#### E25.3 Multi-provider LLM routing (`llm.py`, ADR-028 extended)
+
+**Module:** `src/lms/agent/llm.py` — `completion_with_fallback()`, `iter_llm_endpoints()`, `llm_live_enabled()`.
+
+| Config | Purpose |
+|--------|---------|
+| `LLM_PROVIDER` | Primary: `groq`, `openai`, `anthropic`, `together`, `huggingface` |
+| `LLM_PROVIDERS` | Optional chain, e.g. `groq,openai` or `groq:llama-3.3-70b-versatile,openai:gpt-4o-mini` |
+| `LLM_FALLBACK_ENABLED` + `LLM_FALLBACK_PROVIDER` | Legacy fallback when `LLM_PROVIDERS` unset |
+| `GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `TOGETHER_API_KEY`, `HF_TOKEN` | Per-provider keys (set only what you use) |
+| `AGENT_MOCK_LLM` | `true` in CI → rule-based `IntentParser` only |
+
+`LLMIntentParser` calls `completion_with_fallback()` — tries each configured endpoint in order on failure.
+
+**Tests:** `tests/unit/test_llm_providers.py`.
+
+#### E25.4 Comprehensive intent system prompt (`llm_intent_prompt.py`)
+
+**Module:** `src/lms/agent/llm_intent_prompt.py` — `LLM_INTENT_SYSTEM` constant.
+
+| Section | Content |
+|---------|---------|
+| Output schema | All JSON keys the parser expects |
+| Session context table | 15+ flags → preferred continuation action |
+| Workflows A–I | Guided issue, one-shot issue, patron desk, return, catalog, patron lookup, fulfillment, HITL, chat |
+| Disambiguation rules | Issued vs catalog vs return |
+| Examples | 40+ message → JSON mappings, including context-conditioned turns |
+
+`parse_with_context()` passes full `session_context` dict to the LLM user payload (not only `has_pending_approval`).
+
+**Tests:** `tests/unit/test_llm_intent_prompt.py` — every `IntentAction` documented in prompt.
+
+#### E25.5 File map (E25)
+
+| Area | Paths |
+|------|-------|
+| LLM router | `src/lms/agent/llm.py` |
+| Intent prompt | `src/lms/agent/llm_intent_prompt.py` |
+| Intent parser | `src/lms/agent/intent_parser.py` — `LLMIntentParser`, rule patterns for issued-books phrases |
+| Coordinator | `src/lms/agent/coordinator.py` — desk handlers, guided flow resume |
+| Session | `src/lms/agent/session.py` — desk flags (`awaiting_desk_*`, `desk_return_intent`) |
+| Config | `src/lms/config.py` — `llm_provider`, `llm_providers`, provider API keys |
+| Env template | `.env.example` — multi-provider examples |
+| Tests | `test_agent_guided_issue.py`, `test_agent_guided_flows.py`, `test_llm_providers.py`, `test_llm_intent_prompt.py` |
+
+#### E25.6 Verification
+
+| Gate | Result |
+|------|--------|
+| `make test-agent` | **32 passed** |
+| `pytest tests/agent/` | **58** collected |
+| `make ci-native` | **171** tests collected |
+| `tests/unit/test_llm_intent_prompt.py` | All 33 actions in prompt |
+
+#### E25.7 Example: patron desk → return
+
+```text
+Staff: What books are issued to Riya Sharma?
+Agent: [lists open loans] … What would you like to do next? (return / issue / catalog / done)
+Staff: return
+Agent: [return pick or single-loan ready] … Say 'complete return' …
+Staff: Complete return
+Agent: [commit_return HITL]
+Staff: [Approve]
+Agent: Done — … checked in. [refreshed desk list or next actions]
+```
 
 ---
 
@@ -1512,11 +1848,13 @@ When implementing or reviewing code:
 | Coordinator | Session, intent, HITL, turn lifecycle | `lms/agent/coordinator.py` |
 | Tools | Allowlisted delegation to workflows | `lms/agent/tools.py` |
 | Intent parser | NL → `ParsedIntent` / `IntentAction` | `lms/agent/intent_parser.py` |
+| LLM intent prompt | All workflows + examples for hosted LLM | `lms/agent/llm_intent_prompt.py` |
+| LLM router | LiteLLM multi-provider + fallback | `lms/agent/llm.py` |
 | Graph | Structural SOP only (`enter → parse → govern`) | `lms/agent/graph.py` |
 | Staff messages | Intent-aware desk copy (issue + next action) | `lms/agent/messages.py` |
 | Tracing | structlog audit + optional Langfuse spans | `lms/agent/tracing.py` |
 
-- **Read tools** (`search_*`, `validate_*`) vs **write tools** (`commit_issue`, `cancel_issue`, `transition_fulfillment`) — writes require HITL via `resume(approved=...)`.
+- **Read tools** (`search_*`, `validate_*`, `lookup_return`, `search_catalog`, `select_*`) vs **write tools** (`commit_issue`, `commit_desk_return`, `cancel_issue`, `transition_fulfillment`, `initiate_return_pickup`, `apply_return_selection`) — writes require HITL via `resume(approved=...)`.
 - **`RESTRICTED_TOOL_NAMES`** never bound — deny-by-default (aligns with §15 charter).
 - Business rules stay in workflows/services; tools return `ToolResult(ok, message, data)`.
 - **Intent-aware messages** — slot guards and coordinator responses use `messages.*(action=IntentAction.…)`; never generic “missing field” strings (§13 E20–E21).
@@ -1533,12 +1871,14 @@ When implementing or reviewing code:
 | Source | `src/lms/staff/ui/` (Vite, React 18+, strict TypeScript) |
 | Build output | `src/lms/staff/static/` — **not committed**; `make staff-ui-build` |
 | Model | `models/` → API clients |
-| Controller | `controllers/` → wizard/chat hooks |
+| Controller | `controllers/` → wizard/chat hooks (`useAgentChatController`) |
 | View | `views/*View.tsx` + `components/` |
 | Nav config | `config/navigation.ts` — grouped CRM sidebar |
 
+**AI assist layout (E24):** CRM `PageShell` + two-column workspace — **left** compose (textarea, Send, New session); **right** single bordered conversation log (user + assistant messages + `ApprovalCard`) with persistent vertical scrollbar.
+
 - **Single source for desk copy:** backend `messages.py` — UI renders `assistant_message` verbatim (no frontend duplication).
-- **E2E:** HTTP smoke `test_staff_ui.py`; browser `test_staff_playwright.py`.
+- **E2E:** HTTP smoke `test_staff_ui.py`; browser `test_staff_playwright.py` (agent: `Agent conversation` log, `Type here` label).
 - **Docs:** `.cursor/rules/frontend-ui-engineering.md` §LMS-AI staff UI.
 
 ### 16.8 Import-linter contracts (enforced in CI)
@@ -1567,4 +1907,4 @@ Cross-context data flows through **ports + adapters** or **workflow orchestratio
 
 ---
 
-*Last updated: Jun 2026 — §13 E22 (Langfuse validation on `make build`, React staff UI MVC, Playwright E2E). Phases 0–8 complete; 100 tests; G13 charter sign-off pending.*
+*Last updated: Jun 2026 — §0 snapshot + §13 E24 (agent WF-02 return, catalog-first issue, AI assist split UI). Phases 0–8 complete; 105 tests; G13 charter sign-off pending.*

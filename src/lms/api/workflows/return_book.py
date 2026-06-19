@@ -24,6 +24,18 @@ from lms.shared.time import library_today
 
 
 @dataclass(frozen=True, slots=True)
+class ReturnCandidate:
+    loan_id: UUID
+    holding_id: UUID
+    holding_barcode: str
+    patron_id: UUID
+    patron_display_name: str
+    catalog_title: str
+    due_date: date
+    is_overdue: bool
+
+
+@dataclass(frozen=True, slots=True)
 class ReturnStartResult:
     loan_id: UUID
     holding_id: UUID
@@ -74,6 +86,49 @@ class ReturnBookWorkflow:
             is_overdue=loan.due_date < today,
             open_loans_for_patron=len(open_loans),
         )
+
+    def search_candidates(
+        self,
+        *,
+        patron_query: str | None = None,
+        card_barcode: str | None = None,
+        external_ref: str | None = None,
+        title_query: str | None = None,
+        limit: int = 10,
+    ) -> list[ReturnCandidate]:
+        patron_ids = self._resolve_patron_ids(
+            patron_query=patron_query,
+            card_barcode=card_barcode,
+            external_ref=external_ref,
+        )
+        if (
+            patron_query
+            and not card_barcode
+            and not external_ref
+            and patron_ids is not None
+            and not patron_ids
+        ):
+            return []
+
+        details = self._loan_service.search_open_loan_details(
+            patron_ids=patron_ids,
+            title_query=title_query,
+            limit=limit,
+        )
+        today = library_today()
+        return [
+            ReturnCandidate(
+                loan_id=row.loan.id,
+                holding_id=row.loan.holding_id,
+                holding_barcode=row.holding_barcode,
+                patron_id=row.loan.patron_id,
+                patron_display_name=row.patron_display_name,
+                catalog_title=row.catalog_title,
+                due_date=row.loan.due_date,
+                is_overdue=row.loan.due_date < today,
+            )
+            for row in details
+        ]
 
     def commit_desk(
         self,
@@ -218,3 +273,21 @@ class ReturnBookWorkflow:
             "Either barcode or loan_id is required",
             status_code=422,
         )
+
+    def _resolve_patron_ids(
+        self,
+        *,
+        patron_query: str | None,
+        card_barcode: str | None,
+        external_ref: str | None,
+    ) -> list[UUID] | None:
+        if card_barcode:
+            patron = self._reference.get_patron_by_card(card_barcode)
+            return [patron.id]
+        if external_ref:
+            patron = self._reference.get_patron_by_external_ref(external_ref)
+            return [patron.id]
+        if patron_query:
+            patrons = self._reference.search_patrons_by_name(patron_query, limit=10)
+            return [p.id for p in patrons]
+        return None

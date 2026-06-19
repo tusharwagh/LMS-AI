@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session
 
 from lms.api.errors import AppError, ErrorCode
@@ -100,7 +100,11 @@ class CatalogService:
 
     def search_lendable(self, *, q: str, limit: int = 50) -> list[LendableCatalogHit]:
         """Published catalogs matching query with at least one AVAILABLE circulating copy."""
-        pattern = f"%{q.strip()}%"
+        needle = q.strip()
+        pattern = f"%{needle}%"
+        subject_pattern = func.lower(cast(CatalogModel.subject_tags, String)).like(
+            f"%{needle.lower()}%"
+        )
         catalogs = list(
             self._session.scalars(
                 select(CatalogModel)
@@ -110,6 +114,8 @@ class CatalogService:
                         CatalogModel.title.ilike(pattern),
                         CatalogModel.isbn.ilike(pattern),
                         CatalogModel.call_number.ilike(pattern),
+                        CatalogModel.ddc.ilike(pattern),
+                        subject_pattern,
                     ),
                 )
                 .order_by(CatalogModel.title)

@@ -3,7 +3,7 @@ from datetime import date
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, text
+from sqlalchemy import bindparam, select, text
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Executable
 
@@ -88,6 +88,36 @@ class LoanService:
             """
         )
         return self._load_loan_details(stmt, {"patron_id": patron_id})
+
+    def search_open_loan_details(
+        self,
+        *,
+        patron_ids: list[UUID] | None = None,
+        title_query: str | None = None,
+        limit: int = 10,
+    ) -> list[LoanDetailRow]:
+        clauses = ["l.returned_at IS NULL"]
+        params: dict[str, Any] = {"limit": min(limit, 20)}
+        bind_params: list[bindparam] = [bindparam("limit")]
+        if patron_ids:
+            clauses.append("l.patron_id IN :patron_ids")
+            params["patron_ids"] = patron_ids
+            bind_params.append(bindparam("patron_ids", expanding=True))
+        title = (title_query or "").strip()
+        if title:
+            clauses.append("c.title ILIKE :title_pattern")
+            params["title_pattern"] = f"%{title}%"
+            bind_params.append(bindparam("title_pattern"))
+        where_sql = " AND ".join(clauses)
+        stmt = text(
+            _LOAN_DETAIL_SELECT
+            + f"""
+            WHERE {where_sql}
+            ORDER BY l.checkout_at DESC
+            LIMIT :limit
+            """
+        ).bindparams(*bind_params)
+        return self._load_loan_details(stmt, params)
 
     def list_overdue_loans(self, *, as_of: date | None = None) -> list[LoanModel]:
         as_of = as_of or library_today()

@@ -64,7 +64,7 @@ Requires [MVP.md §2.2](MVP.md), §13.8, and [research.md §15](research.md) (IM
 
 | # | Criterion | Verify command / check | Status |
 |---|-----------|----------------------|--------|
-| **G11** | Conversational WF-01 with HITL commit | `make test-agent` — NL issue, barcode select, cancel issue, HITL commit; friendly desk copy (no technical jargon in `assistant_message`) | ☐ |
+| **G11** | Conversational circulation desk with HITL | `make test-agent` — guided issue, patron desk (issued books), return, catalog browse, patron lookup; friendly desk copy | ☐ |
 | **G12** | Agentic fulfillment transitions with HITL | `make test-agent` — delivery issue → transition with HITL | ☐ |
 | **G13** | IMDA agent charter + observability | Charter signed; Langfuse traces with redacted args; adversarial tests | ☐ |
 
@@ -72,14 +72,15 @@ Requires [MVP.md §2.2](MVP.md), §13.8, and [research.md §15](research.md) (IM
 
 | Item | Reference | Status |
 |------|-----------|--------|
-| `GROQ_API_KEY` set (not in git) | [runbook.md §10](runbook.md) | ☐ |
+| Provider API key(s) set (not in git) | [runbook.md §10](runbook.md) — `GROQ_API_KEY` and/or `LLM_PROVIDERS` chain | ☐ |
+| `AGENT_MOCK_LLM=false` tested in staging (if using live LLM) | `.env` | ☐ |
 | `AGENT_ISSUE_ENABLED` intentional for pilot | `.env` | ☐ |
 | Enterprise agent charter signed | [research.md §15.2](research.md) | ☐ |
 | Langfuse keys configured (`LANGFUSE_*`) | [runbook.md §10](runbook.md) | ☐ |
 | Staff UI shows AI transparency + approval cards | MVP.md §2.2; UI renders backend `assistant_message` verbatim | ☐ |
 | Wizard mode still passes G7–G10 with agent enabled | Regression E2E | ☐ |
-| HF fallback provider pinned (if enabled) | ADR-028 | ☐ |
-| Residual risk (PII to Groq/HF) accepted in writing | Charter | ☐ |
+| HF / Together fallback provider pinned (if enabled) | ADR-028; prefer `LLM_PROVIDERS` chain | ☐ |
+| Residual risk (PII to hosted LLM provider(s)) accepted in writing | Charter | ☐ |
 
 ---
 

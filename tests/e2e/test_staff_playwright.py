@@ -75,7 +75,7 @@ def test_agent_assist_pending_approval(
     message = (
         f"Issue {issue_fixture['title']} to {issue_fixture['patron_name']}, desk pickup"
     )
-    page.get_by_label("Your message").fill(message)
+    page.get_by_label("Type here").fill(message)
     page.get_by_role("button", name="Send").click()
 
     chat = page.get_by_role("log", name="Agent conversation")
@@ -99,7 +99,7 @@ def test_agent_assist_hitl_approve_commit(
     message = (
         f"Issue {issue_fixture['title']} to {issue_fixture['patron_name']}, desk pickup"
     )
-    page.get_by_label("Your message").fill(message)
+    page.get_by_label("Type here").fill(message)
     page.get_by_role("button", name="Send").click()
 
     approval = page.get_by_role("region", name="Pending approval")

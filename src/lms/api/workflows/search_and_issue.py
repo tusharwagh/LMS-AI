@@ -26,6 +26,14 @@ from lms.shared.idempotency.service import (
 
 
 @dataclass(frozen=True, slots=True)
+class CatalogLendableCopy:
+    holding_id: UUID
+    holding_barcode: str
+    catalog_title: str
+    shelf_location: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class IssueStartResult:
     patron_id: UUID
     patron_display_name: str
@@ -64,6 +72,29 @@ class SearchAndIssueWorkflow:
 
     def search_patrons(self, display_name: str, *, limit: int = 20) -> list[PatronModel]:
         return self._reference.search_patrons_by_name(display_name, limit=limit)
+
+    def search_catalog_lendable(
+        self,
+        query: str,
+        *,
+        limit: int = 10,
+    ) -> list[CatalogLendableCopy]:
+        hits = self._catalog.search_lendable(q=query, limit=limit)
+        copies: list[CatalogLendableCopy] = []
+        for hit in hits:
+            title = hit.catalog.title
+            for holding in hit.lendable_holdings:
+                copies.append(
+                    CatalogLendableCopy(
+                        holding_id=holding.id,
+                        holding_barcode=holding.barcode,
+                        catalog_title=title,
+                        shelf_location=holding.shelf_location,
+                    )
+                )
+                if len(copies) >= limit:
+                    return copies
+        return copies
 
     def start(
         self,

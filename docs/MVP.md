@@ -93,9 +93,9 @@ sequenceDiagram
 
 Both modes compose the **same** `SearchAndIssueWorkflow` and `FulfillmentService` (ADR-021). The agent is an additional **application edge** (ADR-025); it must not bypass the orchestrator or domain validators.
 
-### 2.2 Conversational search & issue + agentic fulfillment (Phase 8)
+### 2.2 Conversational circulation desk + agentic fulfillment (Phase 8)
 
-Librarians interact with WF-01 as a **dialogue** (“Issue *Harry Potter* to Riya Sharma, deliver to Class 5A”) instead of only a fixed wizard. **Fulfillment follow-up** (step 7 when `mode != DESK`) is driven by an **SOP-bound agent graph** that proposes transitions; the librarian **confirms** before any write.
+Librarians interact with WF-01/WF-02 as a **dialogue** instead of only the fixed wizard — e.g. “Issue *Harry Potter* to Riya Sharma, deliver to Class 5A”, “What books are issued to Riya?”, “Return barcode ABC-123”. **Fulfillment follow-up** (step 7 when `mode != DESK`) is driven by an **SOP-bound agent graph** that proposes transitions; the librarian **confirms** before any write.
 
 **Non-negotiable (ADR-025, ADR-027):**
 
@@ -117,9 +117,31 @@ Librarians interact with WF-01 as a **dialogue** (“Issue *Harry Potter* to Riy
 | 6b | “Cancel the issue” | `cancel_issue` (write) | **Required** |
 | 7 | “Mark in transit” | `get_fulfillment_status`, `transition_fulfillment` (write) | **Required** |
 
-**Authorized tool allowlist** (`src/lms/agent/tools.py`): read — `search_patrons`, `resolve_patron`, `search_lendable`, `select_barcode`, `validate_issue`, `get_fulfillment_status`; write — `commit_issue`, `cancel_issue`, `transition_fulfillment`. **Restricted (never bound):** `direct_checkout`, `direct_db`, `admin_api`, `remote_mcp`.
+**Authorized tool allowlist** (`src/lms/agent/tools.py`):
+
+| Class | Tools |
+|-------|-------|
+| **Read** | `search_patrons`, `resolve_patron`, `search_lendable`, `search_catalog`, `select_catalog_copy`, `select_patron`, `select_barcode`, `validate_issue`, `get_fulfillment_status`, `lookup_return`, `search_return_loans`, `list_patron_loans_at_desk`, `select_return_loan` |
+| **Write (HITL)** | `commit_issue`, `cancel_issue`, `transition_fulfillment`, `commit_desk_return`, `initiate_return_pickup`, `apply_return_selection` |
+| **Restricted** | `direct_checkout`, `direct_db`, `admin_api`, `remote_mcp` |
 
 On tool failure: **halt and notify** — no unbounded self-retry (IMDA SOP; see [research.md §15](research.md)).
+
+#### Conversational workflows (shipped)
+
+| Workflow | Purpose | Example staff message |
+|----------|---------|----------------------|
+| **Guided issue** | Step-by-step checkout when details are missing | “I want to issue a book” → patron → subject/title → copy → HITL |
+| **One-shot issue** | Title + patron in one turn | “Issue Harry Potter to Riya Sharma, desk pickup” |
+| **Patron desk** | List books currently issued to a patron | “What books are issued to Riya Sharma?” |
+| **Return** | Check-in by barcode, title, or patron | “Return barcode ABC-123”, “I want to return a book” |
+| **Catalog browse** | Find lendable copies without issuing yet | “Browse catalog”, “science fiction” |
+| **Patron lookup** | Identity / eligibility only | “Lookup patron”, “Riya Sharma” |
+| **Fulfillment** | Post-commit delivery status | “Mark in transit”, “complete” |
+
+After **patron desk** lists loans, staff choose next action: return, issue another book, browse catalog, or done. All flows support **cancel** (`decline_continue`).
+
+**Intent layer:** `IntentParser` (rules, CI default) and `LLMIntentParser` (hosted LLM when `AGENT_MOCK_LLM=false`). System prompt documents all 33 `IntentAction` values: `src/lms/agent/llm_intent_prompt.py`. Session flags (`awaiting_desk_patron`, `has_catalog_candidates`, etc.) passed to the LLM as `session_context`.
 
 #### Desk copy (staff-facing messages)
 
@@ -166,13 +188,14 @@ sequenceDiagram
 
 #### Hosted LLM (ADR-028) — no local inference for MVP
 
-| Role | Provider | Model | Notes |
-|------|----------|-------|-------|
-| **Primary** | **Groq API** | `llama-3.3-70b-versatile` | Dialogue + tool calling; low latency |
-| **Fast routing (optional)** | Groq | `llama-3.1-8b-instant` | Short clarifications only |
-| **Fallback (optional, off by default)** | **Hugging Face Inference** | Pinned model + provider (e.g. `Qwen/Qwen2.5-72B-Instruct`) | No `:fastest` routing in production |
+| Role | Configuration | Notes |
+|------|---------------|-------|
+| **Primary** | `LLM_PROVIDER` + matching API key | Default `groq` + `GROQ_API_KEY`; also `openai`, `anthropic`, `together`, `huggingface` |
+| **Provider chain** | `LLM_PROVIDERS` | e.g. `groq,openai` or per-provider models `groq:llama-3.3-70b-versatile,openai:gpt-4o-mini` |
+| **Legacy fallback** | `LLM_FALLBACK_ENABLED` + `LLM_FALLBACK_PROVIDER` | When `LLM_PROVIDERS` unset; pin model — no `:fastest` in production |
+| **Fast routing (optional)** | `LLM_MODEL_FAST` | Short clarifications only |
 
-Routing via **LiteLLM**; orchestration via **LangGraph** (fixed `StateGraph` edges, not open-ended ReAct). **Do not** use Groq Compound remote MCP or arbitrary HF MCP servers for circulation tools (IMDA supply-chain control).
+Routing via **LiteLLM** (`src/lms/agent/llm.py` — `completion_with_fallback`); intent classification via `LLMIntentParser` + `llm_intent_prompt.py`. Orchestration via **LangGraph** (fixed `StateGraph` edges). **Do not** use Groq Compound remote MCP or arbitrary HF MCP servers for circulation tools (IMDA supply-chain control).
 
 #### Data masking & token minimization (ADR-026)
 
@@ -617,7 +640,7 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 | **ADR-025** | **Agent edge module** (`IssueAgentCoordinator`) | Conversational WF-01 without changing circulation kernel (§2.2) | LangGraph SOP graph; tools wrap workflow services only; LLM never writes directly |
 | **ADR-026** | **PII pseudonymization & token-minimized prompts** | K-12 patron data + hosted LLM (Groq/HF) | Server session holds IDs; prompts use pseudonyms; redact before Langfuse/HITL |
 | **ADR-027** | **Mandatory HITL on agent writes** | Irreversible desk actions; IMDA meaningful oversight | `pending_approval` + `/resume` before `commit_issue`, `cancel_issue`, `transition_fulfillment`; deny-by-default |
-| **ADR-028** | **Hosted OSS LLM routing (no local inference)** | MVP uses Groq primary, HF Inference optional fallback | LiteLLM; pin models/providers; document third-party residual risk |
+| **ADR-028** | **Hosted OSS LLM routing (no local inference)** | MVP uses LiteLLM multi-provider (Groq default); optional chain/fallback | Pin models/providers; document third-party residual risk |
 
 ### 10.1 Design elements (implementation map)
 
@@ -938,4 +961,4 @@ Current codebase vs planned work. Authoritative execution tracking: **[plan-mvp.
 | Phase 5B — Fulfillment | **Done** | Delivery/pick-up in MVP scope (§5.1) |
 | Phase 6 — Staff UI | **Done** | Issue/return wizards at `/staff/` |
 | Phase 7 — Hardening | **Done** | Concurrency, idempotency, SLO, security tests (`test_security.py`); [runbook.md](runbook.md), [go-live-checklist.md](go-live-checklist.md) |
-| Phase 8 — Agent desk | **Done** | Conversational WF-01 + agentic fulfillment (§2.2); tool allowlist incl. `select_barcode`, `cancel_issue`; Groq/HF via LiteLLM; HITL via `/resume`; ADR-025–028 |
+| Phase 8 — Agent desk | **Done** | Guided issue/return/catalog/patron lookup + patron desk loan inquiry; WF-02 return + catalog-first issue; multi-provider LiteLLM; comprehensive intent prompt; HITL via `/resume`; ADR-025–028 |

@@ -57,3 +57,9 @@ class PseudonymMap:
             if label == pseudonym:
                 return uid
         return None
+
+    def resolve_loan(self, pseudonym: str) -> UUID | None:
+        for uid, label in self._loan.items():
+            if label == pseudonym:
+                return uid
+        return None

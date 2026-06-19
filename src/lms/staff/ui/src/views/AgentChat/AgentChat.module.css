@@ -1,19 +1,73 @@
-.chat {
-  max-height: 360px;
-  overflow-y: auto;
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(320px, 2fr);
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  align-items: stretch;
+  min-height: min(70vh, 520px);
+}
+
+.panelTitle {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.inputPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: var(--space-3);
-  margin: var(--space-4) 0;
+  background: var(--color-surface);
+}
+
+.textarea {
+  min-height: 200px;
+  resize: vertical;
+}
+
+.conversationPanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.conversationFrame {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   background: #f8fafc;
+}
+
+.conversationScroll {
+  flex: 1;
+  min-height: min(70vh, 480px);
+  max-height: min(70vh, 480px);
+  overflow-y: scroll;
+  overflow-x: hidden;
+  padding: var(--space-3);
+  scrollbar-gutter: stable;
 }
 
 .message {
   margin-bottom: var(--space-3);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
-  max-width: 90%;
+  max-width: 92%;
   white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.message:last-child {
+  margin-bottom: 0;
 }
 
 .user {
@@ -30,4 +84,16 @@
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
+}
+
+@media (max-width: 768px) {
+  .workspace {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .conversationScroll {
+    min-height: 280px;
+    max-height: 360px;
+  }
 }

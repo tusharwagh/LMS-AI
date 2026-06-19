@@ -33,12 +33,23 @@ class Settings(BaseSettings):
     api_rate_limit_window_seconds: int = 900
 
     # Phase 8 — agent desk (MVP.md §2.2, ADR-025–028)
-    agent_issue_enabled: bool = False
-    agent_mock_llm: bool = True
+    agent_issue_enabled: bool = True
+    agent_mock_llm: bool = False
+    # Primary provider: groq | openai | anthropic | together | huggingface
+    llm_provider: str = "groq"
+    # Optional chain, e.g. groq,openai or groq:llama-3.3-70b-versatile,together:meta-llama/...
+    llm_providers: str = "huggingface:huggingface/deepseek-ai/DeepSeek-V4-Flash,groq:llama-3.3-70b-versatile"
+    max_tokens: int | None = None
+    temperature: float | None = None
     groq_api_key: str | None = None
+    openai_api_key: str | None = None
+    anthropic_api_key: str | None = None
+    together_api_key: str | None = None
+    azure_api_key: str | None = None
+    azure_api_base: str | None = None
     llm_model: str = "llama-3.3-70b-versatile"
     llm_model_fast: str = "llama-3.1-8b-instant"
-    llm_fallback_enabled: bool = False
+    llm_fallback_enabled: bool = True
     hf_token: str | None = None
     llm_fallback_model: str = "Qwen/Qwen2.5-72B-Instruct"
     llm_fallback_provider: str = "together"
@@ -48,6 +59,7 @@ class Settings(BaseSettings):
     langfuse_host: str | None = Field(
         default="https://cloud.langfuse.com",
         validation_alias=AliasChoices("LANGFUSE_HOST", "LANGFUSE_BASE_URL"),
+ 
     )
 
     @property

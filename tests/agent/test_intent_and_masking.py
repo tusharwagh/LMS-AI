@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from lms.agent import messages as desk
@@ -78,15 +80,65 @@ def test_llm_intent_parser_falls_back_on_llm_failure(monkeypatch: pytest.MonkeyP
     from lms.agent.intent_parser import LLMIntentParser
     from lms.config import Settings
 
-    settings = Settings(agent_mock_llm=False, groq_api_key="test-key")
+    settings = Settings(_env_file=None, agent_mock_llm=False, groq_api_key="test-key")
     parser = LLMIntentParser(settings)
 
-    def _fail_llm(_message: str, *, has_pending_approval: bool) -> ParsedIntent:
+    def _fail_llm(
+        _message: str,
+        *,
+        has_pending_approval: bool,
+        session_context: dict[str, bool] | None = None,
+    ) -> ParsedIntent:
         raise ValueError("simulated LLM failure")
 
     monkeypatch.setattr(parser, "_parse_llm", _fail_llm)
     intent = parser.parse("Cancel the issue", has_pending_approval=False)
     assert intent.action.value == "request_cancel_issue"
+
+
+def test_llm_intent_parser_passes_session_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    from lms.agent.intent_parser import LLMIntentParser
+    from lms.agent.llm_intent_prompt import LLM_INTENT_SYSTEM
+    from lms.agent.schemas import IntentAction
+    from lms.config import Settings
+
+    settings = Settings(_env_file=None, agent_mock_llm=False, groq_api_key="test-key")
+    parser = LLMIntentParser(settings)
+    captured: dict[str, object] = {}
+
+    def _fake_completion(
+        _settings: Settings,
+        *,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+    ) -> tuple[object, object]:
+        captured["messages"] = messages
+        captured["max_tokens"] = max_tokens
+        payload = json.loads(messages[1]["content"])
+        assert payload["message"] == "What books are issued to Riya Sharma?"
+        assert payload["session_context"]["has_pending_desk_patron"] is True
+        assert "start_patron_desk" in messages[0]["content"]
+        assert "session_context" in messages[0]["content"]
+        response = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content='{"action":"start_patron_desk","patron_query":"Riya Sharma"}'))]
+        )
+        return response, SimpleNamespace(provider="groq", model="groq/test")
+
+    monkeypatch.setattr("lms.agent.intent_parser.completion_with_fallback", _fake_completion)
+    intent = parser.parse_with_context(
+        "What books are issued to Riya Sharma?",
+        has_pending_approval=False,
+        has_return_candidates=False,
+        has_pending_desk_patron=True,
+    )
+    assert intent.action == IntentAction.START_PATRON_DESK
+    assert intent.patron_query == "Riya Sharma"
+    messages = captured["messages"]
+    assert isinstance(messages, list)
+    assert messages[0]["content"] == LLM_INTENT_SYSTEM
 
 
 def test_patron_search_results_echoes_query() -> None:

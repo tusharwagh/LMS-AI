@@ -126,7 +126,9 @@ forbidden_modules = [
 ]
 ignore_imports = [
     "lms.agent.coordinator -> lms.api.workflows.search_and_issue",
+    "lms.agent.coordinator -> lms.api.workflows.return_book",
     "lms.agent.coordinator -> lms.loan.application.fulfillment_service",
     "lms.agent.tools -> lms.api.workflows.search_and_issue",
+    "lms.agent.tools -> lms.api.workflows.return_book",
     "lms.agent.tools -> lms.loan.application.fulfillment_service",
 ]

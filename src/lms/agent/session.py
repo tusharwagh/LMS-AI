@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
@@ -12,14 +12,23 @@ from lms.agent.masking import PseudonymMap
 from lms.loan.domain.enums import FulfillmentMode, FulfillmentStatus
 
 
+class DeskFlow(StrEnum):
+    ISSUE = "issue"
+    RETURN = "return"
+
+
 class PendingActionKind(StrEnum):
     COMMIT_ISSUE = "commit_issue"
     TRANSITION_FULFILLMENT = "transition_fulfillment"
     CANCEL_ISSUE = "cancel_issue"
+    COMMIT_RETURN = "commit_return"
+    SELECT_RETURN = "select_return"
+    INITIATE_RETURN_PICKUP = "initiate_return_pickup"
 
 
 @dataclass
 class IssueSlots:
+    active_flow: DeskFlow = DeskFlow.ISSUE
     patron_id: UUID | None = None
     patron_display_name: str | None = None
     holding_id: UUID | None = None
@@ -30,6 +39,24 @@ class IssueSlots:
     loan_id: UUID | None = None
     fulfillment_id: UUID | None = None
     fulfillment_target_status: FulfillmentStatus | None = None
+    due_date: date | None = None
+    is_overdue: bool | None = None
+    return_candidates: list[dict[str, Any]] = field(default_factory=list)
+    catalog_candidates: list[dict[str, Any]] = field(default_factory=list)
+    patron_candidates: list[dict[str, Any]] = field(default_factory=list)
+    awaiting_patron: bool = False
+    awaiting_book_criteria: bool = False
+    awaiting_desk_patron: bool = False
+    awaiting_desk_next_action: bool = False
+    awaiting_desk_return_pick: bool = False
+    desk_return_intent: bool = False
+    awaiting_catalog_criteria: bool = False
+    awaiting_patron_lookup: bool = False
+    issue_search_criteria: str | None = None
+    guided_issue_active: bool = False
+    guided_return_active: bool = False
+    guided_catalog_active: bool = False
+    guided_patron_lookup_active: bool = False
 
     @property
     def has_patron_and_holding(self) -> bool:
