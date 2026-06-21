@@ -11,6 +11,7 @@ const VIEW_ICONS: Record<StaffView, string> = {
   overdue: "⏱",
   patron: "👤",
   spend: "💰",
+  dashboard: "📊",
   admin: "⚙",
 };
 

@@ -22,10 +22,11 @@ Python **modular monolith** for K-12 school library circulation: reference data,
 |------------|-------|
 | **Reference / Catalog / Loan** | DDD bounded contexts; REST under `/api/v1/*` |
 | **Desk workflows** | Search & issue, return, delivery / pick-up fulfillment |
-| **Staff UI** | React CRM at `/staff/` — wizards + **AI assist** chat (left compose / right conversation) |
+| **Staff UI** | React CRM at `/staff/` — wizards, **AI assist**, **LLM costs** panel (Administration) |
 | **Agent desk** | Natural-language issue, return, catalog browse, patron lookup, issued-books inquiry |
 | **HITL** | Librarian approves all writes via approval cards + `/resume` |
-| **LLM routing** | LiteLLM multi-provider (Groq default); rule-based parser in CI (`AGENT_MOCK_LLM=true`) |
+| **LLM routing** | LiteLLM **Router** (`src/lms/shared/llm/`) — cache, RPM, fallbacks; rule-based parser in CI |
+| **LLM spend** | Postgres `llm_spend_logs`; staff API + UI; Langfuse traces when configured |
 | **Observability** | structlog → stdout; optional Langfuse traces (`make validate-langfuse`) |
 
 ---
@@ -214,7 +215,7 @@ curl -H "Authorization: Bearer <access_token>" \
   http://127.0.0.1:8000/api/v1/reference/patron-types
 ```
 
-Default users (created by `make seed` / `SEED=1`):
+Default users (created by `make seed` / `SEED=1`). Python seed loads **~1,614** library rows (demo + bulk K-12 data); see [runbook.md §5](docs/runbook.md).
 
 | Username | Role | Password (dev) |
 |----------|------|----------------|
@@ -250,7 +251,16 @@ Conversational circulation for librarians — governed per [research.md §15](do
 
 All **writes** (issue, return, cancel, fulfillment transition) require explicit librarian approval — deny-by-default. Staff-facing copy is built in `src/lms/agent/messages.py`; the UI renders API text verbatim.
 
-**Key modules:** `coordinator.py`, `tools.py`, `intent_parser.py`, `llm_intent_prompt.py`, `shared/llm/` (gateway), `tracing.py`
+**Key modules:** `coordinator.py`, `tools.py`, `intent_parser.py`, `llm_intent_prompt.py`, `shared/llm/` (Router gateway + spend logger), `tracing.py`
+
+**LLM cost reporting** (librarian/admin JWT or staff UI **Administration → LLM costs**):
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/v1/llm-spend/logs` | Paginated spend log (filters: date, purpose, session, operator) |
+| `GET` | `/api/v1/llm-spend/summary` | Aggregates by purpose / model / provider |
+
+Apply migration `005_llm_spend_logs` (`make migrate`) before spend logging in dev/prod.
 
 ---
 

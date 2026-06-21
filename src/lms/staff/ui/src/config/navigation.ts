@@ -41,6 +41,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "admin",
     label: "Administration",
     items: [
+      { view: "dashboard", label: "Dashboard", shortLabel: "Dashboard" },
       { view: "spend", label: "LLM costs", shortLabel: "Costs" },
       { view: "admin", label: "Admin panel", shortLabel: "Admin", adminOnly: true },
     ],
@@ -92,6 +93,11 @@ export const VIEW_META: Record<StaffView, ViewMeta> = {
   spend: {
     title: "LLM costs",
     subtitle: "Review AI gateway spend, token usage, and request logs.",
+    groupId: "admin",
+  },
+  dashboard: {
+    title: "Dashboard & reports",
+    subtitle: "Circulation statistics, holdings status, and customizable reports.",
     groupId: "admin",
   },
 };

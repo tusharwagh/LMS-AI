@@ -152,7 +152,8 @@ export type StaffView =
   | "overdue"
   | "patron"
   | "admin"
-  | "spend";
+  | "spend"
+  | "dashboard";
 
 export interface LlmSpendLog {
   id: string;
@@ -192,4 +193,65 @@ export interface LlmSpendSummaryResponse {
   total_cost_usd: number;
   total_requests: number;
   total_tokens: number;
+}
+
+export type ReportMetric =
+  | "daily_issues"
+  | "daily_returns"
+  | "holdings_by_status"
+  | "total_active_loans"
+  | "overdue_loans";
+
+export interface DailySeriesPoint {
+  date: string;
+  issues: number;
+  returns: number;
+}
+
+export interface DashboardResponse {
+  holdings_by_status: Record<string, number>;
+  circulation: {
+    total_active_loans: number;
+    overdue_loans: number;
+  };
+  today: {
+    issues_today: number;
+    returns_today: number;
+  };
+  daily_series: DailySeriesPoint[];
+  from_date: string;
+  to_date: string;
+}
+
+export interface ReportGenerateRequest {
+  metrics: ReportMetric[];
+  from_date: string;
+  to_date: string;
+  group_by?: "day";
+  format?: "json" | "csv";
+}
+
+export interface ReportSection {
+  metric: ReportMetric;
+  group_by: "day" | null;
+  rows: Record<string, unknown>[];
+}
+
+export interface ReportGenerateResponse {
+  from_date: string;
+  to_date: string;
+  group_by: "day";
+  sections: ReportSection[];
+}
+
+export interface ReportPreset {
+  id: string;
+  name: string;
+  description: string;
+  metrics: ReportMetric[];
+  default_days: number;
+}
+
+export interface ReportPresetsResponse {
+  presets: ReportPreset[];
 }

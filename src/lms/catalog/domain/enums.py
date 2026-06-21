@@ -11,3 +11,5 @@ class HoldingStatus(StrEnum):
     AVAILABLE = "AVAILABLE"
     ON_LOAN = "ON_LOAN"
     WITHDRAWN = "WITHDRAWN"
+    DAMAGED = "DAMAGED"
+    LOST = "LOST"

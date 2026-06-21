@@ -114,9 +114,28 @@ After restore: confirm `alembic current` matches expected revision; run `make te
 | Command | Purpose |
 |---------|---------|
 | `make seed` | Idempotent Python seed (`scripts/seed_sample_data.py`) |
-| `make seed-sql` | SQL seed (`scripts/sql/002_sample_data.sql`) |
+| `make seed-sql` | SQL seed (`scripts/sql/002_sample_data.sql`) — **demo fixtures only** (~25 rows) |
 
-Seed includes patron types, loan rules, published catalogs, holdings, and demo loans (including one overdue).
+**Python seed (`make seed`)** loads **~1,614 domain rows**: fixed demo fixtures (desk hints below) plus bulk K-12 patrons, NCERT-style catalogs, holdings (3 copies per bulk title), and loans (closed / open / overdue). Clears the seed UUID namespace on each run, then reloads.
+
+| Entity | ~Count |
+|--------|--------|
+| Patrons | 405 |
+| Catalogs | 204 |
+| Holdings | 606 |
+| Loans | 353 |
+| Class sections | 42 |
+
+Optional sizing: `SEED_MIN_RECORDS=1500` (informational target; bulk constants in `scripts/seed_sample_data.py`).
+
+**Demo desk hints (unchanged):**
+
+| Lookup | Resolves to |
+|--------|-------------|
+| `LIB-7001` | Arjun Mehta — open loan on `BC-MATH7-001` |
+| `LIB-8001` | Rohan Das — overdue loan on `BC-MATH7-002` |
+| `BC-PAN-001` | Panchatantra (available) |
+| `BC-NEH-001` | Discovery of India (reference, non-circulating) |
 
 **Teardown (non-production only):**
 
@@ -262,7 +281,9 @@ OPENAI_API_KEY=...
 
 Routing implementation: `src/lms/shared/llm/` (`LlmGateway` via LiteLLM `Router`, Langfuse callbacks, Postgres spend in `llm_spend_logs`). Intent classification prompt: `src/lms/agent/llm_intent_prompt.py`.
 
-**Cost reporting (staff/admin):** `GET /api/v1/llm-spend/logs` (paginated list with optional `from_date`, `to_date`, `purpose`, `model`, `session_id`, `operator_id`) and `GET /api/v1/llm-spend/summary` (aggregates by purpose/model). Requires librarian or admin JWT.
+**Cost reporting (staff/admin):** `GET /api/v1/llm-spend/logs` (paginated list with optional `from_date`, `to_date`, `purpose`, `model`, `session_id`, `operator_id`) and `GET /api/v1/llm-spend/summary` (aggregates by purpose/model). Requires librarian or admin JWT. Staff desk: **Administration → LLM costs** (`LlmSpendPanel`).
+
+**Circulation reporting (staff):** `GET /api/v1/reporting/dashboard` (holdings by status, active/overdue loans, today’s issues/returns, daily series), `POST /api/v1/reporting/reports/generate` (custom metrics, JSON or CSV), and `GET /api/v1/reporting/reports/presets`. Requires librarian or admin JWT. Staff desk: **Administration → Dashboard** (`DashboardPanel`).
 
 ### Twelve-Factor deployment (agent)
 

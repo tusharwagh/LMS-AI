@@ -22,7 +22,7 @@ Execution plan for the LMS-AI K‑12 Library Management MVP.
 | **5B Fulfillment** | **Done** | Delivery/pick-up in MVP scope (MVP.md §5.1) |
 | 6 Staff UI | **Done** | Issue/return wizards at `/staff/` |
 | 7 Hardening | **Done** | Concurrency, idempotency, SLO tests; [runbook.md](runbook.md), [go-live-checklist.md](go-live-checklist.md) |
-| **8 Agent desk** | **Done** | Guided flows + patron desk; multi-provider LiteLLM; governance hardening (E27); `make test-agent` (33) |
+| **8 Agent desk** | **Done** | Guided flows + patron desk; LiteLLM Router gateway; Postgres spend + staff cost UI; governance hardening (E27); `make test-agent` (33) |
 
 ---
 
@@ -302,7 +302,7 @@ src/lms/api/workflows/router.py
 | Load test at §13.6 baselines | §13.6 | **Done** — `tests/performance/test_slo_baselines.py` |
 | Lock-contention and idempotency regression suite | §13.2, §13.3 | **Done** — `tests/hardening/` |
 | Security hardening (headers, rate limits, error disclosure) | MVP.md §13.7 | **Done** — `api/security_middleware.py`, `tests/hardening/test_security.py` |
-| Seed script: patron types, rules, sample catalog | §10.6 | **Done** — `make seed` |
+| Seed script: patron types, rules, sample catalog | §10.6 | **Done** — `make seed` (~1,614 domain rows; demo + bulk K-12) |
 | Runbook: backup, migration rollback policy | §10.6 | **Done** — [runbook.md](runbook.md) |
 | Go-live checklist sign-off | §1.2 G1–G10 | **Done** — [go-live-checklist.md](go-live-checklist.md) |
 

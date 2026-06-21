@@ -1,6 +1,6 @@
 # Research — architecture & design discovery
 
-This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–I) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E), **ops/CI hardening** (§13 E17, session F), **agent desk spec** (§13 E18, session G), **Phase 8 implementation + quality pass** (§13 E19, session H), **agent desk UX / messages / refactor** (§13 E20, session I), **friendly query+intent desk copy** (§13 E21, session I cont.), **Langfuse validation + React staff UI MVC** (§13 E22, session I cont.), **agent return + catalog issue workflows + AI assist UI layout** (§13 E24, session I cont.), **guided desk flows + multi-provider LLM + comprehensive intent prompt** (§13 E25, session I cont.), **Twelve-Factor + IMDA governance skill alignment** (§13 E26, session I cont.), and **governance audit + code hardening** (§13 E27, session I cont.). **Context handoff** for the latest thread: [§0](#0-current-state-snapshot-jun-2026) + [§13 E27](#e27--session-i-cont-governance-audit--code-hardening-jun-2026). Prior handoff: [§13 E26](#e26--session-i-cont-twelve-factor--imda-governance-skill-jun-2026). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
+This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–I) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E), **ops/CI hardening** (§13 E17, session F), **agent desk spec** (§13 E18, session G), **Phase 8 implementation + quality pass** (§13 E19, session H), **agent desk UX / messages / refactor** (§13 E20, session I), **friendly query+intent desk copy** (§13 E21, session I cont.), **Langfuse validation + React staff UI MVC** (§13 E22, session I cont.), **agent return + catalog issue workflows + AI assist UI layout** (§13 E24, session I cont.), **guided desk flows + multi-provider LLM + comprehensive intent prompt** (§13 E25, session I cont.), **Twelve-Factor + IMDA governance skill alignment** (§13 E26, session I cont.), **governance audit + code hardening** (§13 E27, session I cont.), and **LiteLLM native gateway + spend observability + bulk seed + staff cost UI** (§13 E28, session I cont.). **Context handoff** for the latest thread: [§0](#0-current-state-snapshot-jun-2026) + [§13 E28](#e28--session-i-cont-litellm-gateway-spend-ui--bulk-seed-jun-2026). Prior handoff: [§13 E27](#e27--session-i-cont-governance-audit--code-hardening-jun-2026). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
 
 **Go-live gate (summary):** [§14](#14-go-live-checklist-summary) — full matrix in [go-live-checklist.md](go-live-checklist.md).  
 **Agent governance (summary):** [§15](#15-agent-governance-imda-mgf--enterprise-charter) — IMDA MGF v1.5 + **Twelve-Factor App** deployment discipline; Langfuse observability.  
@@ -24,17 +24,19 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 | **Agent WF-02** | Done | Return by barcode / title / patron; multi-loan list; HITL select + commit; rollback on failure |
 | **Patron desk** | Done | “What books are issued to [patron]?” → list loans → next action (return / issue / catalog / done) |
 | **Guided flows** | Done | Issue, return, catalog browse, patron lookup — step-by-step with cancel (`decline_continue`) |
-| **LLM routing** | Done | **`src/lms/shared/llm/`** gateway — routing, fallbacks, cache, rate limit, guardrails, cost; agent facade `llm.py` |
+| **LLM routing** | Done | **`src/lms/shared/llm/`** — LiteLLM **Router**, native cache/RPM, Langfuse callbacks, Postgres spend |
+| **LLM cost reporting** | Done | `llm_spend_logs` table; `GET /api/v1/llm-spend/*`; staff UI **LLM costs** panel |
 | **Intent prompt** | Done | `llm_intent_prompt.py` — all 33 `IntentAction` values, 8 workflows, session_context table, 40+ examples |
-| **Staff UI** | Done | `src/lms/staff/ui/` → `make staff-ui-build`; AI assist: left compose / right conversation scroll |
+| **Staff UI** | Done | `src/lms/staff/ui/` → `make staff-ui-build`; AI assist + **Administration → LLM costs** |
 | **Desk copy** | Done | Intent-aware helpers in `messages.py`; UI renders API text verbatim |
 | **Langfuse (G13)** | Wired + validated | `make validate-langfuse`; runs on `make build`; `LANGFUSE_HOST` or `LANGFUSE_BASE_URL` |
 | **Governance skills** | Updated | IMDA MGF v1.5 + **Twelve-Factor App** in `.cursor/skills/imda-agentic-ai-governance/`; rules cross-refs in security, API design, SonarQube |
 | **Governance code** | Hardened | Production `Settings` validation; LLM input + session history redaction; HITL blocks new messages; sanitized approval `details`; `intent_span` / `hitl_event` audit |
-| **Tests** | **178 collected** | `make ci-native`; `make test-agent` → **33**; `tests/agent/` → **59**; 5 Playwright |
+| **Tests** | **194 collected** | `make ci-native`; `make test-agent` → **33**; unit LLM gateway + spend RBAC |
+| **Sample seed** | **~1,614 rows** | `make seed` — demo fixtures + bulk K-12 patrons/catalog/holdings/loans |
 | **Go-live** | Pending | G1–G10 unchecked; **G13 charter sign-off** still operational |
 
-**Session I arc (post-E19):** rules/skills → messages → intent-aware copy → React CRM → Playwright → Langfuse → WF-02 return → catalog-first issue → **guided desk flows** → **issued-books inquiry** → **multi-provider LLM** → **comprehensive intent prompt** → **Twelve-Factor + IMDA skill** → **governance audit + code hardening**. Detail: §3.11, §13 E20–E27.
+**Session I arc (post-E19):** rules/skills → messages → intent-aware copy → React CRM → Playwright → Langfuse → WF-02 return → catalog-first issue → **guided desk flows** → **issued-books inquiry** → **multi-provider LLM** → **comprehensive intent prompt** → **Twelve-Factor + IMDA skill** → **governance audit + code hardening** → **LiteLLM Router gateway + Postgres spend + staff cost UI + bulk seed**. Detail: §3.11, §13 E20–E28.
 
 **Open next:** G13 IMDA charter sign-off (§15.8); **durable agent session store** (Postgres/Redis for multi-worker); eval datasets; live LLM staging outside mock CI.
 
@@ -44,7 +46,7 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 
 | Use | How |
 |-----|-----|
-| **Context recovery** | Start [§0](#0-current-state-snapshot-jun-2026); then §3 (A–I), §13 (E1–E27), §14–§16 |
+| **Context recovery** | Start [§0](#0-current-state-snapshot-jun-2026); then §3 (A–I), §13 (E1–E28), §14–§16 |
 | **User profile** | §2 + §3.5 (early product intent) + §13 (locked tech + workflow decisions) |
 | **Feeder for AI / docs** | Paste or reference sections when generating ADRs, code, or phase‑2 plans |
 | **Avoid duplicate debate** | §6 lists resolved vs deferred; §3.6 / §13 note what landed in repo vs chat-only |
@@ -1895,6 +1897,81 @@ Applied: `.cursor/skills/imda-agentic-ai-governance/SKILL.md`, `clean-code-ddd-l
 #### E27.5 Docs updated
 
 `research.md` §0, §15.7, §15.9–§15.10, E27; `MVP.md` §13.8; `runbook.md` §10; `go-live-checklist.md`; `plan-mvp.md`; [README.md](../README.md).
+
+---
+
+### E28 — Session I (cont.): LiteLLM gateway, spend UI & bulk seed (Jun 2026)
+
+**User asks (sequence):** Replace custom LLM gateway with **LiteLLM native Router** (cost tracking, guardrails, budgets, rate limiting, observability); persist spend to **Postgres**; integrate **Langfuse**; pass **session_id / operator_id** into spend rows; add **staff/admin cost API + UI panel**; expand **sample seed** to 500+ then **+1,000** more records; fix **CI** after gateway changes.
+
+#### E28.1 LiteLLM native gateway
+
+Replaced manual `litellm.completion()` loop with **`litellm.Router`** and idempotent global setup.
+
+| Component | Path | Role |
+|-----------|------|------|
+| Router config | `shared/llm/routing.py` | `build_router_config()` — model_list, fallbacks, deployment RPM |
+| Gateway | `shared/llm/gateway.py` | `LlmGateway.complete()` — guardrails → Router or optional `LLM_PROXY_URL` pass-through |
+| Setup | `shared/llm/setup.py` | `configure_litellm()` — `litellm.cache`, Langfuse callbacks, spend logger |
+| Spend ORM + callback | `shared/llm/spend.py` | `LlmSpendLog`, `LlmSpendLogger(CustomLogger)` → Postgres |
+| Migration | `alembic/versions/005_llm_spend_logs.py` | Table `llm_spend_logs` |
+| Agent facade | `agent/llm.py` | Re-exports from `shared.llm` |
+
+**Removed:** custom `cache.py`, `rate_limit.py` (replaced by LiteLLM cache + Router RPM). **Kept:** `guardrails.py` (pre-call validation), `cost.py` (result extraction).
+
+**Langfuse:** when `LANGFUSE_*` set, LiteLLM `success_callback` / `failure_callback` include `"langfuse"`; agent HITL/tool spans remain in `tracing.py`.
+
+**New env vars:** `LLM_PROXY_URL`, `LLM_PROXY_API_KEY`, `LLM_CACHE_TYPE` (`local`|`redis`), `LLM_CACHE_REDIS_URL`.
+
+#### E28.2 Spend metadata + reporting
+
+| Layer | Change |
+|-------|--------|
+| Agent | `intent_parser.py` passes `trace_session_id` / `trace_operator_id` into `LlmGateway.complete()` |
+| API | `api/llm_spend/` — `GET /api/v1/llm-spend/logs`, `GET /api/v1/llm-spend/summary` (staff RBAC) |
+| Staff UI | `views/LlmSpendPanel/` — summary cards, aggregates table, paginated logs, date/purpose filters |
+
+#### E28.3 Bulk sample seed
+
+`scripts/seed_sample_data.py` — clears seed UUID namespace, reloads **demo fixtures** (desk hints unchanged) plus **bulk K-12 data**:
+
+| Table | ~Count |
+|-------|--------|
+| Patrons | 405 (5 demo + 400 bulk) |
+| Catalogs | 204 |
+| Holdings | 606 (3 copies per bulk catalog) |
+| Loans | 353 (closed / open / overdue mix) |
+| Class sections | 42 (grades 6–12, A–F) |
+| **Total domain rows** | **~1,614** |
+
+Constants: `BULK_PATRON_COUNT=400`, `BULK_CATALOG_COUNT=200`, `BULK_HOLDINGS_PER_CATALOG=3`, `BULK_LOAN_COUNT=350`. Optional target: `SEED_MIN_RECORDS=1500`. Demo barcodes (`LIB-7001`, `BC-MATH7-*`) preserved.
+
+#### E28.4 CI / test fixes
+
+| Fix | Path |
+|-----|------|
+| Unit tests isolated from `.env` LLM keys | `tests/helpers.py` — `isolated_settings()` |
+| Spend summary integration test | filters by unique `session_id` (avoids committed rows) |
+| Playwright | use project `.playwright-browsers` path (`Makefile` default) |
+
+#### E28.5 Verification
+
+| Gate | Result |
+|------|--------|
+| `make ci-native` | **pass** (194 tests collected) |
+| `make seed` | **1,614** domain rows inserted |
+| Staff UI | `npm run typecheck` + build pass |
+
+#### E28.6 Docs updated
+
+`research.md` §0, E28; `runbook.md` §5, §10; `README.md`; `plan-mvp.md`.
+
+#### E28.7 Still open
+
+- **Durable agent session store** (Postgres/Redis) — unchanged from E27
+- **G13** IMDA charter sign-off
+- **Spend dashboard charts** — API + table UI only; no charts yet
+- **Redis cache** for multi-worker LLM cache — opt-in via `LLM_CACHE_TYPE=redis`
 
 ---
 
