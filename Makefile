@@ -1,4 +1,4 @@
-.PHONY: help install install-node build test lint ci ci-native diagram \
+.PHONY: help install install-node build test lint ci ci-native ci-ship diagram \
 	migrate ddl seed seed-sql \
 	destroy-data destroy-schema destroy-db destroy destroy-all \
 	deploy-destroy destroy-native \
@@ -54,6 +54,7 @@ help:
 	@echo "  make lint                  Run ruff, import-linter, and mypy"
 	@echo "  make ci                    Lint + test + Docker build"
 	@echo "  make ci-native             Lint + test (no Docker)"
+	@echo "  make ci-ship               ci-native, then prompt commit message and push"
 	@echo ""
 	@echo "Native (no Docker) — requires local Postgres + DATABASE_URL in .env"
 	@echo "  make setup-native          install + migrate (+ SEED=1 for demo data)"
@@ -168,6 +169,10 @@ lint:
 	$(BIN)/mypy
 
 ci-native: lint staff-ui-build staff-ui-typecheck test-unit test-integration test-e2e test-e2e-playwright test-agent test-hardening test-performance
+
+ci-ship:
+	@chmod +x scripts/ci_commit_push.sh
+	PLAYWRIGHT_BROWSERS_PATH=$(PLAYWRIGHT_BROWSERS_PATH) ./scripts/ci_commit_push.sh
 
 ci: ci-native build
 
