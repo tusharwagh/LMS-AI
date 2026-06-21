@@ -22,7 +22,7 @@ RUN apt-get update \
 
 COPY pyproject.toml README.md ./
 COPY src ./src
-COPY --from=staff-ui /build/staff/static ./src/lms/staff/static
+COPY --from=staff-ui /build/static ./src/lms/staff/static
 COPY alembic ./alembic
 COPY alembic.ini ./
 
