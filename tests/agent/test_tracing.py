@@ -13,6 +13,7 @@ from lms.config import Settings
 @pytest.fixture
 def langfuse_settings() -> Settings:
     return Settings(
+        _env_file=None,
         langfuse_public_key="pk-test",
         langfuse_secret_key="sk-test",
         langfuse_host="https://us.cloud.langfuse.com",
@@ -20,7 +21,9 @@ def langfuse_settings() -> Settings:
 
 
 def test_tracing_without_keys_uses_structlog_only() -> None:
-    tracing = AgentTracing(Settings(langfuse_public_key=None, langfuse_secret_key=None))
+    tracing = AgentTracing(
+        Settings(_env_file=None, langfuse_public_key=None, langfuse_secret_key=None)
+    )
     assert tracing._client is None
     with tracing.tool_span(
         tool_name="search_patrons",
@@ -94,5 +97,5 @@ def test_turn_span_flushes_on_exit(langfuse_settings: Settings) -> None:
 def test_settings_reads_langfuse_base_url_alias(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LANGFUSE_BASE_URL", "https://us.cloud.langfuse.com")
     monkeypatch.delenv("LANGFUSE_HOST", raising=False)
-    settings = Settings()
+    settings = Settings(_env_file=None)
     assert settings.langfuse_host == "https://us.cloud.langfuse.com"
