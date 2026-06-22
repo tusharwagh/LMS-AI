@@ -34,4 +34,4 @@ Shipped controls map to environment variables via Pydantic `Settings` (see `.env
 
 **Tests:** `tests/hardening/test_security.py`, `tests/unit/test_shared_and_auth.py`
 
-**See also:** [security-and-hardening.md](../../generic/rules/security-and-hardening.md) (generic security rule).
+**See also:** [security-and-hardening.md](../generic/security-and-hardening.md) (generic security rule).

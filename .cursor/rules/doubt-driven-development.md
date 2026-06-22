@@ -1,1 +1,0 @@
-../generic/rules/doubt-driven-development.md

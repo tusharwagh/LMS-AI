@@ -1,1 +1,0 @@
-../generic/rules/security-and-hardening.md

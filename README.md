@@ -12,7 +12,7 @@ Python **modular monolith** for K-12 school library circulation: reference data,
 | [go-live-checklist.md](docs/go-live-checklist.md) | Pre-production verification (G1–G13) |
 | [research.md](docs/research.md) | Design history; agent governance (§15) |
 
-**Agent governance:** IMDA MGF v1.5 + Twelve-Factor deployment — [`.cursor/skills/imda-agentic-ai-governance/SKILL.md`](.cursor/skills/imda-agentic-ai-governance/SKILL.md)
+**Agent governance:** IMDA MGF v1.5 + Twelve-Factor deployment — [`.cursor/skills/generic/imda-agentic-ai-governance/SKILL.md`](.cursor/skills/generic/imda-agentic-ai-governance/SKILL.md)
 
 ---
 
@@ -355,7 +355,7 @@ alembic/         # Database migrations
 scripts/         # Deploy, seed, SQL helpers
 tests/           # unit, integration, e2e, agent, hardening, performance
 docs/            # MVP spec, domain models, runbook, governance notes
-.cursor/         # Cursor guidance — see .cursor/README.md (generic/ vs lms-ai/)
+.cursor/         # Cursor guidance — see .cursor/README.md (rules/skills → generic/ + lms-ai/)
   generic/       # Portable rules & skills
   lms-ai/        # LMS-AI addenda
   rules/         # Symlinks (Cursor discovery)

@@ -82,7 +82,7 @@ Apply [Twelve-Factor App](https://12factor.net/) discipline alongside IMDA §3 (
 | **XI. Logs** | `structlog` → stdout; Langfuse for tool/model spans with redacted args | Audit cadence; no PII in log files |
 | **XII. Admin** | `make migrate`, `make seed`, eval datasets — not mixed into request path | Admin tasks audited separately from agent traces |
 
-**Project-specific conventions:** see [imda-agentic-ai-governance-lms-ai.md](../../lms-ai/skills/imda-agentic-ai-governance-lms-ai.md) when deploying LMS-AI.
+**Project-specific conventions:** see [imda-agentic-ai-governance-lms-ai.md](../../lms-ai/imda-agentic-ai-governance-lms-ai.md) when deploying LMS-AI.
 
 For factor-by-factor review notes, see [reference.md](reference.md#twelve-factor-app-agentic-ai).
 
@@ -223,7 +223,7 @@ def redact_for_audit(text: str) -> str:
 
 #### App security
 
-Align with application security boundaries (see [security-and-hardening.md](../../../rules/security-and-hardening.md)):
+Align with application security boundaries (see [security-and-hardening.md](../../rules/generic/security-and-hardening.md)):
 
 | Threat | Agent-specific control |
 |--------|------------------------|
@@ -471,7 +471,7 @@ builder.add_conditional_edges("governance", route_on_decision)
 
 Use Langfuse scores/datasets for evals, `langgraph dev` test threads, and deterministic assertions on tool calls where possible. Correlate eval runs with production traces via shared `agent_id` and prompt version tags.
 
-**LMS-AI automated gate:** `make test-agent` with `AGENT_MOCK_LLM=true` — see [python-code-analysis-lms-ai.md](../../lms-ai/skills/python-code-analysis-lms-ai.md). Static: ruff + import-linter on `lms/agent/` (no infrastructure imports).
+**LMS-AI automated gate:** `make test-agent` with `AGENT_MOCK_LLM=true` — see [python-code-analysis-lms-ai.md](../../lms-ai/python-code-analysis-lms-ai.md). Static: ruff + import-linter on `lms/agent/` (no infrastructure imports).
 
 **Deployment:** phased rollout (user cohort / feature flag), continuous monitoring, versioned graph definitions. Follow **12-Factor V** — build and test in CI (`make ci-native`), promote immutable artifact, run processes separately; no hot-editing graph code in production.
 
@@ -590,7 +590,7 @@ Surface in UI: agent status, pending approvals from `interrupt` payloads, audit 
 - [reference.md](reference.md) — risk factors, multi-agent risks, Twelve-Factor mapping, related frameworks (CSA, GovTech ARCF, OWASP Agentic AI)
 - [Twelve-Factor App](https://12factor.net/) — cloud-native operational baseline
 - [python-code-analysis/SKILL.md](../python-code-analysis/SKILL.md) — static & dynamic analysis for Python (pytest, ruff, mypy, import-linter)
-- [security-and-hardening.md](../../../rules/security-and-hardening.md) — app security patterns (injection, auth, PII)
+- [security-and-hardening.md](../../rules/generic/security-and-hardening.md) — app security patterns (injection, auth, PII)
 - IMDA MGF for Agentic AI (v1.5): https://www.imda.gov.sg/-/media/imda/files/about/emerging-tech-and-research/artificial-intelligence/mgf-for-agentic-ai.pdf
 - LangGraph interrupts: https://docs.langchain.com/oss/python/langgraph/interrupts
 - LangGraph persistence: https://docs.langchain.com/oss/python/langgraph/persistence

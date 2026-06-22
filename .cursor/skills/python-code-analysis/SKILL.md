@@ -1,1 +1,0 @@
-../../generic/skills/python-code-analysis/SKILL.md

@@ -1,1 +1,0 @@
-../generic/rules/code-simplification.md

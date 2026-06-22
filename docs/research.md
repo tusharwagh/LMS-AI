@@ -31,7 +31,7 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 | **Staff UI** | Done | `src/lms/staff/ui/` → `make staff-ui-build`; AI assist + **Administration → Dashboard** + **LLM costs** |
 | **Desk copy** | Done | Intent-aware helpers in `messages.py`; UI renders API text verbatim |
 | **Langfuse (G13)** | Wired + validated | `make validate-langfuse`; runs on `make build`; `LANGFUSE_HOST` or `LANGFUSE_BASE_URL` |
-| **Governance skills** | Reorganized | Generic vs LMS-AI split under `.cursor/generic/` and `.cursor/lms-ai/`; symlinks in `.cursor/rules/` + `.cursor/skills/` — see [.cursor/README.md](../.cursor/README.md) |
+| **Governance skills** | Reorganized | Generic vs LMS-AI under `.cursor/rules/{generic,lms-ai}/` and `.cursor/skills/{generic,lms-ai}/` — see [.cursor/README.md](../.cursor/README.md) |
 | **Code layout** | Refactored | `src/lms/platform/` — RBAC, API users, auth service, `library_today()`; `shared/` — reusable infra only |
 | **Governance code** | Hardened | Production `Settings` validation; LLM input + session history redaction; HITL blocks new messages; sanitized approval `details`; `intent_span` / `hitl_event` audit |
 | **Tests** | **211 collected** | `make ci-native`; `make test-agent` → **33**; reporting RBAC + dashboard (**17**); unit LLM gateway + spend |
@@ -633,15 +633,15 @@ Governance: research.md §15; craft: §16 + clean-code-ddd-lms-ai skill.
 | [diagrams/lms-architecture.tldr](diagrams/lms-architecture.tldr) | tldraw architecture diagram (`make diagram`) |
 | [.cursor/README.md](../.cursor/README.md) | Cursor layout — generic vs lms-ai folders and symlink discovery |
 | [.cursor/skills/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/imda-agentic-ai-governance/SKILL.md) | IMDA MGF v1.5 + Twelve-Factor App + enterprise agent charter (generic) |
-| [.cursor/lms-ai/skills/imda-agentic-ai-governance-lms-ai.md](../.cursor/lms-ai/skills/imda-agentic-ai-governance-lms-ai.md) | LMS-AI Twelve-Factor conventions addendum |
+| [.cursor/skills/lms-ai/imda-agentic-ai-governance-lms-ai.md](../.cursor/skills/lms-ai/imda-agentic-ai-governance-lms-ai.md) | LMS-AI Twelve-Factor conventions addendum |
 | [.cursor/skills/imda-agentic-ai-governance/reference.md](../.cursor/skills/imda-agentic-ai-governance/reference.md) | Risk factors, multi-agent risks, Twelve-Factor appendix, Langfuse mapping |
 | [.cursor/skills/clean-code-ddd-python/SKILL.md](../.cursor/skills/clean-code-ddd-python/SKILL.md) | Clean Code, Kent Beck patterns, Vernon DDD — Python / FastAPI / LangGraph |
 | [.cursor/skills/clean-code-ddd-lms-ai/SKILL.md](../.cursor/skills/clean-code-ddd-lms-ai/SKILL.md) | LMS-AI addendum — module map, import-linter, workflows, agent desk |
 | [.cursor/skills/clean-code-ddd-python/reference.md](../.cursor/skills/clean-code-ddd-python/reference.md) | Entity vs value object, module placement |
-| [.cursor/skills/python-code-analysis/SKILL.md](../.cursor/skills/python-code-analysis/SKILL.md) | Static & dynamic analysis — ruff, mypy, import-linter, pytest |
-| [.cursor/lms-ai/skills/python-code-analysis-lms-ai.md](../.cursor/lms-ai/skills/python-code-analysis-lms-ai.md) | LMS-AI Makefile targets, markers, CI gates |
-| [.cursor/rules/sonarqube-quality.md](../.cursor/rules/sonarqube-quality.md) | SonarQube-aligned bugs, smells, security, complexity (generic) |
-| [.cursor/lms-ai/rules/sonarqube-quality-lms-ai.md](../.cursor/lms-ai/rules/sonarqube-quality-lms-ai.md) | LMS-AI Sonar addendum — AppError, agent desk smells |
+| [.cursor/skills/generic/python-code-analysis/SKILL.md](../.cursor/skills/generic/python-code-analysis/SKILL.md) | Static & dynamic analysis — ruff, mypy, import-linter, pytest |
+| [.cursor/skills/lms-ai/python-code-analysis-lms-ai.md](../.cursor/skills/lms-ai/python-code-analysis-lms-ai.md) | LMS-AI Makefile targets, markers, CI gates |
+| [.cursor/rules/generic/sonarqube-quality.md](../.cursor/rules/generic/sonarqube-quality.md) | SonarQube-aligned bugs, smells, security, complexity (generic) |
+| [.cursor/rules/lms-ai/sonarqube-quality-lms-ai.md](../.cursor/rules/lms-ai/sonarqube-quality-lms-ai.md) | LMS-AI Sonar addendum — AppError, agent desk smells |
 
 ---
 
@@ -2062,19 +2062,19 @@ Response includes `holdings_by_status` (incl. **DAMAGED** / **LOST**), `circulat
 
 **Session focus (Jun 2026):** Codify engineering craft for this repo — **Clean Code** (Robert C. Martin), **Implementation Patterns** (Kent Beck), **Implementing DDD** (Vaughn Vernon) — applied to **Python 3.12**, **FastAPI**, **SQLAlchemy**, **LangChain / LangGraph**, and **Langfuse**.
 
-**Canonical skills (full detail):** Content lives in `.cursor/generic/` and `.cursor/lms-ai/`; Cursor loads via symlinks in `.cursor/rules/` and `.cursor/skills/` — see [.cursor/README.md](../.cursor/README.md).
+**Canonical skills (full detail):** `.cursor/rules/{generic,lms-ai}/` and `.cursor/skills/{generic,lms-ai}/` — see [.cursor/README.md](../.cursor/README.md).
 
 | Skill | Path | Role |
 |-------|------|------|
 | General principles | [.cursor/skills/clean-code-ddd-python/SKILL.md](../.cursor/skills/clean-code-ddd-python/SKILL.md) | Uncle Bob + Beck + Vernon for the stack |
 | LMS-AI addendum | [.cursor/skills/clean-code-ddd-lms-ai/SKILL.md](../.cursor/skills/clean-code-ddd-lms-ai/SKILL.md) | This repo’s modules, import rules, agent desk |
 | DDD supplement | [.cursor/skills/clean-code-ddd-python/reference.md](../.cursor/skills/clean-code-ddd-python/reference.md) | Entity vs value object, module placement |
-| Static & dynamic analysis | [.cursor/skills/python-code-analysis/SKILL.md](../.cursor/skills/python-code-analysis/SKILL.md) | ruff, mypy, import-linter, pytest markers |
-| Analysis addendum | [.cursor/lms-ai/skills/python-code-analysis-lms-ai.md](../.cursor/lms-ai/skills/python-code-analysis-lms-ai.md) | Makefile, CI, change-type test scope |
-| SonarQube rules | [.cursor/rules/sonarqube-quality.md](../.cursor/rules/sonarqube-quality.md) + [.cursor/lms-ai/rules/sonarqube-quality-lms-ai.md](../.cursor/lms-ai/rules/sonarqube-quality-lms-ai.md) | Quality gate, bugs, smells, security hotspots |
-| Agent governance | [.cursor/skills/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/imda-agentic-ai-governance/SKILL.md) + [.cursor/lms-ai/skills/imda-agentic-ai-governance-lms-ai.md](../.cursor/lms-ai/skills/imda-agentic-ai-governance-lms-ai.md) | IMDA MGF v1.5 + Twelve-Factor deployment |
+| Static & dynamic analysis | [.cursor/skills/generic/python-code-analysis/SKILL.md](../.cursor/skills/generic/python-code-analysis/SKILL.md) | ruff, mypy, import-linter, pytest markers |
+| Analysis addendum | [.cursor/skills/lms-ai/python-code-analysis-lms-ai.md](../.cursor/skills/lms-ai/python-code-analysis-lms-ai.md) | Makefile, CI, change-type test scope |
+| SonarQube rules | [.cursor/rules/generic/sonarqube-quality.md](../.cursor/rules/generic/sonarqube-quality.md) + [.cursor/rules/lms-ai/sonarqube-quality-lms-ai.md](../.cursor/rules/lms-ai/sonarqube-quality-lms-ai.md) | Quality gate, bugs, smells, security hotspots |
+| Agent governance | [.cursor/skills/generic/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/generic/imda-agentic-ai-governance/SKILL.md) + [.cursor/skills/lms-ai/imda-agentic-ai-governance-lms-ai.md](../.cursor/skills/lms-ai/imda-agentic-ai-governance-lms-ai.md) | IMDA MGF v1.5 + Twelve-Factor deployment |
 
-**Overlaps:** §8 design principles (EMC), §15 agent governance (tools/HITL, Twelve-Factor), `.cursor/rules/code-simplification.md`, `.cursor/rules/api-and-interface-design.md`, `.cursor/rules/sonarqube-quality.md`.
+**Overlaps:** §8 design principles (EMC), §15 agent governance (tools/HITL, Twelve-Factor), `.cursor/rules/generic/code-simplification.md`, `.cursor/rules/generic/api-and-interface-design.md`, `.cursor/rules/generic/sonarqube-quality.md`.
 
 ### 16.1 Unified decision workflow
 

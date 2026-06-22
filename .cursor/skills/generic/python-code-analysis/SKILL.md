@@ -7,9 +7,9 @@ description: Runs static and dynamic code analysis for Python applications — r
 
 Analyze Python code **without changing behavior** unless fixing a verified defect. Prefer the project's configured tools over ad-hoc scripts.
 
-**LMS-AI project commands and markers:** [python-code-analysis-lms-ai.md](../../lms-ai/skills/python-code-analysis-lms-ai.md)
+**LMS-AI project commands and markers:** [python-code-analysis-lms-ai.md](../../lms-ai/python-code-analysis-lms-ai.md)
 
-**Related craft skills:** [clean-code-ddd-python](../clean-code-ddd-python/SKILL.md), [clean-code-ddd-lms-ai](../../lms-ai/skills/clean-code-ddd-lms-ai/SKILL.md)
+**Related craft skills:** [clean-code-ddd-python](../clean-code-ddd-python/SKILL.md), [clean-code-ddd-lms-ai](../../lms-ai/clean-code-ddd-lms-ai/SKILL.md)
 
 ---
 
@@ -155,14 +155,14 @@ def test_issue_start_requires_auth(bare_client):
 
 ## CI alignment
 
-Before push, run the same gates CI runs (see [python-code-analysis-lms-ai.md](../../lms-ai/skills/python-code-analysis-lms-ai.md) for LMS-AI):
+Before push, run the same gates CI runs (see [python-code-analysis-lms-ai.md](../../lms-ai/python-code-analysis-lms-ai.md) for LMS-AI):
 
 1. `ruff check`
 2. `lint-imports`
 3. `alembic upgrade head` (if DB tests)
 4. `pytest` with `PYTHONPATH=src`
 
-Cross-reference: [sonarqube-quality.md](../../../rules/sonarqube-quality.md) for Sonar-aligned complexity, duplication, and security hotspot rules.
+Cross-reference: [sonarqube-quality.md](../../rules/generic/sonarqube-quality.md) for Sonar-aligned complexity, duplication, and security hotspot rules.
 
 ---
 
@@ -202,4 +202,4 @@ Severity: **blocker** (CI red, security, data loss) vs **should fix** (style, mi
 
 ## Additional resources
 
-- LMS-AI Makefile targets, markers, CI: [python-code-analysis-lms-ai.md](../../lms-ai/skills/python-code-analysis-lms-ai.md)
+- LMS-AI Makefile targets, markers, CI: [python-code-analysis-lms-ai.md](../../lms-ai/python-code-analysis-lms-ai.md)

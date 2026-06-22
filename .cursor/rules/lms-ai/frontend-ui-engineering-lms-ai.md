@@ -50,4 +50,4 @@ Inspired by CRM/admin dashboards (grouped sidebar, sticky header, breadcrumb, co
 - Wrap view bodies in `PageShell` for consistent CRM content panel styling.
 - Navigation groups: Circulation, Catalog, Patrons, Administration (config-driven, role-filtered).
 
-**See also:** [frontend-ui-engineering.md](../../generic/rules/frontend-ui-engineering.md) (generic UI engineering rule).
+**See also:** [frontend-ui-engineering.md](../generic/frontend-ui-engineering.md) (generic UI engineering rule).

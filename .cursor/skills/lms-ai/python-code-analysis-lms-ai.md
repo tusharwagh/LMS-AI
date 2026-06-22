@@ -1,6 +1,6 @@
 # LMS-AI — static & dynamic analysis
 
-Supplement to [python-code-analysis/SKILL.md](../../../skills/python-code-analysis/SKILL.md). Commands and paths for **this repository**.
+Supplement to [python-code-analysis/SKILL.md](../../generic/python-code-analysis/SKILL.md). Commands and paths for **this repository**.
 
 ---
 
@@ -119,8 +119,8 @@ Shared fixtures: `tests/conftest.py` — DB seed skipped for unit/smoke via `bar
 
 | Topic | Path |
 |-------|------|
-| Security tests & headers | `.cursor/rules/security-and-hardening.md` + `.cursor/lms-ai/rules/security-and-hardening-lms-ai.md` |
+| Security tests & headers | `.cursor/rules/generic/security-and-hardening.md` + `.cursor/rules/lms-ai/security-and-hardening-lms-ai.md` |
 | Go-live test matrix | `docs/go-live-checklist.md` |
-| Agent governance tests (G11–G13) | `.cursor/skills/imda-agentic-ai-governance/SKILL.md` |
-| DDD boundaries | `.cursor/skills/clean-code-ddd-lms-ai/SKILL.md` |
-| SonarQube quality rules | `.cursor/rules/sonarqube-quality.md` + `.cursor/lms-ai/rules/sonarqube-quality-lms-ai.md` |
+| Agent governance tests (G11–G13) | `.cursor/skills/generic/imda-agentic-ai-governance/SKILL.md` |
+| DDD boundaries | `.cursor/skills/lms-ai/clean-code-ddd-lms-ai/SKILL.md` |
+| SonarQube quality rules | `.cursor/rules/generic/sonarqube-quality.md` + `.cursor/rules/lms-ai/sonarqube-quality-lms-ai.md` |

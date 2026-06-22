@@ -1,1 +1,0 @@
-../generic/rules/frontend-ui-engineering.md

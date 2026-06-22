@@ -1,1 +1,0 @@
-../../lms-ai/skills/python-code-analysis-lms-ai.md

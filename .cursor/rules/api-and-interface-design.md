@@ -1,1 +1,0 @@
-../generic/rules/api-and-interface-design.md

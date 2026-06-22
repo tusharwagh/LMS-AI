@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     cors_origins: str = "*"
 
-    # Security hardening (see .cursor/rules/security-and-hardening.md)
+    # Security hardening (see .cursor/rules/generic/security-and-hardening.md)
     security_hsts_enabled: bool = False
     rate_limit_enabled: bool = True
     auth_rate_limit_max: int = 10

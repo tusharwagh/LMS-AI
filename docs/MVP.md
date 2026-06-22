@@ -910,7 +910,7 @@ If expected production numbers exceed these baselines, run targeted performance 
 
 ### 13.7 Security hardening
 
-Operational security controls shipped with the API (see `.cursor/rules/security-and-hardening.md`).
+Operational security controls shipped with the API (see `.cursor/rules/generic/security-and-hardening.md`).
 
 | Control | Implementation | Config / notes |
 |---------|----------------|----------------|

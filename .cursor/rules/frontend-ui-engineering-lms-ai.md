@@ -1,1 +1,0 @@
-../lms-ai/rules/frontend-ui-engineering-lms-ai.md

@@ -5,9 +5,9 @@ description: SonarQube-aligned quality rules for Python FastAPI services — bug
 
 # SonarQube Quality Rules (Python / FastAPI)
 
-Quality gates aligned with common **SonarQube** rule families for Python (`python`, `security`, `maintainability`). Enforce many equivalents locally via **ruff**, **mypy**, **import-linter**, and **pytest** — see [python-code-analysis](../../../skills/python-code-analysis/SKILL.md).
+Quality gates aligned with common **SonarQube** rule families for Python (`python`, `security`, `maintainability`). Enforce many equivalents locally via **ruff**, **mypy**, **import-linter**, and **pytest** — see [python-code-analysis](../../skills/generic/python-code-analysis/SKILL.md).
 
-Craft principles: [clean-code-ddd-python](../../../skills/clean-code-ddd-python/SKILL.md) (Clean Code, SOLID, DDD).
+Craft principles: [clean-code-ddd-python](../../skills/generic/clean-code-ddd-python/SKILL.md) (Clean Code, SOLID, DDD).
 
 ---
 
@@ -155,7 +155,7 @@ Treat as **mandatory human review**, not auto-close:
 | Agent/LLM tests mock models | Config-driven mocks; assert routing not prose |
 | Security regressions | Dedicated hardening/security test suite |
 
-**Project-specific gates:** see [sonarqube-quality-lms-ai.md](../../lms-ai/rules/sonarqube-quality-lms-ai.md) for LMS-AI Makefile targets and agent desk smells.
+**Project-specific gates:** see [sonarqube-quality-lms-ai.md](../lms-ai/sonarqube-quality-lms-ai.md) for LMS-AI Makefile targets and agent desk smells.
 
 ---
 
@@ -186,7 +186,7 @@ Cross-reference: [api-and-interface-design.md](api-and-interface-design.md).
 | Dev-only graph fork | Same graph; mocks via config only |
 | Log files inside containers | Structured stdout + external trace backend |
 
-Cross-reference: [imda-agentic-ai-governance](../../../skills/imda-agentic-ai-governance/SKILL.md) (IMDA + Twelve-Factor).
+Cross-reference: [imda-agentic-ai-governance](../../skills/generic/imda-agentic-ai-governance/SKILL.md) (IMDA + Twelve-Factor).
 
 ---
 
@@ -222,7 +222,7 @@ When Sonar flags an issue:
 
 | Document | Role |
 |----------|------|
-| [clean-code-ddd-python](../../../skills/clean-code-ddd-python/SKILL.md) | Clean Code, SOLID, DDD |
-| [python-code-analysis](../../../skills/python-code-analysis/SKILL.md) | Static/dynamic analysis |
+| [clean-code-ddd-python](../../skills/generic/clean-code-ddd-python/SKILL.md) | Clean Code, SOLID, DDD |
+| [python-code-analysis](../../skills/generic/python-code-analysis/SKILL.md) | Static/dynamic analysis |
 | [code-simplification.md](code-simplification.md) | Refactor without behavior change |
 | [security-and-hardening.md](security-and-hardening.md) | App security controls |

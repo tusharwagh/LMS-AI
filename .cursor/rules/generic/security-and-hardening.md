@@ -327,7 +327,7 @@ app.use('/api/auth/', rateLimit({
 
 ## Secrets Management
 
-Follow **Twelve-Factor Config (III)**: store secrets and environment-specific toggles in the process environment, never in source code, committed config files, or LLM prompts. For agent deployments, also see [imda-agentic-ai-governance](../../../skills/imda-agentic-ai-governance/SKILL.md) §12-Factor (config in `Settings`, not graph state).
+Follow **Twelve-Factor Config (III)**: store secrets and environment-specific toggles in the process environment, never in source code, committed config files, or LLM prompts. For agent deployments, also see [imda-agentic-ai-governance](../../skills/generic/imda-agentic-ai-governance/SKILL.md) §12-Factor (config in `Settings`, not graph state).
 
 ```
 .env files:
@@ -468,4 +468,4 @@ After implementing security-relevant code:
 - [ ] Server-side URL fetches validated against an allowlist (no SSRF)
 - [ ] LLM/model output validated and encoded before use (if AI features present)
 
-**Project-specific env and controls:** see [security-and-hardening-lms-ai.md](../../lms-ai/rules/security-and-hardening-lms-ai.md) for LMS-AI `Settings` fields and shipped middleware.
+**Project-specific env and controls:** see [security-and-hardening-lms-ai.md](../lms-ai/security-and-hardening-lms-ai.md) for LMS-AI `Settings` fields and shipped middleware.

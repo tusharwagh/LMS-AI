@@ -1,1 +1,0 @@
-../generic/rules/sonarqube-quality.md

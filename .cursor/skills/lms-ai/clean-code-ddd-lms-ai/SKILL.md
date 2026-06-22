@@ -5,11 +5,11 @@ description: Addendum applying Clean Code, Kent Beck patterns, and Vaughn Vernon
 
 # LMS-AI Stack Addendum
 
-**Companion skill**: [clean-code-ddd-python](../../../skills/clean-code-ddd-python/SKILL.md) (general principles).
+**Companion skill**: [clean-code-ddd-python](../../generic/clean-code-ddd-python/SKILL.md) (general principles).
 
-This addendum maps those principles onto **this repository's** modules, ADRs, and enforced import contracts. Follow project rules in `.cursor/rules/` when they overlap — especially [sonarqube-quality.md](../../../rules/sonarqube-quality.md) and [sonarqube-quality-lms-ai.md](../rules/sonarqube-quality-lms-ai.md).
+This addendum maps those principles onto **this repository's** modules, ADRs, and enforced import contracts. Follow project rules in `.cursor/rules/` when they overlap — especially [sonarqube-quality.md](../../rules/generic/sonarqube-quality.md) and [sonarqube-quality-lms-ai.md](../../rules/lms-ai/sonarqube-quality-lms-ai.md).
 
-**Verification:** [python-code-analysis](../../../skills/python-code-analysis/SKILL.md) + [python-code-analysis-lms-ai.md](python-code-analysis-lms-ai.md) for Makefile targets, markers, and CI gates.
+**Verification:** [python-code-analysis](../../generic/python-code-analysis/SKILL.md) + [python-code-analysis-lms-ai.md](python-code-analysis-lms-ai.md) for Makefile targets, markers, and CI gates.
 
 ---
 
@@ -147,7 +147,7 @@ Keep workflow steps explicit (`start`, `validate`, `commit`, `cancel`) — Compo
 
 ### API design alignment
 
-Follow [api-and-interface-design.md](../../../rules/api-and-interface-design.md) and [api-and-interface-design-lms-ai.md](../rules/api-and-interface-design-lms-ai.md): validate at route boundary with Pydantic; consistent errors; additive schema changes; `Idempotency-Key` on mutating staff endpoints.
+Follow [api-and-interface-design.md](../../rules/generic/api-and-interface-design.md) and [api-and-interface-design-lms-ai.md](../../rules/lms-ai/api-and-interface-design-lms-ai.md): validate at route boundary with Pydantic; consistent errors; additive schema changes; `Idempotency-Key` on mutating staff endpoints.
 
 ---
 
@@ -328,7 +328,7 @@ Run: `pytest`, `ruff check`, `mypy`, `lint-imports` (import-linter).
 | Agent coordinator | `lms/agent/coordinator.py` |
 | Tool allowlist | `lms/agent/tools.py` |
 | Import contracts | `pyproject.toml` `[tool.importlinter]` |
-| Static & dynamic analysis | `.cursor/skills/python-code-analysis/` + `.cursor/lms-ai/skills/python-code-analysis-lms-ai.md` |
-| Security hardening | `.cursor/rules/security-and-hardening.md` + `.cursor/lms-ai/rules/security-and-hardening-lms-ai.md` |
-| Code simplification | `.cursor/rules/code-simplification.md` |
-| SonarQube quality gates | `.cursor/rules/sonarqube-quality.md` + `.cursor/lms-ai/rules/sonarqube-quality-lms-ai.md` |
+| Static & dynamic analysis | `.cursor/skills/generic/python-code-analysis/` + `.cursor/skills/lms-ai/python-code-analysis-lms-ai.md` |
+| Security hardening | `.cursor/rules/generic/security-and-hardening.md` + `.cursor/rules/lms-ai/security-and-hardening-lms-ai.md` |
+| Code simplification | `.cursor/rules/generic/code-simplification.md` |
+| SonarQube quality gates | `.cursor/rules/generic/sonarqube-quality.md` + `.cursor/rules/lms-ai/sonarqube-quality-lms-ai.md` |

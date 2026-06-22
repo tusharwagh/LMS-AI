@@ -21,4 +21,4 @@ Staff chat consumes typed responses from `lms/agent/schemas.py`:
 - Additive optional fields only on response models
 - Changing message wording is observable (Hyrum's Law) — update `tests/agent/test_intent_and_masking.py` when copy changes
 
-**See also:** [api-and-interface-design.md](../../generic/rules/api-and-interface-design.md) (generic API design rule).
+**See also:** [api-and-interface-design.md](../generic/api-and-interface-design.md) (generic API design rule).

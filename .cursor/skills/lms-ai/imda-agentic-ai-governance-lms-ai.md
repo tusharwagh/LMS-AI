@@ -1,6 +1,6 @@
 # LMS-AI — IMDA / Twelve-Factor conventions
 
-Addendum to [imda-agentic-ai-governance/SKILL.md](../../../skills/imda-agentic-ai-governance/SKILL.md).
+Addendum to [imda-agentic-ai-governance/SKILL.md](../../generic/imda-agentic-ai-governance/SKILL.md).
 
 ## LMS-AI conventions
 

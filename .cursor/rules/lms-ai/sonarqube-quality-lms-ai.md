@@ -44,6 +44,6 @@ Domain failures → `AppError`; never mix ad-hoc HTTP shapes.
 | Dev-only graph fork | Same graph; `AGENT_MOCK_LLM` / stub tools in config |
 | Log files inside containers | Structured stdout + Langfuse spans (redacted) |
 
-Cross-reference: [imda-agentic-ai-governance](../../../skills/imda-agentic-ai-governance/SKILL.md) (IMDA + Twelve-Factor).
+Cross-reference: [imda-agentic-ai-governance](../../skills/generic/imda-agentic-ai-governance/SKILL.md) (IMDA + Twelve-Factor).
 
-**See also:** [sonarqube-quality.md](../../generic/rules/sonarqube-quality.md) (generic SonarQube rule).
+**See also:** [sonarqube-quality.md](../generic/sonarqube-quality.md) (generic SonarQube rule).
