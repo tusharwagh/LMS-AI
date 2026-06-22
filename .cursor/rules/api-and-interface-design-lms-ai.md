@@ -1,0 +1,1 @@
+../lms-ai/rules/api-and-interface-design-lms-ai.md

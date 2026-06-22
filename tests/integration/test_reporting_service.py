@@ -12,11 +12,11 @@ from sqlalchemy.orm import Session
 from lms.catalog.domain.enums import HoldingStatus
 from lms.catalog.infrastructure.models.models import CatalogModel, HoldingModel
 from lms.loan.infrastructure.models.models import LoanModel
+from lms.platform.time import library_today
 from lms.reporting.application.dashboard_service import DashboardService
 from lms.reporting.application.report_service import ReportService
 from lms.reporting.domain.enums import ReportFormat, ReportGroupBy, ReportMetric
 from lms.reporting.domain.report_spec import ReportSpec
-from lms.shared.time import library_today
 
 pytestmark = pytest.mark.integration
 

@@ -6,8 +6,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from lms.api.openapi import BEARER_SCHEME_NAME
+from lms.platform.auth.roles import Role
 from lms.shared.auth.jwt import AuthContext, decode_access_token
-from lms.shared.auth.roles import Role
 from lms.shared.db.deps import get_db
 
 # Swagger Authorize → paste JWT (access_token from POST /api/v1/auth/token).
@@ -52,7 +52,7 @@ def require_roles(*allowed: Role) -> Callable[[AuthContext], AuthContext]:
     allowed_set = frozenset(allowed)
 
     def _checker(ctx: Annotated[AuthContext, Depends(require_auth)]) -> AuthContext:
-        if ctx.role not in allowed_set:
+        if Role(ctx.role) not in allowed_set:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={"code": "FORBIDDEN", "message": "Insufficient role"},

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from lms.shared.auth.roles import Role
+from lms.platform.auth.roles import Role
 
 
 class TokenResponse(BaseModel):

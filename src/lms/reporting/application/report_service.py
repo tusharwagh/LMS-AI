@@ -10,10 +10,10 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from lms.platform.time import library_today
 from lms.reporting.domain.enums import ReportGroupBy, ReportMetric
 from lms.reporting.domain.report_spec import ReportSpec
 from lms.reporting.infrastructure.queries import ReportingQueries
-from lms.shared.time import library_today
 
 
 @dataclass(frozen=True, slots=True)

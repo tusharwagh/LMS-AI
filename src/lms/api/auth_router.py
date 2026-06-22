@@ -5,9 +5,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from lms.api.auth_schemas import TokenResponse, UserResponse
 from lms.api.deps import DbSession, require_auth
-from lms.shared.application.auth_service import AuthService
+from lms.platform.application.auth_service import AuthService
+from lms.platform.auth.roles import Role
 from lms.shared.auth.jwt import AuthContext
-from lms.shared.auth.roles import Role
 
 router = APIRouter()
 

@@ -82,44 +82,7 @@ Apply [Twelve-Factor App](https://12factor.net/) discipline alongside IMDA §3 (
 | **XI. Logs** | `structlog` → stdout; Langfuse for tool/model spans with redacted args | Audit cadence; no PII in log files |
 | **XII. Admin** | `make migrate`, `make seed`, eval datasets — not mixed into request path | Admin tasks audited separately from agent traces |
 
-### LMS-AI conventions
-
-| Concern | Where enforced |
-|---------|----------------|
-| Config in environment | `src/lms/config.py` — `agent_issue_enabled`, `agent_mock_llm`, `llm_provider(s)`, Langfuse keys |
-| Backing services | `DATABASE_URL`, provider API keys, `LANGFUSE_*` — attach/detach per deploy |
-| Build / release / run | `make ci-native` (build+test) → deploy script / `make deploy-native` (run only) |
-| Stateless processes | Session + HITL state in DB via agent session layer, not worker RAM |
-| Dev/prod parity | `make test-agent` with mock LLM; production requires real keys + `agent_issue_enabled` |
-| Logs & traces | `src/lms/agent/tracing.py` — structlog audit + optional Langfuse spans |
-| Admin one-offs | `make migrate`, `make seed`, `make validate-langfuse` — never invoked from graph nodes |
-
-```python
-# II. Config — feature flags and secrets from Settings, not code or prompts
-from lms.config import get_settings
-
-settings = get_settings()
-if not settings.agent_issue_enabled:
-    raise AgentDisabledError()
-# AGENT_MOCK_LLM, LLM_PROVIDER, LANGFUSE_* all come from env / .env (not committed)
-
-# VI. Processes — durable state in backing service, not process memory
-# thread_id + checkpointer resume HITL; workers remain interchangeable
-
-# XI. Logs — event stream to stdout; traces to Langfuse when configured
-logger.info("agent_tool_invoked", tool=tool_name, thread_id=thread_id, args_redacted=True)
-```
-
-**Anti-patterns (12-factor):**
-
-| Anti-pattern | Fix |
-|--------------|-----|
-| API keys in system prompt or graph state | Env vars via `Settings`; redact from checkpoints |
-| Different graph topology in dev vs prod | Same code path; mock LLM / stub tools via config |
-| Session stickiness required for HITL | Durable checkpointer + `thread_id`; any worker can resume |
-| Writing logs to local files in containers | Stdout JSON; aggregate externally |
-| Running migrations from agent tool nodes | Admin release step (`make migrate`) before run |
-| Unpinned LLM library versions | Lock dependencies; tag releases with prompt/graph hash |
+**Project-specific conventions:** see [imda-agentic-ai-governance-lms-ai.md](../../lms-ai/skills/imda-agentic-ai-governance-lms-ai.md) when deploying LMS-AI.
 
 For factor-by-factor review notes, see [reference.md](reference.md#twelve-factor-app-agentic-ai).
 
@@ -260,7 +223,7 @@ def redact_for_audit(text: str) -> str:
 
 #### App security
 
-Align with application security boundaries (see `.cursor/rules/security-and-hardening.md`):
+Align with application security boundaries (see [security-and-hardening.md](../../../rules/security-and-hardening.md)):
 
 | Threat | Agent-specific control |
 |--------|------------------------|
@@ -508,7 +471,7 @@ builder.add_conditional_edges("governance", route_on_decision)
 
 Use Langfuse scores/datasets for evals, `langgraph dev` test threads, and deterministic assertions on tool calls where possible. Correlate eval runs with production traces via shared `agent_id` and prompt version tags.
 
-**LMS-AI automated gate:** `make test-agent` with `AGENT_MOCK_LLM=true` — see [python-code-analysis/lms-ai.md](../python-code-analysis/lms-ai.md). Static: ruff + import-linter on `lms/agent/` (no infrastructure imports).
+**LMS-AI automated gate:** `make test-agent` with `AGENT_MOCK_LLM=true` — see [python-code-analysis-lms-ai.md](../../lms-ai/skills/python-code-analysis-lms-ai.md). Static: ruff + import-linter on `lms/agent/` (no infrastructure imports).
 
 **Deployment:** phased rollout (user cohort / feature flag), continuous monitoring, versioned graph definitions. Follow **12-Factor V** — build and test in CI (`make ci-native`), promote immutable artifact, run processes separately; no hot-editing graph code in production.
 
@@ -627,7 +590,7 @@ Surface in UI: agent status, pending approvals from `interrupt` payloads, audit 
 - [reference.md](reference.md) — risk factors, multi-agent risks, Twelve-Factor mapping, related frameworks (CSA, GovTech ARCF, OWASP Agentic AI)
 - [Twelve-Factor App](https://12factor.net/) — cloud-native operational baseline
 - [python-code-analysis/SKILL.md](../python-code-analysis/SKILL.md) — static & dynamic analysis for Python (pytest, ruff, mypy, import-linter)
-- `.cursor/rules/security-and-hardening.md` — app security patterns (injection, auth, PII)
+- [security-and-hardening.md](../../../rules/security-and-hardening.md) — app security patterns (injection, auth, PII)
 - IMDA MGF for Agentic AI (v1.5): https://www.imda.gov.sg/-/media/imda/files/about/emerging-tech-and-research/artificial-intelligence/mgf-for-agentic-ai.pdf
 - LangGraph interrupts: https://docs.langchain.com/oss/python/langgraph/interrupts
 - LangGraph persistence: https://docs.langchain.com/oss/python/langgraph/persistence

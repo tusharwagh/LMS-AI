@@ -8,8 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from lms.api.app import create_app
+from lms.platform.auth.roles import Role
 from lms.shared.auth.jwt import create_access_token
-from lms.shared.auth.roles import Role
 
 pytestmark = pytest.mark.unit
 

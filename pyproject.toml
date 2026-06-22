@@ -133,3 +133,26 @@ ignore_imports = [
     "lms.agent.tools -> lms.api.workflows.return_book",
     "lms.agent.tools -> lms.loan.application.fulfillment_service",
 ]
+
+[[tool.importlinter.contracts]]
+name = "Shared must not import platform or bounded contexts"
+type = "forbidden"
+source_modules = ["lms.shared"]
+forbidden_modules = [
+    "lms.platform",
+    "lms.catalog",
+    "lms.loan",
+    "lms.reference",
+    "lms.agent",
+]
+
+[[tool.importlinter.contracts]]
+name = "Platform must not import bounded context infrastructure"
+type = "forbidden"
+source_modules = ["lms.platform"]
+forbidden_modules = [
+    "lms.catalog.infrastructure",
+    "lms.loan.infrastructure",
+    "lms.reference.infrastructure",
+    "lms.agent",
+]

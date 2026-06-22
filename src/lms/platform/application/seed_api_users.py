@@ -7,9 +7,9 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from lms.platform.auth.roles import Role
+from lms.platform.infrastructure.models.api_user import ApiUserModel
 from lms.shared.auth.password import hash_password
-from lms.shared.auth.roles import Role
-from lms.shared.infrastructure.models.api_user import ApiUserModel
 
 USER_ADMIN = uuid.UUID("00000000-0001-4001-8001-000000000001")
 USER_LIBRARIAN = uuid.UUID("00000000-0001-4001-8001-000000000002")

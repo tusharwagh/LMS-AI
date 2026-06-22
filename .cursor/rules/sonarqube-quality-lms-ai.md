@@ -1,0 +1,1 @@
+../lms-ai/rules/sonarqube-quality-lms-ai.md

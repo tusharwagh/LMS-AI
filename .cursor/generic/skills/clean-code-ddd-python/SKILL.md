@@ -7,9 +7,9 @@ description: Applies Clean Code (Uncle Bob), SOLID, Implementation Patterns (Ken
 
 Synthesize Clean Code, **SOLID**, Kent Beck patterns, and Vaughn Vernon DDD into one workflow for this stack. Prefer **surgical changes** that match existing project conventions; do not impose patterns the codebase does not use.
 
-For LMS-AI-specific layout, import rules, and module map, also read [clean-code-ddd-lms-ai/SKILL.md](../clean-code-ddd-lms-ai/SKILL.md).
+For LMS-AI-specific layout, import rules, and module map, also read [clean-code-ddd-lms-ai](../../../lms-ai/skills/clean-code-ddd-lms-ai/SKILL.md).
 
-**Verification:** run static and dynamic analysis per [python-code-analysis](../python-code-analysis/SKILL.md). SonarQube-aligned quality gates: [.cursor/rules/sonarqube-quality.md](../../rules/sonarqube-quality.md).
+**Verification:** run static and dynamic analysis per [python-code-analysis](../python-code-analysis/SKILL.md). SonarQube-aligned quality gates: [sonarqube-quality.md](../../../rules/sonarqube-quality.md).
 
 ## When to use
 
@@ -418,4 +418,4 @@ Before merging:
 
 - DDD layering and context map detail: [reference.md](reference.md)
 - Static & dynamic analysis workflow: [python-code-analysis/SKILL.md](../python-code-analysis/SKILL.md)
-- SonarQube-aligned rules: [.cursor/rules/sonarqube-quality.md](../../rules/sonarqube-quality.md)
+- SonarQube-aligned rules: [sonarqube-quality.md](../../../rules/sonarqube-quality.md)

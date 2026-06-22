@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from lms.catalog.domain.enums import HoldingStatus
 from lms.config import get_settings
-from lms.shared.time import library_today
+from lms.platform.time import library_today
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,8 +7,8 @@ from datetime import date, timedelta
 
 from sqlalchemy.orm import Session
 
+from lms.platform.time import library_today
 from lms.reporting.infrastructure.queries import DailyCirculationRow, ReportingQueries
-from lms.shared.time import library_today
 
 
 @dataclass(frozen=True, slots=True)

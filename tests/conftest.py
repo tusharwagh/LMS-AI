@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from lms.api.app import create_app
 from lms.config import get_settings
-from lms.shared.application.seed_api_users import DEFAULT_DEV_PASSWORD, ensure_default_api_users
+from lms.platform.application.seed_api_users import DEFAULT_DEV_PASSWORD, ensure_default_api_users
+from lms.platform.auth.roles import Role
 from lms.shared.auth.jwt import create_access_token
-from lms.shared.auth.roles import Role
 from lms.shared.db.session import SessionLocal, engine
 
 

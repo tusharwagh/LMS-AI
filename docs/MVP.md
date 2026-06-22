@@ -915,6 +915,7 @@ Operational security controls shipped with the API (see `.cursor/rules/security-
 | Control | Implementation | Config / notes |
 |---------|----------------|----------------|
 | Password hashing | bcrypt, cost factor 12 | `shared/auth/password.py` |
+| RBAC roles / API users | ADMIN, LIBRARIAN, PATRON | `platform/auth/roles.py`, `platform/application/auth_service.py` |
 | JWT signing | HS256 via `APP_SECRET_KEY` | Refuse default secret when `APP_ENV=production` |
 | RBAC | `ADMIN`, `LIBRARIAN`, `PATRON` on domain routes | §13.4; `domain_api_router` requires Bearer JWT |
 | Auth rate limiting | Per-IP fixed window on `/api/v1/auth/` | Default 10 requests / 15 min → `429 RATE_LIMIT_EXCEEDED` |

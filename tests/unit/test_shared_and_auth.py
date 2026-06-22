@@ -8,10 +8,10 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from lms.api.errors import AppError, ErrorCode, error_body
+from lms.platform.auth.roles import Role
 from lms.reference.application.service import ReferenceService
 from lms.reference.infrastructure.models.models import PatronBlockModel
 from lms.shared.auth.jwt import create_access_token, decode_access_token
-from lms.shared.auth.roles import Role
 from lms.shared.idempotency.service import (
     IdempotencyPayloadMismatchError,
     _payload_hash,
@@ -54,7 +54,7 @@ def test_jwt_round_trip() -> None:
     token = create_access_token("lib-1", Role.LIBRARIAN, tenant_id="school-a")
     ctx = decode_access_token(token)
     assert ctx.subject == "lib-1"
-    assert ctx.role == Role.LIBRARIAN
+    assert ctx.role == Role.LIBRARIAN.value
     assert ctx.tenant_id == "school-a"
 
 

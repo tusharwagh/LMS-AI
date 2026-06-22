@@ -21,15 +21,15 @@ from lms.catalog.domain.enums import CatalogingStatus, HoldingStatus  # noqa: E4
 from lms.catalog.infrastructure.models.models import CatalogModel, HoldingModel  # noqa: E402
 from lms.config import get_settings  # noqa: E402
 from lms.loan.infrastructure.models.models import LoanModel, LoanRuleSetModel  # noqa: E402
+from lms.platform.application.seed_api_users import (  # noqa: E402
+    DEFAULT_DEV_PASSWORD,
+    ensure_default_api_users,
+)
 from lms.reference.domain.enums import PatronStatus  # noqa: E402
 from lms.reference.infrastructure.models.models import (  # noqa: E402
     ClassSectionModel,
     PatronModel,
     PatronTypeModel,
-)
-from lms.shared.application.seed_api_users import (  # noqa: E402
-    DEFAULT_DEV_PASSWORD,
-    ensure_default_api_users,
 )
 from lms.shared.db.session import SessionLocal  # noqa: E402
 

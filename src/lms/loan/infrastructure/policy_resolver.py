@@ -7,7 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from lms.loan.domain.ports import ResolvedPolicy
-from lms.shared.time import library_today
+from lms.platform.time import library_today
 
 
 class PolicyResolver:

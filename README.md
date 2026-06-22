@@ -345,7 +345,9 @@ src/lms/
   reference/     # Patrons, types, class sections
   catalog/       # Bibliographic records, holdings
   loan/          # Circulation, orchestrator, fulfillment
+  platform/      # LMS app platform: RBAC roles, API users, auth service, library calendar
   reporting/     # Dashboard + custom reports (read-only bounded context)
+  shared/        # Reusable infra: db session, JWT/password, idempotency, logging, llm gateway
   staff/ui/      # React + Vite source (CRM + AI assist + Dashboard)
   staff/static/  # Built staff desk (not committed — make staff-ui-build)
   config.py      # pydantic-settings (Twelve-Factor config)
@@ -353,12 +355,16 @@ alembic/         # Database migrations
 scripts/         # Deploy, seed, SQL helpers
 tests/           # unit, integration, e2e, agent, hardening, performance
 docs/            # MVP spec, domain models, runbook, governance notes
-.cursor/skills/  # Agent governance (IMDA + Twelve-Factor), DDD, code analysis
+.cursor/         # Cursor guidance — see .cursor/README.md (generic/ vs lms-ai/)
+  generic/       # Portable rules & skills
+  lms-ai/        # LMS-AI addenda
+  rules/         # Symlinks (Cursor discovery)
+  skills/        # Symlinks (Cursor discovery)
 ```
 
 **CI:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on push/PR to `main` (`make ci-native`; `setup-python@v6`). Local ship gate: `make ci-ship`.
 
-**Architecture boundaries:** enforced by `import-linter` — agent module must not import domain `infrastructure` directly.
+**Architecture boundaries:** enforced by `import-linter` — agent module must not import domain `infrastructure` directly; `shared/` holds reusable infra only; LMS-specific auth/RBAC lives in `platform/`.
 
 ---
 

@@ -12,7 +12,7 @@ from lms.api.errors import AppError, ErrorCode
 from lms.loan.api.schemas import LoanRuleSetCreate, LoanRuleSetUpdate
 from lms.loan.domain.enums import CalendarPolicy
 from lms.loan.infrastructure.models.models import LoanModel, LoanRuleSetModel
-from lms.shared.time import library_today
+from lms.platform.time import library_today
 
 _LOAN_DETAIL_SELECT = """
     SELECT

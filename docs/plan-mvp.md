@@ -107,7 +107,8 @@ src/lms/
   main.py                 # uvicorn entry
   config.py               # pydantic-settings (DB, JWT, LIBRARY_TIMEZONE)
   api/                    # FastAPI app, middleware, deps, errors, health
-  shared/                 # db session, auth/jwt, idempotency, logging, time
+  shared/                 # Reusable infra: db session, JWT/password, idempotency, logging, llm gateway
+  platform/               # LMS app platform: RBAC roles, API users, auth service, library calendar
   reference/              # domain / application / infrastructure / api
   catalog/
   loan/
@@ -122,10 +123,10 @@ docker-compose.yml        # PostgreSQL 16
 
 | Task | Deliverable | REQ / ADR |
 |------|-------------|-----------|
-| Repo layout: `reference/`, `catalog/`, `loan/`, `shared/` | Module folders; no cross-import violations | REQ-01, ADR-001 |
+| Repo layout: `reference/`, `catalog/`, `loan/`, `shared/`, `platform/` | Module folders; no cross-import violations | REQ-01, ADR-001 |
 | PostgreSQL + migration tool | Empty schema + migration pipeline | ADR-013, ADR-014 |
 | API shell: health, correlation id, error model | `X-Correlation-Id`; flat `{code, message, retriable, details}` envelope | MVP.md §10.5, §13.5 |
-| JWT auth: `api_users` table (migration `003`) | Bcrypt passwords; seed users via `ensure_default_api_users` | REQ-30, ADR-024 |
+| JWT auth: `api_users` table (migration `003`) | Bcrypt passwords; seed users via `platform/application/seed_api_users` | REQ-30, ADR-024 |
 | `POST /api/v1/auth/token`, `GET /api/v1/auth/me` | OAuth2 password flow; Bearer JWT on domain APIs | REQ-30 |
 | `domain_api_router` + `HTTPBearer` / Swagger `BearerJWT` | All `/api/v1/reference|catalog|loan` require token | ADR-024 |
 | Auth middleware: role extraction | `ADMIN`, `LIBRARIAN`, `PATRON` on request context | REQ-21, ADR-010 |

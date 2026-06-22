@@ -20,7 +20,7 @@ from lms.loan.infrastructure.models.models import (  # noqa: F401
     LoanModel,
     LoanRuleSetModel,
 )
-from lms.shared.infrastructure.models.api_user import ApiUserModel  # noqa: F401
+from lms.platform.infrastructure.models.api_user import ApiUserModel  # noqa: F401
 from lms.shared.llm.spend import LlmSpendLog  # noqa: F401
 
 config = context.config

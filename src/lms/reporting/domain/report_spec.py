@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+from lms.platform.time import library_today
 from lms.reporting.domain.enums import ReportFormat, ReportGroupBy, ReportMetric
-from lms.shared.time import library_today
 
 
 @dataclass(frozen=True, slots=True)

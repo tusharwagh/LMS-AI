@@ -5,8 +5,8 @@ from typing import Annotated
 from fastapi import Depends
 
 from lms.api.deps import require_auth, require_roles
+from lms.platform.auth.roles import Role
 from lms.shared.auth.jwt import AuthContext
-from lms.shared.auth.roles import Role
 
 # JWT required — any authenticated API user.
 AuthenticatedAuth = Annotated[AuthContext, Depends(require_auth)]

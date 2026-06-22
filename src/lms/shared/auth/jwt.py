@@ -6,19 +6,18 @@ from uuid import UUID
 from jose import JWTError, jwt
 
 from lms.config import get_settings
-from lms.shared.auth.roles import Role
 
 
 @dataclass(frozen=True, slots=True)
 class AuthContext:
     subject: str
-    role: Role
+    role: str
     tenant_id: str | None = None
 
 
 def create_access_token(
     subject: str,
-    role: Role,
+    role: str,
     *,
     tenant_id: str | None = None,
     expires_delta: timedelta | None = None,
@@ -29,7 +28,7 @@ def create_access_token(
     )
     payload: dict[str, Any] = {
         "sub": subject,
-        "role": role.value,
+        "role": role,
         "exp": expire,
     }
     if tenant_id is not None:
@@ -47,7 +46,7 @@ def decode_access_token(token: str) -> AuthContext:
             raise JWTError("Missing claims")
         return AuthContext(
             subject=str(subject),
-            role=Role(role_raw),
+            role=str(role_raw),
             tenant_id=payload.get("tenant_id"),
         )
     except JWTError as exc:

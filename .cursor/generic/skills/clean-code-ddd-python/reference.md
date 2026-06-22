@@ -2,24 +2,9 @@
 
 Supplement to [SKILL.md](SKILL.md). Read when designing new bounded contexts or cross-context integration.
 
-## Context map (LMS-AI)
+## Context map
 
-```
-┌─────────────┐     PatronEligibilityPort      ┌─────────────┐
-│  Reference  │◄───────────────────────────────│    Loan     │
-│  (patrons)  │                                │ (circulation)│
-└─────────────┘                                └──────┬──────┘
-                                                      │ HoldingCirculationPort
-┌─────────────┐     holding lendability           │
-│   Catalog   │◄──────────────────────────────────┘
-│ (holdings)  │
-└─────────────┘
-
-        ┌──────────┐  workflows / tools   ┌──────────┐
-        │   API    │─────────────────────►│  Agent   │
-        │workflows │  (no infra imports)  │  desk    │
-        └──────────┘                      └──────────┘
-```
+See project addendum [clean-code-ddd-lms-ai](../../../lms-ai/skills/clean-code-ddd-lms-ai/SKILL.md) for the LMS-AI bounded-context map.
 
 ## Entity vs value object (Python)
 
@@ -62,6 +47,6 @@ If a node contains `if patron_blocked` or SQL, it is in the wrong place. Graph n
 
 ## Verification
 
-Before merge: [python-code-analysis/SKILL.md](../python-code-analysis/SKILL.md) — static (ruff, mypy, import-linter) + dynamic pytest by marker. Sonar gates: [.cursor/rules/sonarqube-quality.md](../../rules/sonarqube-quality.md).
+Before merge: [python-code-analysis/SKILL.md](../python-code-analysis/SKILL.md) — static (ruff, mypy, import-linter) + dynamic pytest by marker. Sonar gates: [sonarqube-quality.md](../../../rules/sonarqube-quality.md).
 
 Ports return snapshots (`PatronEligibilitySnapshot`, `HoldingSnapshot`) — LSP/DIP; never leak foreign ORM into orchestrators.

@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 
 from lms.api.errors import AppError, ErrorCode
 from lms.config import get_settings
+from lms.platform.auth.roles import Role
+from lms.platform.infrastructure.models.api_user import ApiUserModel
 from lms.shared.auth.jwt import create_access_token
 from lms.shared.auth.password import verify_password
-from lms.shared.auth.roles import Role
-from lms.shared.infrastructure.models.api_user import ApiUserModel
 
 
 class AuthService:
@@ -35,7 +35,7 @@ class AuthService:
         settings = get_settings()
         token = create_access_token(
             str(user.id),
-            Role(user.role),
+            Role(user.role).value,
             tenant_id=user.tenant_id,
         )
         return token, settings.jwt_access_token_expire_minutes * 60

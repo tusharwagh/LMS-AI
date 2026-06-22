@@ -1,0 +1,1 @@
+../lms-ai/rules/security-and-hardening-lms-ai.md
