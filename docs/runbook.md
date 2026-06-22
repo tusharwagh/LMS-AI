@@ -41,6 +41,8 @@ make deploy-local SEED=1   # include sample data
 make deploy-local-logs     # tail logs
 ```
 
+**Docker staff UI:** the multi-stage `Dockerfile` copies Vite output from the staff-ui build stage at `/build/static` into `src/lms/staff/static/` (not the source tree). Local dev uses the same destination via `make staff-ui-build`.
+
 ### Native (local Postgres)
 
 ```bash
@@ -291,7 +293,8 @@ Operational baseline aligned with IMDA skill §“12-Factor agent deployment” 
 
 | Stage | Command / practice |
 |-------|-------------------|
-| **Build + test** | `make ci-native` — ruff, mypy, import-linter, full pytest (mock LLM) |
+| **Build + test** | `make ci-native` — ruff, mypy, import-linter, full pytest (**211** tests; mock LLM) |
+| **Ship locally** | `make ci-ship` — runs `ci-native`, prompts for commit message, then `git commit` + `git push` (`scripts/ci_commit_push.sh`) |
 | **Release** | Tag deploy with graph/prompt version; set env on target host (never edit code at runtime) |
 | **Run** | `make deploy-native` or `make run-dev` — starts Uvicorn only; migrations already applied |
 | **Config** | All agent toggles in `.env` / process env — see table above; validate production rejects defaults |
@@ -361,7 +364,74 @@ Expect `auth_ok: True` and a test `turn:validate` / `tool:search_patrons` span i
 
 ---
 
-## 11. Related documents
+## 11. Circulation reporting
+
+Staff operational reporting — read-only queries over circulation and catalog data. Module: `src/lms/reporting/` (separate bounded context; no cross-context writes).
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/reporting/dashboard` | Snapshot: holdings by status (incl. **DAMAGED** / **LOST**), active and overdue loans, today’s issues/returns, daily issue/return series (`days` 7–90 or explicit `from_date`/`to_date`) |
+| `POST /api/v1/reporting/reports/generate` | Ad-hoc report from selected metrics; **JSON** body response or **CSV** attachment |
+| `GET /api/v1/reporting/reports/presets` | Named presets for the report builder |
+
+**RBAC:** librarian or admin JWT only (`require_staff`); patron role receives 403.
+
+**Staff desk:** **Administration → Dashboard** (`DashboardPanel` in `src/lms/staff/ui/`).
+
+**Metrics** (`ReportMetric` enum): `daily_issues`, `daily_returns`, `holdings_by_status`, `total_active_loans`, `overdue_loans`. **Formats:** `json` (default) or `csv` (attachment). **Presets:** `daily_circulation`, `holdings_snapshot`, `loan_health`, `full_dashboard`.
+
+**Examples** (replace `<token>` with a librarian/admin JWT from `POST /api/v1/auth/login`):
+
+```bash
+# Dashboard snapshot (last 30 days)
+curl -s -H "Authorization: Bearer <token>" \
+  "http://127.0.0.1:8000/api/v1/reporting/dashboard?days=30" | jq .
+
+# Dashboard with explicit date range (both from_date and to_date required)
+curl -s -H "Authorization: Bearer <token>" \
+  "http://127.0.0.1:8000/api/v1/reporting/dashboard?from_date=2026-05-01&to_date=2026-05-31" | jq .
+
+# List built-in report presets
+curl -s -H "Authorization: Bearer <token>" \
+  "http://127.0.0.1:8000/api/v1/reporting/reports/presets" | jq .
+
+# Generate JSON report (daily issues + returns)
+curl -s -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+  -d '{"metrics":["daily_issues","daily_returns"],"from_date":"2026-05-01","to_date":"2026-05-31","format":"json"}' \
+  "http://127.0.0.1:8000/api/v1/reporting/reports/generate" | jq .
+
+# Download CSV export
+curl -s -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+  -d '{"metrics":["holdings_by_status","total_active_loans"],"from_date":"2026-06-01","to_date":"2026-06-13","format":"csv"}' \
+  -o circulation-report.csv \
+  "http://127.0.0.1:8000/api/v1/reporting/reports/generate"
+```
+
+**Sample dashboard response** (truncated):
+
+```json
+{
+  "holdings_by_status": {"AVAILABLE": 420, "LOANED": 310, "DAMAGED": 12, "LOST": 4},
+  "circulation": {"total_active_loans": 310, "overdue_loans": 18},
+  "today": {"issues_today": 5, "returns_today": 3},
+  "daily_series": [{"date": "2026-06-12", "issues": 4, "returns": 2}],
+  "from_date": "2026-05-14",
+  "to_date": "2026-06-13"
+}
+```
+
+**Verify:**
+
+```bash
+make ci-native   # includes 17 reporting tests (RBAC, schemas, integration)
+pytest tests/unit/test_reporting_* tests/integration/test_reporting_service.py
+```
+
+**Post-MVP extensions** (not shipped): scheduled exports, chart widgets, leadership roll-ups — see [MVP.md §9.3](MVP.md).
+
+---
+
+## 12. Related documents
 
 | Document | Role |
 |----------|------|

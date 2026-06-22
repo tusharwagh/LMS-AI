@@ -22,7 +22,8 @@ Python **modular monolith** for K-12 school library circulation: reference data,
 |------------|-------|
 | **Reference / Catalog / Loan** | DDD bounded contexts; REST under `/api/v1/*` |
 | **Desk workflows** | Search & issue, return, delivery / pick-up fulfillment |
-| **Staff UI** | React CRM at `/staff/` — wizards, **AI assist**, **LLM costs** panel (Administration) |
+| **Staff UI** | React CRM at `/staff/` — wizards, **AI assist**, **Dashboard** + **LLM costs** (Administration) |
+| **Reporting** | Dashboard + custom reports (JSON/CSV); `GET /api/v1/reporting/*`; holdings include **DAMAGED** / **LOST** |
 | **Agent desk** | Natural-language issue, return, catalog browse, patron lookup, issued-books inquiry |
 | **HITL** | Librarian approves all writes via approval cards + `/resume` |
 | **LLM routing** | LiteLLM **Router** (`src/lms/shared/llm/`) — cache, RPM, fallbacks; rule-based parser in CI |
@@ -262,6 +263,27 @@ All **writes** (issue, return, cancel, fulfillment transition) require explicit 
 
 Apply migration `005_llm_spend_logs` (`make migrate`) before spend logging in dev/prod.
 
+**Circulation reporting** (librarian/admin JWT or staff UI **Administration → Dashboard**):
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/v1/reporting/dashboard` | Holdings by status, active/overdue loans, today’s activity, daily series |
+| `POST` | `/api/v1/reporting/reports/generate` | Custom metrics report (JSON or CSV download) |
+| `GET` | `/api/v1/reporting/reports/presets` | Named preset definitions for report builder |
+
+Metrics: `daily_issues`, `daily_returns`, `holdings_by_status`, `total_active_loans`, `overdue_loans`. Presets include `daily_circulation`, `holdings_snapshot`, `loan_health`, `full_dashboard`.
+
+```bash
+# Dashboard (query param days=7..90, or from_date + to_date together)
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:8000/api/v1/reporting/dashboard?days=30"
+
+# Custom JSON report
+curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"metrics":["daily_issues","daily_returns"],"from_date":"2026-06-01","to_date":"2026-06-13"}' \
+  "http://127.0.0.1:8000/api/v1/reporting/reports/generate"
+```
+
 ---
 
 ## Build & deploy reference
@@ -272,8 +294,9 @@ Apply migration `005_llm_spend_logs` (`make migrate`) before spend logging in de
 | Staff UI build | `make staff-ui-build` | React → `src/lms/staff/static/` |
 | Node deps (diagram) | `make install-node` | `npm install` for tldraw diagram script |
 | Regenerate diagram | `make diagram` | Requires Node.js 24+ |
-| CI (no Docker) | `make ci-native` | ruff + import-linter + mypy + full pytest |
+| CI (no Docker) | `make ci-native` | ruff + import-linter + mypy + full pytest (**211** tests) |
 | CI parity | `make ci` | lint + test + Docker build |
+| **CI ship** | `make ci-ship` | `ci-native`, then interactive commit + push (`scripts/ci_commit_push.sh`) |
 | Langfuse check | `make validate-langfuse` | Auth + test span (skips if keys unset) |
 | **Native deploy** | `make deploy-native` | No Docker — venv + migrate + API |
 | Native deploy + seed | `make deploy-native SEED=1` | Deploy + demo data |
@@ -291,14 +314,14 @@ Run `make help` for the full target list.
 
 | Layer | Path | Marker / command |
 |-------|------|------------------|
-| Unit | `tests/unit/` | `@pytest.mark.unit` |
-| Integration | `tests/integration/` | `@pytest.mark.integration` |
+| Unit | `tests/unit/` | `@pytest.mark.unit` — includes reporting RBAC/schemas |
+| Integration | `tests/integration/` | `@pytest.mark.integration` — includes reporting dashboard/generate |
 | E2E | `tests/e2e/` | `@pytest.mark.e2e` |
 | Agent | `tests/agent/` | `@pytest.mark.agent` — `make test-agent` |
 | Hardening | `tests/hardening/` | `@pytest.mark.hardening` — `make test-hardening` |
 | Performance | `tests/performance/` | `@pytest.mark.performance` — `make test-performance` |
 
-Recommended before merge: `make lint && make ci-native`
+Recommended before merge: `make lint && make ci-native` (211 tests)
 
 ---
 
@@ -322,7 +345,8 @@ src/lms/
   reference/     # Patrons, types, class sections
   catalog/       # Bibliographic records, holdings
   loan/          # Circulation, orchestrator, fulfillment
-  staff/ui/      # React + Vite source (CRM + AI assist)
+  reporting/     # Dashboard + custom reports (read-only bounded context)
+  staff/ui/      # React + Vite source (CRM + AI assist + Dashboard)
   staff/static/  # Built staff desk (not committed — make staff-ui-build)
   config.py      # pydantic-settings (Twelve-Factor config)
 alembic/         # Database migrations
@@ -332,7 +356,7 @@ docs/            # MVP spec, domain models, runbook, governance notes
 .cursor/skills/  # Agent governance (IMDA + Twelve-Factor), DDD, code analysis
 ```
 
-**CI:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on push/PR to `main` (`make ci-native`).
+**CI:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on push/PR to `main` (`make ci-native`; `setup-python@v6`). Local ship gate: `make ci-ship`.
 
 **Architecture boundaries:** enforced by `import-linter` — agent module must not import domain `infrastructure` directly.
 
@@ -347,6 +371,8 @@ docs/            # MVP spec, domain models, runbook, governance notes
 | `/api/v1/catalog` | Records, holdings, search |
 | `/api/v1/loan` | Checkouts, returns, overdue, rules |
 | `/api/v1/workflows` | WF-01 issue, WF-02 return (desk + delivery/pick-up) |
+| `/api/v1/llm-spend` | LLM cost logs and summary (staff/admin) |
+| `/api/v1/reporting` | Dashboard and customizable circulation reports (staff/admin) |
 | `/api/v1/agent/issue` | Conversational agent desk (Phase 8; feature-flagged) |
 | `/staff/` | Staff browser UI |
 

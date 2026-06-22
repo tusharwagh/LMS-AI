@@ -23,6 +23,7 @@ Execution plan for the LMS-AI K‑12 Library Management MVP.
 | 6 Staff UI | **Done** | Issue/return wizards at `/staff/` |
 | 7 Hardening | **Done** | Concurrency, idempotency, SLO tests; [runbook.md](runbook.md), [go-live-checklist.md](go-live-checklist.md) |
 | **8 Agent desk** | **Done** | Guided flows + patron desk; LiteLLM Router gateway; Postgres spend + staff cost UI; governance hardening (E27); `make test-agent` (33) |
+| **9 Reporting** | **Done** | Dashboard + custom reports (JSON/CSV); `src/lms/reporting/`; staff **Dashboard** panel; `HoldingStatus` DAMAGED/LOST; **17** tests (E29) |
 
 ---
 
@@ -370,6 +371,23 @@ src/lms/api/workflows/router.py
 
 ---
 
+### Phase 9 — Circulation reporting (post-MVP slice) ✅ Done
+
+**Goal:** Staff operational visibility beyond open/overdue lists — dashboard snapshot and ad-hoc reports without changing the circulation kernel.
+
+| Task | Deliverable | Status |
+|------|-------------|--------|
+| Reporting bounded context | `src/lms/reporting/` — application + infrastructure queries | **Done** |
+| Dashboard API | `GET /api/v1/reporting/dashboard` | **Done** |
+| Custom reports | `POST /api/v1/reporting/reports/generate` (JSON/CSV); presets endpoint | **Done** |
+| Catalog status extension | `HoldingStatus.DAMAGED`, `HoldingStatus.LOST` | **Done** |
+| Staff UI | `DashboardPanel` — Administration → Dashboard | **Done** |
+| CI / ops | `make ci-ship`; Docker static path fix; `setup-python@v6`; test settings isolation | **Done** (E29) |
+
+**Verify:** `pytest tests/unit/test_reporting_* tests/integration/test_reporting_service.py` → **17**; full suite **211** via `make ci-native`.
+
+---
+
 ## 5. REQ traceability checklist
 
 Mark each REQ during Phase 7 with phase and test id.
@@ -427,8 +445,9 @@ Mark each REQ during Phase 7 with phase and test id.
 | Hardening | Concurrency + idempotency regression | `make test-hardening` |
 | Security | Headers, rate limits, production config guards, error disclosure | `pytest tests/hardening/test_security.py` |
 | Agent (Phase 8) | SOP adherence, HITL gates, tool allowlist, guided flows, issued-books inquiry, multi-provider LLM, governance hardening, mocked-LLM E2E | `make test-agent` → **33**; `pytest tests/agent/` → **59** |
+| Reporting (post-MVP slice) | Dashboard snapshot, presets, JSON/CSV generate, staff RBAC | `pytest tests/unit/test_reporting_* tests/integration/test_reporting_service.py` → **17** |
 
-**CI gate (MVP.md §10.6):** no deploy if migration or circulation tests fail; CI also runs `npm audit --audit-level=high`. Agent tests use **mocked LLM** — no live Groq/HF in CI.
+**CI gate (MVP.md §10.6):** no deploy if migration or circulation tests fail; CI also runs `npm audit --audit-level=high`. Agent tests use **mocked LLM** — no live Groq/HF in CI. Full suite: **211** tests via `make ci-native`; optional **`make ci-ship`** for local commit/push after green CI.
 
 ---
 
@@ -456,6 +475,8 @@ Mark each REQ during Phase 7 with phase and test id.
 ## 8. Post-MVP (do not build now)
 
 Bulk class issue, renewals, fines, guardian/notices, full OPAC, procurement — extend via new commands per [MVP.md](MVP.md) §9.3 without changing the orchestrator contract.
+
+**Shipped post-MVP slice (E29):** basic staff **circulation reporting** (dashboard + JSON/CSV custom reports) in `src/lms/reporting/` — not a replacement for leadership analytics or scheduled exports in §9.3.
 
 ---
 

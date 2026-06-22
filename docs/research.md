@@ -1,6 +1,6 @@
 # Research — architecture & design discovery
 
-This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–I) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E), **ops/CI hardening** (§13 E17, session F), **agent desk spec** (§13 E18, session G), **Phase 8 implementation + quality pass** (§13 E19, session H), **agent desk UX / messages / refactor** (§13 E20, session I), **friendly query+intent desk copy** (§13 E21, session I cont.), **Langfuse validation + React staff UI MVC** (§13 E22, session I cont.), **agent return + catalog issue workflows + AI assist UI layout** (§13 E24, session I cont.), **guided desk flows + multi-provider LLM + comprehensive intent prompt** (§13 E25, session I cont.), **Twelve-Factor + IMDA governance skill alignment** (§13 E26, session I cont.), **governance audit + code hardening** (§13 E27, session I cont.), and **LiteLLM native gateway + spend observability + bulk seed + staff cost UI** (§13 E28, session I cont.). **Context handoff** for the latest thread: [§0](#0-current-state-snapshot-jun-2026) + [§13 E28](#e28--session-i-cont-litellm-gateway-spend-ui--bulk-seed-jun-2026). Prior handoff: [§13 E27](#e27--session-i-cont-governance-audit--code-hardening-jun-2026). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
+This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–I) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E), **ops/CI hardening** (§13 E17, session F), **agent desk spec** (§13 E18, session G), **Phase 8 implementation + quality pass** (§13 E19, session H), **agent desk UX / messages / refactor** (§13 E20, session I), **friendly query+intent desk copy** (§13 E21, session I cont.), **Langfuse validation + React staff UI MVC** (§13 E22, session I cont.), **agent return + catalog issue workflows + AI assist UI layout** (§13 E24, session I cont.), **guided desk flows + multi-provider LLM + comprehensive intent prompt** (§13 E25, session I cont.), **Twelve-Factor + IMDA governance skill alignment** (§13 E26, session I cont.), **governance audit + code hardening** (§13 E27, session I cont.), **LiteLLM native gateway + spend observability + bulk seed + staff cost UI** (§13 E28, session I cont.), and **circulation reporting module + CI ship workflow + Docker/CI test isolation** (§13 E29, session I cont.). **Context handoff** for the latest thread: [§0](#0-current-state-snapshot-jun-2026) + [§13 E29](#e29--session-i-cont-reporting-module-ci-ship--ops-fixes-jun-2026). Prior handoff: [§13 E28](#e28--session-i-cont-litellm-gateway-spend-ui--bulk-seed-jun-2026). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
 
 **Go-live gate (summary):** [§14](#14-go-live-checklist-summary) — full matrix in [go-live-checklist.md](go-live-checklist.md).  
 **Agent governance (summary):** [§15](#15-agent-governance-imda-mgf--enterprise-charter) — IMDA MGF v1.5 + **Twelve-Factor App** deployment discipline; Langfuse observability.  
@@ -14,11 +14,11 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 
 ## 0. Current state snapshot (Jun 2026)
 
-**Phases 0–8 are code-complete.** Circulation workflows, JWT auth, staff desk (React MVC), and the **agent circulation desk** (WF-01 issue + WF-02 return + catalog browse + patron lookup + **patron-at-desk loan inquiry**) ship behind `AGENT_ISSUE_ENABLED`.
+**Phases 0–8 are code-complete.** A **post-MVP reporting slice** (Phase 9, E29) adds staff dashboard and custom reports. Circulation workflows, JWT auth, staff desk (React MVC), and the **agent circulation desk** (WF-01 issue + WF-02 return + catalog browse + patron lookup + **patron-at-desk loan inquiry**) ship behind `AGENT_ISSUE_ENABLED`.
 
 | Area | Status | Key paths / commands |
 |------|--------|----------------------|
-| **Backend** | Done | `src/lms/` — Reference, Catalog, Loan, workflows, agent |
+| **Backend** | Done | `src/lms/` — Reference, Catalog, Loan, **Reporting**, workflows, agent |
 | **Agent desk** | Done | `coordinator.py`, `tools.py`, `messages.py`, `tracing.py`, `llm.py`, `llm_intent_prompt.py` |
 | **Agent WF-01** | Done | Guided + one-shot issue; catalog search → copy → patron → HITL commit → fulfillment |
 | **Agent WF-02** | Done | Return by barcode / title / patron; multi-loan list; HITL select + commit; rollback on failure |
@@ -27,16 +27,18 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 | **LLM routing** | Done | **`src/lms/shared/llm/`** — LiteLLM **Router**, native cache/RPM, Langfuse callbacks, Postgres spend |
 | **LLM cost reporting** | Done | `llm_spend_logs` table; `GET /api/v1/llm-spend/*`; staff UI **LLM costs** panel |
 | **Intent prompt** | Done | `llm_intent_prompt.py` — all 33 `IntentAction` values, 8 workflows, session_context table, 40+ examples |
-| **Staff UI** | Done | `src/lms/staff/ui/` → `make staff-ui-build`; AI assist + **Administration → LLM costs** |
+| **Reporting** | Done | `src/lms/reporting/` — dashboard API, custom reports (JSON/CSV), presets; `HoldingStatus` **DAMAGED** / **LOST** |
+| **Staff UI** | Done | `src/lms/staff/ui/` → `make staff-ui-build`; AI assist + **Administration → Dashboard** + **LLM costs** |
 | **Desk copy** | Done | Intent-aware helpers in `messages.py`; UI renders API text verbatim |
 | **Langfuse (G13)** | Wired + validated | `make validate-langfuse`; runs on `make build`; `LANGFUSE_HOST` or `LANGFUSE_BASE_URL` |
 | **Governance skills** | Updated | IMDA MGF v1.5 + **Twelve-Factor App** in `.cursor/skills/imda-agentic-ai-governance/`; rules cross-refs in security, API design, SonarQube |
 | **Governance code** | Hardened | Production `Settings` validation; LLM input + session history redaction; HITL blocks new messages; sanitized approval `details`; `intent_span` / `hitl_event` audit |
-| **Tests** | **194 collected** | `make ci-native`; `make test-agent` → **33**; unit LLM gateway + spend RBAC |
+| **Tests** | **211 collected** | `make ci-native`; `make test-agent` → **33**; reporting RBAC + dashboard (**17**); unit LLM gateway + spend |
+| **CI ship** | Done | `make ci-ship` → `scripts/ci_commit_push.sh` (runs `ci-native`, then commit + push) |
 | **Sample seed** | **~1,614 rows** | `make seed` — demo fixtures + bulk K-12 patrons/catalog/holdings/loans |
 | **Go-live** | Pending | G1–G10 unchecked; **G13 charter sign-off** still operational |
 
-**Session I arc (post-E19):** rules/skills → messages → intent-aware copy → React CRM → Playwright → Langfuse → WF-02 return → catalog-first issue → **guided desk flows** → **issued-books inquiry** → **multi-provider LLM** → **comprehensive intent prompt** → **Twelve-Factor + IMDA skill** → **governance audit + code hardening** → **LiteLLM Router gateway + Postgres spend + staff cost UI + bulk seed**. Detail: §3.11, §13 E20–E28.
+**Session I arc (post-E19):** rules/skills → messages → intent-aware copy → React CRM → Playwright → Langfuse → WF-02 return → catalog-first issue → **guided desk flows** → **issued-books inquiry** → **multi-provider LLM** → **comprehensive intent prompt** → **Twelve-Factor + IMDA skill** → **governance audit + code hardening** → **LiteLLM Router gateway + Postgres spend + staff cost UI + bulk seed** → **reporting bounded context + ci-ship + Docker/CI fixes**. Detail: §3.11, §13 E20–E29.
 
 **Open next:** G13 IMDA charter sign-off (§15.8); **durable agent session store** (Postgres/Redis for multi-worker); eval datasets; live LLM staging outside mock CI.
 
@@ -46,7 +48,7 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 
 | Use | How |
 |-----|-----|
-| **Context recovery** | Start [§0](#0-current-state-snapshot-jun-2026); then §3 (A–I), §13 (E1–E28), §14–§16 |
+| **Context recovery** | Start [§0](#0-current-state-snapshot-jun-2026); then §3 (A–I), §13 (E1–E29), §14–§16 |
 | **User profile** | §2 + §3.5 (early product intent) + §13 (locked tech + workflow decisions) |
 | **Feeder for AI / docs** | Paste or reference sections when generating ADRs, code, or phase‑2 plans |
 | **Avoid duplicate debate** | §6 lists resolved vs deferred; §3.6 / §13 note what landed in repo vs chat-only |
@@ -1971,6 +1973,83 @@ Constants: `BULK_PATRON_COUNT=400`, `BULK_CATALOG_COUNT=200`, `BULK_HOLDINGS_PER
 - **Durable agent session store** (Postgres/Redis) — unchanged from E27
 - **G13** IMDA charter sign-off
 - **Spend dashboard charts** — API + table UI only; no charts yet
+- **Redis cache** for multi-worker LLM cache — opt-in via `LLM_CACHE_TYPE=redis`
+
+---
+
+### E29 — Session I (cont.): Reporting module, ci-ship & ops fixes (Jun 2026)
+
+**User asks (sequence):** Add a **circulation reporting** bounded context (dashboard + customizable reports); ship **staff Dashboard UI**; add **`make ci-ship`** for local commit/push gate; fix **Docker** staff static path; bump **GitHub Actions** `setup-python@v6`; harden **test settings isolation** (LLM keys from `.env` leaking into unit tests).
+
+#### E29.1 Reporting bounded context
+
+New module **`src/lms/reporting/`** — read-only queries over existing circulation/catalog tables; no writes; registered on `domain_api_router` at `/api/v1/reporting/*`.
+
+| Layer | Path | Role |
+|-------|------|------|
+| API | `reporting/api/router.py` | `GET /dashboard`, `POST /reports/generate`, `GET /reports/presets` (staff RBAC) |
+| Application | `reporting/application/dashboard_service.py`, `report_service.py` | Snapshot aggregation; preset + ad-hoc report generation |
+| Domain | `reporting/domain/enums.py`, `report_spec.py` | `ReportMetric`, `ReportFormat` (JSON/CSV), `ReportGroupBy`, `ReportSpec` |
+| Infrastructure | `reporting/infrastructure/queries.py` | SQL read models — holdings by status, active/overdue loans, daily issue/return series |
+
+**Catalog extension:** `HoldingStatus` gains **`DAMAGED`** and **`LOST`** (`catalog/domain/enums.py`); bulk seed assigns a small mix for dashboard realism.
+
+**Staff UI:** `views/DashboardPanel/` — **Administration → Dashboard**; holdings breakdown, circulation summary, daily series, custom report builder (presets + date range + CSV download).
+
+#### E29.2 CI / ops
+
+| Change | Path | Notes |
+|--------|------|-------|
+| **ci-ship** | `Makefile`, `scripts/ci_commit_push.sh` | `make ci-ship` runs `make ci-native`, prompts for commit message, `git add -A`, commit, push |
+| **Docker static path** | `Dockerfile` | `COPY --from=staff-ui /build/static ./src/lms/staff/static` (Vite output dir; was wrong path) |
+| **CI workflow** | `.github/workflows/ci.yml` | `actions/setup-python@v6` |
+| **Settings isolation** | `tests/helpers.py` | `isolated_settings(**overrides)` — `_env_file=None` + safe defaults for LLM unit tests |
+| **Tracing tests** | `tests/agent/test_tracing.py` | `Settings(_env_file=None)` in fixtures so local `.env` Langfuse keys do not affect assertions |
+
+#### E29.3 Tests
+
+| Suite | Count | Focus |
+|-------|-------|-------|
+| `tests/unit/test_reporting_rbac.py` | 4 | JWT required; patron forbidden |
+| `tests/unit/test_reporting_schemas.py` | 5 | Request/spec validation |
+| `tests/integration/test_reporting_service.py` | 8 | Dashboard HTTP, presets, JSON/CSV generate, isolated counts |
+| **Reporting total** | **17** | |
+
+Full suite: **211** collected (`make ci-native`).
+
+#### E29.4 API examples (reporting)
+
+Staff JWT required. Dashboard: `days` (7–90) **or** paired `from_date` + `to_date`. Generate body: `metrics[]`, `from_date`, `to_date`, optional `format` (`json`|`csv`).
+
+```bash
+curl -H "Authorization: Bearer <token>" \
+  "http://127.0.0.1:8000/api/v1/reporting/dashboard?days=30"
+
+curl -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+  -d '{"metrics":["holdings_by_status","overdue_loans"],"from_date":"2026-06-01","to_date":"2026-06-13","format":"csv"}' \
+  -o report.csv "http://127.0.0.1:8000/api/v1/reporting/reports/generate"
+```
+
+Response includes `holdings_by_status` (incl. **DAMAGED** / **LOST**), `circulation`, `today`, and `daily_series[]`.
+
+#### E29.5 Verification
+
+| Gate | Result |
+|------|--------|
+| `make ci-native` | **pass** (211 tests collected) |
+| `make ci-ship` | runs `ci-native` then interactive commit/push |
+| Docker build | staff static copied from `/build/static` |
+| Staff UI | `DashboardPanel` typecheck + build pass |
+
+#### E29.6 Docs updated
+
+`research.md` §0, E29; `runbook.md` §2, §11–§12; `README.md`; `plan-mvp.md`; `MVP.md` §14.
+
+#### E29.7 Still open
+
+- **Durable agent session store** (Postgres/Redis) — unchanged from E27/E28
+- **G13** IMDA charter sign-off
+- **Advanced reporting** — scheduled exports, charts, leadership aggregates (§9.3 roadmap)
 - **Redis cache** for multi-worker LLM cache — opt-in via `LLM_CACHE_TYPE=redis`
 
 ---

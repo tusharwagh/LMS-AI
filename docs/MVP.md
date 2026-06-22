@@ -613,6 +613,9 @@ Attributes below are **in scope for MVP** (derived from §1–§7). Items explic
 | Fines | New aggregate or Loan extension | Subscribe to overdue/return events |
 | Guardian / notices | Reference + notification adapter | Read via ports only |
 | Full OPAC | Catalog patron read model | No change to `PublishCatalog` |
+| Leadership / scheduled reporting | Extend `reporting/` read models + export jobs | Read via SQL only; no orchestrator change |
+
+**Shipped (Jun 2026, E29):** staff dashboard and customizable circulation reports (`/api/v1/reporting/*`, `DashboardPanel`) — operational slice only; leadership aggregates and scheduled exports remain future work.
 
 ---
 
@@ -873,6 +876,7 @@ Idempotency keys should be retained for a bounded replay window (for example 24 
 | Catalog draft/publish/suppress/holding maintenance | Yes | Yes | No |
 | Checkout / return at desk | Optional (policy) | Yes | Optional (self-checkout policy) |
 | Staff discovery / overdue operational views | Yes | Yes | No |
+| Circulation dashboard / custom reports | Yes | Yes | No |
 | Workflow issue / return (§2.1) | Optional (policy) | Yes | No |
 | Agent conversational issue (§2.2) | Optional (policy) | Yes | No |
 | Fulfillment state transitions (delivery / pick-up) | Optional (policy) | Yes | No |
@@ -976,3 +980,4 @@ Current codebase vs planned work. Authoritative execution tracking: **[plan-mvp.
 | Phase 6 — Staff UI | **Done** | Issue/return wizards at `/staff/` |
 | Phase 7 — Hardening | **Done** | Concurrency, idempotency, SLO, security tests (`test_security.py`); [runbook.md](runbook.md), [go-live-checklist.md](go-live-checklist.md) |
 | Phase 8 — Agent desk | **Done** | Guided flows + patron desk; multi-provider LiteLLM; governance hardening (E27); HITL via `/resume`; ADR-025–028 |
+| Post-MVP — Reporting | **Done** | `src/lms/reporting/` dashboard + JSON/CSV reports; staff **Dashboard** panel; `HoldingStatus` DAMAGED/LOST (E29) |
