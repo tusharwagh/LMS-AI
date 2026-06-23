@@ -23,7 +23,7 @@ dependencies = [
     "langgraph>=0.2.60",
     "langchain-core>=0.3.0",
     "litellm>=1.55.0",
-    "langfuse>=2.0",
+    "langfuse>=4.0,<5",
 ]
 
 [project.optional-dependencies]

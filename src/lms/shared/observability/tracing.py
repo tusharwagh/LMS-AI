@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
@@ -50,6 +51,42 @@ class LangfuseTracing:
             return False
 
     @contextmanager
+    def _langfuse_observation(
+        self,
+        *,
+        name: str,
+        as_type: str,
+        metadata: dict[str, Any],
+        failure_event: str,
+        **failure_context: Any,
+    ) -> Iterator[None]:
+        """Open a Langfuse observation when possible; always propagate body exceptions."""
+        if self._client is None:
+            yield
+            return
+
+        cm: Any | None = None
+        try:
+            cm = self._client.start_as_current_observation(
+                name=name,
+                as_type=as_type,
+                metadata=metadata,
+            )
+            cm.__enter__()
+        except (ImportError, OSError, ValueError, RuntimeError) as exc:
+            logger.warning(failure_event, error=str(exc), **failure_context)
+            cm = None
+
+        try:
+            yield
+        finally:
+            if cm is not None:
+                try:
+                    cm.__exit__(*sys.exc_info())
+                except (ImportError, OSError, ValueError, RuntimeError) as exc:
+                    logger.warning(failure_event, error=str(exc), **failure_context)
+
+    @contextmanager
     def tool_span(
         self,
         *,
@@ -66,22 +103,17 @@ class LangfuseTracing:
             agent_id=agent_id,
             args_redacted=True,
         )
-        if self._client is None:
-            yield
-            return
-        try:
-            with self._client.start_as_current_observation(
-                name=f"tool:{tool_name}",
-                as_type="tool",
-                metadata={
-                    "session_id": session_id,
-                    "operator_id": operator_id,
-                    "agent_id": agent_id,
-                },
-            ):
-                yield
-        except (ImportError, OSError, ValueError, RuntimeError) as exc:
-            logger.warning("langfuse_tool_span_failed", tool=tool_name, error=str(exc))
+        with self._langfuse_observation(
+            name=f"tool:{tool_name}",
+            as_type="tool",
+            metadata={
+                "session_id": session_id,
+                "operator_id": operator_id,
+                "agent_id": agent_id,
+            },
+            failure_event="langfuse_tool_span_failed",
+            tool=tool_name,
+        ):
             yield
 
     @contextmanager
@@ -100,11 +132,8 @@ class LangfuseTracing:
             agent_id=agent_id,
             action=action,
         )
-        if self._client is None:
-            yield
-            return
         try:
-            with self._client.start_as_current_observation(
+            with self._langfuse_observation(
                 name=f"turn:{action}",
                 as_type="agent",
                 metadata={
@@ -112,11 +141,10 @@ class LangfuseTracing:
                     "operator_id": operator_id,
                     "agent_id": agent_id,
                 },
+                failure_event="langfuse_turn_span_failed",
+                action=action,
             ):
                 yield
-        except (ImportError, OSError, ValueError, RuntimeError) as exc:
-            logger.warning("langfuse_turn_span_failed", action=action, error=str(exc))
-            yield
         finally:
             self.flush()
 
@@ -135,22 +163,16 @@ class LangfuseTracing:
             agent_id=agent_id,
             args_redacted=True,
         )
-        if self._client is None:
-            yield
-            return
-        try:
-            with self._client.start_as_current_observation(
-                name="intent:parse",
-                as_type="generation",
-                metadata={
-                    "session_id": session_id,
-                    "operator_id": operator_id,
-                    "agent_id": agent_id,
-                },
-            ):
-                yield
-        except (ImportError, OSError, ValueError, RuntimeError) as exc:
-            logger.warning("langfuse_intent_span_failed", error=str(exc))
+        with self._langfuse_observation(
+            name="intent:parse",
+            as_type="generation",
+            metadata={
+                "session_id": session_id,
+                "operator_id": operator_id,
+                "agent_id": agent_id,
+            },
+            failure_event="langfuse_intent_span_failed",
+        ):
             yield
 
     def hitl_event(

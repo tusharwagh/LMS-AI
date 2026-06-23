@@ -70,8 +70,8 @@ class SearchAndIssueWorkflow:
         self._validator = IssueEligibilityValidator(session, PolicyResolver(session))
         self._fulfillment = FulfillmentService(session)
 
-    def search_patrons(self, display_name: str, *, limit: int = 20) -> list[PatronModel]:
-        return self._reference.search_patrons_by_name(display_name, limit=limit)
+    def search_patrons(self, query: str, *, limit: int = 20) -> list[PatronModel]:
+        return self._reference.search_patrons(query, limit=limit)
 
     def search_catalog_lendable(
         self,
@@ -103,6 +103,7 @@ class SearchAndIssueWorkflow:
         card_barcode: str | None = None,
         external_ref: str | None = None,
         display_name: str | None = None,
+        patron_query: str | None = None,
         search_query: str | None = None,
     ) -> IssueStartResult:
         patron = self._resolve_patron(
@@ -110,6 +111,7 @@ class SearchAndIssueWorkflow:
             card_barcode=card_barcode,
             external_ref=external_ref,
             display_name=display_name,
+            patron_query=patron_query,
         )
         validation = self._validator.validate_patron(patron.id)
         search_results: list[dict[str, Any]] = []
@@ -302,41 +304,12 @@ class SearchAndIssueWorkflow:
         card_barcode: str | None,
         external_ref: str | None,
         display_name: str | None,
+        patron_query: str | None = None,
     ) -> PatronModel:
-        if patron_id is not None:
-            return self._reference.get_patron(patron_id)
-        if card_barcode is not None:
-            return self._reference.get_patron_by_card(card_barcode)
-        if external_ref is not None:
-            return self._reference.get_patron_by_external_ref(external_ref)
-        if display_name is not None:
-            matches = self._reference.search_patrons_by_name(display_name, limit=2)
-            if not matches:
-                raise AppError(
-                    ErrorCode.NOT_FOUND,
-                    "No patron found matching that name",
-                    status_code=404,
-                )
-            if len(matches) > 1:
-                raise AppError(
-                    ErrorCode.CONFLICT,
-                    "Multiple patrons match that name; use search-patrons and select patron_id",
-                    status_code=409,
-                    details={
-                        "patrons": [
-                            {
-                                "id": str(p.id),
-                                "display_name": p.display_name,
-                                "external_ref": p.external_ref,
-                                "card_barcode": p.card_barcode,
-                            }
-                            for p in self._reference.search_patrons_by_name(display_name, limit=20)
-                        ]
-                    },
-                )
-            return matches[0]
-        raise AppError(
-            ErrorCode.VALIDATION_ERROR,
-            "One of patron_id, card_barcode, external_ref, or display_name is required",
-            status_code=422,
+        return self._reference.resolve_patron_lookup(
+            patron_id=patron_id,
+            card_barcode=card_barcode,
+            external_ref=external_ref,
+            display_name=display_name,
+            patron_query=patron_query,
         )

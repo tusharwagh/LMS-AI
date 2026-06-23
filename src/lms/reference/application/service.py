@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from lms.reference.api.schemas import (
@@ -16,6 +16,7 @@ from lms.reference.api.schemas import (
     PatronTypeUpdate,
     PatronUpdate,
 )
+from lms.reference.application.patron_query import parse_patron_query
 from lms.reference.domain.enums import PatronStatus
 from lms.reference.infrastructure.models.models import (
     ClassSectionModel,
@@ -173,17 +174,111 @@ class ReferenceService:
         return row
 
     def search_patrons_by_name(self, query: str, *, limit: int = 20) -> list[PatronModel]:
-        term = query.strip()
+        return self.search_patrons(query, limit=limit)
+
+    def search_patrons(self, query: str, *, limit: int = 20) -> list[PatronModel]:
+        """Wildcard search by display name, card barcode, or admission number."""
+        parsed = parse_patron_query(query)
+        if parsed.patron_id is not None:
+            try:
+                return [self.get_patron(parsed.patron_id)]
+            except AppError:
+                return []
+        if parsed.card_barcode is not None:
+            try:
+                return [self.get_patron_by_card(parsed.card_barcode)]
+            except AppError:
+                return []
+        if parsed.external_ref is not None:
+            try:
+                return [self.get_patron_by_external_ref(parsed.external_ref)]
+            except AppError:
+                return []
+        term = parsed.display_name or ""
         if not term:
             return []
         pattern = f"%{term}%"
         stmt = (
             select(PatronModel)
-            .where(PatronModel.display_name.ilike(pattern))
+            .where(
+                or_(
+                    PatronModel.display_name.ilike(pattern),
+                    PatronModel.card_barcode.ilike(pattern),
+                    PatronModel.external_ref.ilike(pattern),
+                )
+            )
             .order_by(PatronModel.display_name)
             .limit(min(limit, 50))
         )
         return list(self._session.scalars(stmt))
+
+    def resolve_patron_lookup(
+        self,
+        *,
+        patron_id: UUID | None = None,
+        card_barcode: str | None = None,
+        external_ref: str | None = None,
+        display_name: str | None = None,
+        patron_query: str | None = None,
+    ) -> PatronModel:
+        """Resolve one patron from explicit fields and/or a combined business-key query."""
+        resolved_id = patron_id
+        resolved_card = card_barcode
+        resolved_ref = external_ref
+        resolved_name: str | None = None
+
+        for raw in (patron_query, display_name):
+            if not raw:
+                continue
+            parsed = parse_patron_query(raw)
+            resolved_id = resolved_id or parsed.patron_id
+            resolved_card = resolved_card or parsed.card_barcode
+            resolved_ref = resolved_ref or parsed.external_ref
+            if parsed.display_name:
+                resolved_name = parsed.display_name
+
+        if resolved_id is not None:
+            return self.get_patron(resolved_id)
+        if resolved_card is not None:
+            return self.get_patron_by_card(resolved_card)
+        if resolved_ref is not None:
+            return self.get_patron_by_external_ref(resolved_ref)
+        if resolved_name is not None:
+            matches = self.search_patrons(resolved_name, limit=2)
+            if not matches:
+                raise AppError(
+                    ErrorCode.NOT_FOUND,
+                    "No patron found matching that query",
+                    status_code=404,
+                )
+            if len(matches) > 1:
+                candidates = self.search_patrons(resolved_name, limit=20)
+                raise AppError(
+                    ErrorCode.CONFLICT,
+                    (
+                        "Multiple patrons match that query; narrow by card, "
+                        "admission number, or patron id"
+                    ),
+                    status_code=409,
+                    details={"patrons": [self._patron_candidate_dict(p) for p in candidates]},
+                )
+            return matches[0]
+        raise AppError(
+            ErrorCode.VALIDATION_ERROR,
+            (
+                "One of patron_id, card_barcode, external_ref, display_name, "
+                "or patron_query is required"
+            ),
+            status_code=422,
+        )
+
+    def _patron_candidate_dict(self, patron: PatronModel) -> dict[str, str | None]:
+        return {
+            "id": str(patron.id),
+            "display_name": patron.display_name,
+            "external_ref": patron.external_ref,
+            "card_barcode": patron.card_barcode,
+        }
 
     def suspend_patron(self, patron_id: UUID) -> PatronModel:
         row = self._get_patron(patron_id)

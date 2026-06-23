@@ -288,6 +288,19 @@ class ReturnBookWorkflow:
             patron = self._reference.get_patron_by_external_ref(external_ref)
             return [patron.id]
         if patron_query:
-            patrons = self._reference.search_patrons_by_name(patron_query, limit=10)
-            return [p.id for p in patrons]
+            try:
+                patron = self._reference.resolve_patron_lookup(patron_query=patron_query)
+                return [patron.id]
+            except AppError as exc:
+                if exc.code == ErrorCode.CONFLICT:
+                    patrons_raw = exc.details.get("patrons", [])
+                    if isinstance(patrons_raw, list):
+                        return [
+                            UUID(str(row["id"]))
+                            for row in patrons_raw
+                            if isinstance(row, dict)
+                        ]
+                if exc.code == ErrorCode.NOT_FOUND:
+                    return []
+                raise
         return None

@@ -551,6 +551,65 @@ def test_guided_flows_intent_parser() -> None:
         has_patron_candidates=True,
     )
     assert select_patron.action == IntentAction.SELECT_PATRON
+    assert select_patron.patron_pseudonym == "PATRON_1"
+
+    select_copy = parser.parse(
+        "COPY_2",
+        has_pending_approval=False,
+        has_catalog_candidates=True,
+    )
+    assert select_copy.action == IntentAction.SELECT_CATALOG_COPY
+    assert select_copy.copy_pseudonym == "COPY_2"
+
+    select_loan = parser.parse(
+        "LOAN_1",
+        has_pending_approval=False,
+        has_return_candidates=True,
+    )
+    assert select_loan.action == IntentAction.SELECT_RETURN_LOAN
+    assert select_loan.loan_pseudonym == "LOAN_1"
+
+    priya_issued = parser.parse(
+        "Which books are issued to Priya?",
+        has_pending_approval=False,
+    )
+    assert priya_issued.action == IntentAction.START_PATRON_DESK
+    assert priya_issued.patron_query == "Priya"
+
+    priya_borrowed = parser.parse(
+        "What has Priya borrowed?",
+        has_pending_approval=False,
+    )
+    assert priya_borrowed.action == IntentAction.START_PATRON_DESK
+    assert priya_borrowed.patron_query == "Priya"
+
+    checked_out = parser.parse(
+        "What's checked out to Priya",
+        has_pending_approval=False,
+    )
+    assert checked_out.action == IntentAction.START_PATRON_DESK
+    assert checked_out.patron_query == "Priya"
+
+    card_loans = parser.parse(
+        "loans for CARD-12345",
+        has_pending_approval=False,
+    )
+    assert card_loans.action == IntentAction.START_PATRON_DESK
+    assert card_loans.card_barcode == "CARD-12345"
+
+    pseudo_issued = parser.parse(
+        "books issued to PATRON_1",
+        has_pending_approval=False,
+    )
+    assert pseudo_issued.action == IntentAction.START_PATRON_DESK
+    assert pseudo_issued.patron_pseudonym == "PATRON_1"
+
+    show_loans = parser.parse(
+        "show Priya Sharma loans",
+        has_pending_approval=False,
+    )
+    assert show_loans.action == IntentAction.START_PATRON_DESK
+    assert show_loans.patron_query == "Priya Sharma"
 
     return_decline = parser.parse(
         "cancel",

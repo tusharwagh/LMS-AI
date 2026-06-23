@@ -454,7 +454,10 @@ def guided_patron_lookup_candidates_list(
     return (
         f"{lead}\n"
         + "\n".join(lines)
-        + "\nWhich patron should borrow it? Tell me their name or card number."
+        + (
+            "\nWhich patron? Reply with a business key from the list — "
+            "[PATRON_N], card number, or admission number."
+        )
     )
 
 
@@ -476,7 +479,7 @@ def guided_patron_lookup_declined() -> str:
 def patron_selection_not_found(hint: str) -> str:
     return (
         f"No patron in this session matched '{hint}'. "
-        "Use a name from the list, or search again."
+        "Use a business key from the list ([PATRON_N], card, or admission number), or search again."
     )
 
 
@@ -532,7 +535,7 @@ def catalog_candidates_list(
     return (
         f"{lead}\n"
         + "\n".join(lines)
-        + "\nWhich copy should we issue? Tell me the barcode or title."
+        + "\nWhich copy? Reply with a business key from the list — [COPY_N], barcode, or title."
     )
 
 
@@ -810,9 +813,11 @@ def return_candidates_list(
 ) -> str:
     """Items: (loan_label, title, barcode, patron, due_date, is_overdue)."""
     lines: list[str] = []
-    for _loan_label, title, barcode, patron, due_date, is_overdue in items[:5]:
+    for loan_label, title, barcode, patron, due_date, is_overdue in items[:5]:
         overdue = " (overdue)" if is_overdue else ""
-        lines.append(f"• {title} ({barcode}) — {patron}, due {due_date}{overdue}")
+        lines.append(
+            f"• {title} ({barcode}) — {patron}, due {due_date}{overdue} [{loan_label}]"
+        )
     lead = f"I found {len(items)} open loans"
     if query:
         lead += f" matching '{query}'"
@@ -820,7 +825,7 @@ def return_candidates_list(
     return (
         f"{lead}\n"
         + "\n".join(lines)
-        + "\nTell me which copy — by title or barcode. "
+        + "\nWhich loan? Reply with a business key from the list — [LOAN_N], barcode, or title. "
         "I'll ask you to confirm before check-in."
     )
 

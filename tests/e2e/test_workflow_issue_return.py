@@ -267,6 +267,20 @@ def test_workflow_issue_search_patron_by_name(
     assert start.status_code == 200
     assert start.json()["patron_id"] == fx["patron_id"]
 
+    start_by_card = client.post(
+        "/api/v1/workflows/issue/start",
+        json={"patron_query": fx["card"]},
+    )
+    assert start_by_card.status_code == 200
+    assert start_by_card.json()["patron_id"] == fx["patron_id"]
+
+    search_card = client.post(
+        "/api/v1/workflows/issue/search-patrons",
+        json={"query": fx["card"]},
+    )
+    assert search_card.status_code == 200
+    assert len(search_card.json()["patrons"]) == 1
+
 
 def test_workflow_issue_back_and_cancel(client: TestClient, admin_headers: dict[str, str]) -> None:
     tag = _uid()

@@ -94,6 +94,29 @@ def test_turn_span_flushes_on_exit(langfuse_settings: Settings) -> None:
     mock_client.flush.assert_called_once()
 
 
+def test_turn_span_propagates_body_exceptions(langfuse_settings: Settings) -> None:
+    mock_client = MagicMock()
+    mock_cm = MagicMock()
+    mock_cm.__enter__ = MagicMock(return_value=None)
+    mock_cm.__exit__ = MagicMock(return_value=False)
+    mock_client.start_as_current_observation.return_value = mock_cm
+
+    with patch("langfuse.Langfuse", return_value=mock_client):
+        tracing = LangfuseTracing(langfuse_settings)
+
+    with pytest.raises(RuntimeError, match="boom"):
+        with tracing.turn_span(
+            session_id="sess-4",
+            operator_id="op-4",
+            agent_id="agent-1",
+            action="message",
+        ):
+            raise RuntimeError("boom")
+
+    mock_cm.__exit__.assert_called_once()
+    mock_client.flush.assert_called_once()
+
+
 def test_settings_reads_langfuse_base_url_alias(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LANGFUSE_BASE_URL", "https://us.cloud.langfuse.com")
     monkeypatch.delenv("LANGFUSE_HOST", raising=False)

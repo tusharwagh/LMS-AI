@@ -27,20 +27,50 @@ class IssueStartRequest(BaseModel):
     card_barcode: str | None = Field(default=None, max_length=64)
     external_ref: str | None = Field(default=None, max_length=128)
     display_name: str | None = Field(default=None, min_length=1, max_length=255)
+    patron_query: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+        description="Combined lookup: partial name, CARD-*, ADM-*, or patron UUID",
+    )
     search_query: str | None = Field(default=None, min_length=1, max_length=256)
 
     @model_validator(mode="after")
     def require_patron_lookup(self) -> "IssueStartRequest":
-        if not any([self.patron_id, self.card_barcode, self.external_ref, self.display_name]):
+        if not any(
+            [
+                self.patron_id,
+                self.card_barcode,
+                self.external_ref,
+                self.display_name,
+                self.patron_query,
+            ]
+        ):
             raise ValueError(
-                "One of patron_id, card_barcode, external_ref, or display_name is required"
+                "One of patron_id, card_barcode, external_ref, display_name, "
+                "or patron_query is required"
             )
         return self
 
 
 class IssueSearchPatronsRequest(BaseModel):
-    display_name: str = Field(min_length=1, max_length=255)
+    query: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+        description="Wildcard search by name, CARD-*, ADM-*, or patron UUID",
+    )
+    display_name: str | None = Field(default=None, min_length=1, max_length=255)
     limit: int = Field(default=20, ge=1, le=50)
+
+    @model_validator(mode="after")
+    def require_query(self) -> "IssueSearchPatronsRequest":
+        if not self.query and not self.display_name:
+            raise ValueError("query or display_name is required")
+        return self
+
+    def resolved_query(self) -> str:
+        return self.query or self.display_name or ""
 
 
 class PatronSummaryResponse(BaseModel):

@@ -166,3 +166,22 @@ def test_gateway_proxy_pass_through() -> None:
     assert mock_completion.call_count == 1
     assert mock_completion.call_args.kwargs["api_base"] == "http://localhost:4000"
     assert result.endpoint.provider == "groq"
+
+
+def test_configure_litellm_skips_langfuse_callback_for_sdk_v4() -> None:
+    import litellm
+
+    from lms.shared.llm.setup import configure_litellm
+
+    litellm.success_callback.clear()
+    litellm.failure_callback.clear()
+    settings = isolated_settings(
+        langfuse_public_key="pk-test",
+        langfuse_secret_key="sk-test",
+        langfuse_host="https://us.cloud.langfuse.com",
+    )
+
+    configure_litellm(settings)
+
+    assert "langfuse" not in litellm.success_callback
+    assert "langfuse" not in litellm.failure_callback

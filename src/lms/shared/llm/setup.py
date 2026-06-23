@@ -60,6 +60,15 @@ def configure_litellm(settings: Settings) -> None:
     logger.debug("litellm_configured", cache_enabled=settings.llm_cache_enabled)
 
 
+def _litellm_langfuse_callback_compatible() -> bool:
+    """LiteLLM's LangFuseLogger expects langfuse SDK v2 (`langfuse.version` submodule)."""
+    try:
+        import langfuse
+    except ImportError:
+        return False
+    return hasattr(langfuse, "version")
+
+
 def _configure_langfuse(settings: Settings) -> None:
     import litellm
 
@@ -71,9 +80,20 @@ def _configure_langfuse(settings: Settings) -> None:
     if settings.langfuse_host:
         os.environ.setdefault("LANGFUSE_HOST", settings.langfuse_host)
 
+    compatible = _litellm_langfuse_callback_compatible()
     for callback_list in (litellm.success_callback, litellm.failure_callback):
-        if "langfuse" not in callback_list:
-            callback_list.append("langfuse")
+        if compatible:
+            if "langfuse" not in callback_list:
+                callback_list.append("langfuse")
+        else:
+            while "langfuse" in callback_list:
+                callback_list.remove("langfuse")
+
+    if not compatible:
+        logger.info(
+            "litellm_langfuse_callback_skipped",
+            reason="langfuse_sdk_v4_incompatible_with_litellm",
+        )
 
 
 def _register_spend_logger(settings: Settings) -> None:

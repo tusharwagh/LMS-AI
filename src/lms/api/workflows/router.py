@@ -82,6 +82,7 @@ def issue_start(
         card_barcode=body.card_barcode,
         external_ref=body.external_ref,
         display_name=body.display_name,
+        patron_query=body.patron_query,
         search_query=body.search_query,
     )
     return IssueStartResponse(
@@ -112,7 +113,7 @@ def issue_search_patrons(
     body: IssueSearchPatronsRequest,
     workflow: Annotated[SearchAndIssueWorkflow, Depends(_issue_workflow)],
 ) -> IssueSearchPatronsResponse:
-    patrons = workflow.search_patrons(body.display_name, limit=body.limit)
+    patrons = workflow.search_patrons(body.resolved_query(), limit=body.limit)
     return IssueSearchPatronsResponse(
         patrons=[PatronSummaryResponse.model_validate(p) for p in patrons]
     )

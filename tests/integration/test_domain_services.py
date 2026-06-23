@@ -47,6 +47,16 @@ def test_reference_register_and_lookup_patron(db_session) -> None:
     assert ref.get_patron_by_external_ref(f"EXT-{tag}").id == patron.id
     assert ref.get_patron_by_card(f"CARD-{tag}").id == patron.id
 
+    by_card_query = ref.search_patrons(f"CARD-{tag}")
+    assert len(by_card_query) == 1
+    assert by_card_query[0].id == patron.id
+
+    by_partial_name = ref.search_patrons("Integration")
+    assert any(p.id == patron.id for p in by_partial_name)
+
+    resolved = ref.resolve_patron_lookup(display_name=f"CARD-{tag}")
+    assert resolved.id == patron.id
+
 
 def test_reference_duplicate_external_ref_conflict(db_session) -> None:
     ref = ReferenceService(db_session)

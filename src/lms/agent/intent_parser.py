@@ -107,6 +107,36 @@ _PATRON_HAS_OUT_RE = re.compile(
     r"^(?:what|show)\s+(?:does\s+)?(?P<patron>.+?)\s+have\s+(?:out|checked\s*out)\??$",
     re.I,
 )
+_PATRON_BORROWED_RE = re.compile(
+    r"^(?:what|which)\s+(?:books?\s+)?(?:has|have)\s+(?P<patron>.+?)\s+borrowed\??$",
+    re.I,
+)
+_CHECKED_OUT_TO_RE = re.compile(
+    r"^(?:what'?s|what\s+is|which\s+books?\s+(?:are\s+)?)\s+(?:checked\s*out|out)\s+to\s+(?P<patron>.+)\??$",
+    re.I,
+)
+_ISSUED_TO_TARGET_RE = re.compile(
+    r"^(?:which|what|show|list)?\s*(?:books?\s+)?(?:are\s+)?(?:issued|checked\s*out|on\s+loan)\s+to\s+"
+    r"(?P<target>.+)\??$",
+    re.I,
+)
+_LOANS_FOR_TARGET_RE = re.compile(
+    r"^(?:show|list|what|which)?\s*(?:open\s+)?loans?\s+for\s+(?P<target>.+)\??$",
+    re.I,
+)
+_SHOW_PATRON_LOANS_RE = re.compile(
+    r"^(?:show|list)\s+(?P<patron>.+?)\s+(?:open\s+)?loans?\??$",
+    re.I,
+)
+_PATRON_POSSESSIVE_LOANS_RE = re.compile(
+    r"^(?:what|which|show)\s+(?P<patron>.+?)(?:'s|’s)\s+(?:issued\s+)?(?:books?|loans?|checkouts?)\??$",
+    re.I,
+)
+_ISSUED_FOR_TARGET_RE = re.compile(
+    r"^(?:books?|loans?|checkouts?)\s+(?:issued|out|on\s+loan)\s+(?:to|for)\s+(?P<target>.+)\??$",
+    re.I,
+)
+_BUSINESS_KEY_RE = re.compile(r"^(PATRON_\d+|CARD-[A-Za-z0-9-]+|ADM-[A-Za-z0-9-]+)$", re.I)
 _GENERIC_RETURN_TITLES = frozenset({"a book", "book", "the book", "books"})
 _VAGUE_RETURN_RE = re.compile(r"^return(?:\s+(?:a\s+)?book)?\.?$", re.I)
 _DECLINE_CONTINUE_RE = re.compile(
@@ -162,6 +192,9 @@ _SELECT_RETURN_LOAN_RE = re.compile(
     r"\b(?:select|choose|pick)\s+(?:loan\s+)?(LOAN_\d+)\b",
     re.I,
 )
+_BARE_PATRON_PSEUDONYM_RE = re.compile(r"^(PATRON_\d+)$", re.I)
+_BARE_COPY_PSEUDONYM_RE = re.compile(r"^(COPY_\d+)$", re.I)
+_BARE_LOAN_PSEUDONYM_RE = re.compile(r"^(LOAN_\d+)$", re.I)
 _GREETING_RE = re.compile(
     r"^(hi|hello|hey|thanks|thank you|good morning|good afternoon)[!.?\s]*$",
     re.I,
@@ -182,6 +215,63 @@ _LLM_INTENT_PARSE_ERRORS: tuple[type[BaseException], ...] = (
 )
 
 logger = structlog.get_logger(__name__)
+
+
+def _strip_patron_tail(value: str) -> str:
+    return value.strip().rstrip("?.!,").strip()
+
+
+def _issued_books_intent_from_target(target: str) -> ParsedIntent:
+    """Map a patron target (name wildcard, PATRON_N, CARD-, ADM-) to desk list intent."""
+    target = _strip_patron_tail(target)
+    if not target or target.lower() in _GENERIC_PATRON_REFS:
+        return ParsedIntent(IntentAction.START_PATRON_DESK)
+    if re.fullmatch(r"PATRON_\d+", target, re.I):
+        return ParsedIntent(
+            IntentAction.START_PATRON_DESK,
+            patron_pseudonym=target.upper(),
+        )
+    upper = target.upper()
+    if upper.startswith("CARD-"):
+        return ParsedIntent(IntentAction.START_PATRON_DESK, card_barcode=upper)
+    if upper.startswith("ADM-"):
+        return ParsedIntent(IntentAction.START_PATRON_DESK, external_ref=upper)
+    if target.lower() in {"me", "myself"}:
+        return ParsedIntent(IntentAction.START_PATRON_DESK)
+    return ParsedIntent(IntentAction.START_PATRON_DESK, patron_query=target)
+
+
+def _parse_issued_books_query(text: str) -> ParsedIntent | None:
+    """Issued/checked-out book inquiries — partial names and business-key wildcards."""
+    stripped = text.strip()
+    if _PATRON_LOANS_GENERIC_RE.match(stripped):
+        return ParsedIntent(IntentAction.START_PATRON_DESK)
+
+    for pattern, group in (
+        (_PATRON_ISSUED_TO_RE, "patron"),
+        (_PATRON_BORROWED_RE, "patron"),
+        (_CHECKED_OUT_TO_RE, "patron"),
+        (_PATRON_OPEN_LOANS_RE, "patron"),
+        (_SHOW_LOANS_FOR_RE, "patron"),
+        (_PATRON_HAS_OUT_RE, "patron"),
+        (_SHOW_PATRON_LOANS_RE, "patron"),
+        (_PATRON_POSSESSIVE_LOANS_RE, "patron"),
+        (_ISSUED_TO_TARGET_RE, "target"),
+        (_LOANS_FOR_TARGET_RE, "target"),
+        (_ISSUED_FOR_TARGET_RE, "target"),
+    ):
+        match = pattern.match(stripped)
+        if match:
+            return _issued_books_intent_from_target(match.group(group))
+
+    list_issued = _LIST_ISSUED_TO_RE.match(stripped)
+    if list_issued:
+        patron_raw = (list_issued.group("patron") or "").strip()
+        if not patron_raw or patron_raw.lower() in {"me", "myself"}:
+            return ParsedIntent(IntentAction.START_PATRON_DESK)
+        return _issued_books_intent_from_target(patron_raw)
+
+    return None
 
 
 class IntentParser:
@@ -343,6 +433,12 @@ class IntentParser:
             return ParsedIntent(IntentAction.PROVIDE_BOOK_CRITERIA, catalog_query=text)
 
         if has_patron_candidates:
+            bare_patron = _BARE_PATRON_PSEUDONYM_RE.match(text.strip())
+            if bare_patron:
+                return ParsedIntent(
+                    IntentAction.SELECT_PATRON,
+                    patron_pseudonym=bare_patron.group(1).upper(),
+                )
             patron_sel = _SELECT_PATRON_RE.search(text)
             if patron_sel:
                 return ParsedIntent(
@@ -361,6 +457,12 @@ class IntentParser:
             return ParsedIntent(IntentAction.REQUEST_COMMIT)
 
         if has_return_candidates:
+            bare_loan = _BARE_LOAN_PSEUDONYM_RE.match(text.strip())
+            if bare_loan:
+                return ParsedIntent(
+                    IntentAction.SELECT_RETURN_LOAN,
+                    loan_pseudonym=bare_loan.group(1).upper(),
+                )
             loan_sel = _SELECT_RETURN_LOAN_RE.search(text)
             if loan_sel:
                 return ParsedIntent(
@@ -383,6 +485,12 @@ class IntentParser:
                 return ParsedIntent(IntentAction.SELECT_RETURN_LOAN, catalog_query=text)
 
         if has_catalog_candidates:
+            bare_copy = _BARE_COPY_PSEUDONYM_RE.match(text.strip())
+            if bare_copy:
+                return ParsedIntent(
+                    IntentAction.SELECT_CATALOG_COPY,
+                    copy_pseudonym=bare_copy.group(1).upper(),
+                )
             copy_sel = _SELECT_COPY_RE.search(text)
             if copy_sel:
                 return ParsedIntent(
@@ -467,45 +575,9 @@ class IntentParser:
         if _PATRON_LOANS_GENERIC_RE.match(text):
             return ParsedIntent(IntentAction.START_PATRON_DESK)
 
-        patron_issued = _PATRON_ISSUED_TO_RE.match(text)
-        if patron_issued:
-            patron_raw = patron_issued.group("patron").strip()
-            if patron_raw.lower() not in {"me", "myself"}:
-                return ParsedIntent(
-                    IntentAction.START_PATRON_DESK,
-                    patron_query=patron_raw,
-                )
-
-        list_issued = _LIST_ISSUED_TO_RE.match(text)
-        if list_issued:
-            patron_raw = (list_issued.group("patron") or "").strip()
-            if patron_raw and patron_raw.lower() not in {"me", "myself"}:
-                return ParsedIntent(
-                    IntentAction.START_PATRON_DESK,
-                    patron_query=patron_raw,
-                )
-            return ParsedIntent(IntentAction.START_PATRON_DESK)
-
-        patron_open_loans = _PATRON_OPEN_LOANS_RE.match(text)
-        if patron_open_loans:
-            return ParsedIntent(
-                IntentAction.START_PATRON_DESK,
-                patron_query=patron_open_loans.group("patron").strip(),
-            )
-
-        show_loans_for = _SHOW_LOANS_FOR_RE.match(text)
-        if show_loans_for:
-            return ParsedIntent(
-                IntentAction.START_PATRON_DESK,
-                patron_query=show_loans_for.group("patron").strip(),
-            )
-
-        patron_has_out = _PATRON_HAS_OUT_RE.match(text)
-        if patron_has_out:
-            return ParsedIntent(
-                IntentAction.START_PATRON_DESK,
-                patron_query=patron_has_out.group("patron").strip(),
-            )
+        issued_books = _parse_issued_books_query(text)
+        if issued_books is not None:
+            return issued_books
 
         if _RETURN_BOOK_GENERIC_RE.match(text) or _RETURN_GENERIC_RE.match(text):
             return ParsedIntent(IntentAction.START_RETURN)
@@ -614,6 +686,10 @@ class IntentParser:
             return ParsedIntent(IntentAction.CHAT, reply_hint=desk.greeting_reply())
         if _HELP_RE.match(text):
             return ParsedIntent(IntentAction.CHAT, reply_hint=desk.help_reply(text))
+
+        business_key = _BUSINESS_KEY_RE.match(text)
+        if business_key:
+            return _issued_books_intent_from_target(business_key.group(1))
 
         if text.upper().startswith("CARD-"):
             return ParsedIntent(IntentAction.SEARCH_PATRON, card_barcode=text.strip())

@@ -16,7 +16,7 @@ from lms.api.workflows.search_and_issue import CatalogLendableCopy, SearchAndIss
 from lms.loan.application.fulfillment_service import FulfillmentService
 from lms.loan.domain.enums import FulfillmentStatus
 from lms.loan.domain.validation import ValidationReport
-from lms.shared.http.errors import AppError
+from lms.shared.http.errors import AppError, ErrorCode
 from lms.shared.privacy.redaction import redact_for_audit
 
 READ_TOOL_NAMES = frozenset(
@@ -123,7 +123,7 @@ class IssueTools:
                 desk.no_patron_found(redact_for_audit(query)),
                 {},
             )
-        if guided_lookup and len(items) > 1 and slots is not None:
+        if len(items) > 1 and slots is not None:
             slots.patron_candidates = [asdict(i) for i in items]
             lines = [
                 (i.pseudonym, i.display_name, i.card_barcode, i.external_ref)
@@ -136,7 +136,7 @@ class IssueTools:
             return ToolResult(
                 True,
                 msg,
-                {"patrons": [asdict(i) for i in items], "count": len(items)},
+                {"patrons": [asdict(i) for i in items], "count": len(items), "candidates": True},
             )
         if len(items) == 1:
             msg = desk.patron_eligible(items[0].display_name, query=redact_for_audit(query))
@@ -167,6 +167,39 @@ class IssueTools:
             )
         except AppError as exc:
             query_hint = display_name or card_barcode or external_ref or "patron"
+            if exc.code == ErrorCode.CONFLICT:
+                patrons_raw = exc.details.get("patrons", [])
+                if isinstance(patrons_raw, list) and patrons_raw:
+                    compact: list[CompactPatron] = []
+                    lines: list[tuple[str, str, str | None, str | None]] = []
+                    for row in patrons_raw:
+                        if not isinstance(row, dict):
+                            continue
+                        patron_id = UUID(str(row["id"]))
+                        name = str(row["display_name"])
+                        card = str(row["card_barcode"]) if row.get("card_barcode") else None
+                        adm = str(row["external_ref"]) if row.get("external_ref") else None
+                        pseudo = self._pseudonyms.patron(patron_id, name)
+                        compact.append(
+                            CompactPatron(
+                                pseudonym=pseudo,
+                                display_name=name,
+                                external_ref=adm,
+                                card_barcode=card,
+                            )
+                        )
+                        lines.append((pseudo, name, card, adm))
+                    if compact:
+                        slots.patron_candidates = [asdict(p) for p in compact]
+                        msg = desk.guided_patron_lookup_candidates_list(
+                            lines,
+                            query=redact_for_audit(str(query_hint)),
+                        )
+                        return ToolResult(
+                            False,
+                            msg,
+                            {"multiple_matches": True, "count": len(compact)},
+                        )
             return ToolResult(False, desk.no_patron_found(str(query_hint)), {"error": exc.message})
         slots.patron_id = result.patron_id
         slots.patron_display_name = result.patron_display_name
@@ -391,14 +424,36 @@ class IssueTools:
                 slots.holding_id = resolved_hid
                 slots.holding_barcode = only.barcode
                 slots.catalog_title = only.title
+            slots.catalog_candidates = []
             msg = desk.single_copy_for_issue(only.title, only.barcode, query)
         else:
-            msg = desk.catalog_search_results(
-                query,
-                len(copies),
-                [c.title for c in copies[:5]],
-            )
-        return ToolResult(True, msg, {"copies": [asdict(c) for c in copies[:5]]})
+            candidate_rows: list[dict[str, object]] = []
+            items: list[tuple[str, str, str, str | None]] = []
+            for copy in copies:
+                holding_id = self._resolve_holding_id(copy.pseudonym)
+                if holding_id is None:
+                    continue
+                candidate_rows.append(
+                    {
+                        "holding_id": str(holding_id),
+                        "copy_pseudonym": copy.pseudonym,
+                        "holding_barcode": copy.barcode,
+                        "catalog_title": copy.title,
+                        "shelf_location": copy.shelf_location,
+                    }
+                )
+                items.append((copy.pseudonym, copy.title, copy.barcode, copy.shelf_location))
+            slots.catalog_candidates = candidate_rows
+            msg = desk.catalog_candidates_list(items, query=query)
+        return ToolResult(
+            True,
+            msg,
+            {
+                "copies": [asdict(c) for c in copies[:5]],
+                "count": len(copies),
+                "candidates": len(copies) > 1,
+            },
+        )
 
     def select_barcode(
         self,

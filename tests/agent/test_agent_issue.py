@@ -267,7 +267,11 @@ def test_agent_select_barcode_after_catalog_search(
     assert select.status_code == 200, select.text
     select_msg = select.json()["assistant_message"]
     assert fx["barcode"] in select_msg
-    assert "selected" in select_msg.lower() or "barcode" in select_msg.lower()
+    assert (
+        "selected" in select_msg.lower()
+        or "can borrow" in select_msg.lower()
+        or "ready" in select_msg.lower()
+    )
     assert select.json()["session_summary"]["holding_barcode"] == fx["barcode"]
 
 

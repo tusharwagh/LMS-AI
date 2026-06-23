@@ -396,15 +396,23 @@ class IssueAgentCoordinator:
         resolve = self._run_tool(
             agent_session,
             "resolve_patron",
-            lambda: tools.resolve_patron(slots, display_name=patron_query),
+            lambda: tools.resolve_patron(
+                slots,
+                display_name=patron_query,
+                message_query=patron_query,
+            ),
         )
         if resolve.ok:
             return True, None
+        if slots.patron_candidates:
+            return False, resolve.message
         matches = self._run_tool(
             agent_session,
             "search_patrons",
-            lambda: tools.search_patrons(patron_query),
+            lambda: tools.search_patrons(patron_query, slots=slots),
         )
+        if slots.patron_candidates:
+            return False, matches.message
         patrons_raw = matches.data.get("patrons", [])
         if isinstance(patrons_raw, list) and len(patrons_raw) == 1:
             pseudo = str(patrons_raw[0]["pseudonym"])
@@ -449,6 +457,8 @@ class IssueAgentCoordinator:
             agent_session, tools, slots, patron_query
         )
         if not ok:
+            if slots.patron_candidates:
+                return self._result(agent_session, err or desk.patron_search_empty())
             slots.awaiting_book_criteria = False
             slots.guided_issue_active = False
             return self._result(agent_session, err or desk.patron_search_empty())
@@ -486,6 +496,8 @@ class IssueAgentCoordinator:
                 agent_session, tools, slots, intent.patron_query
             )
             if not ok:
+                if slots.patron_candidates:
+                    return self._result(agent_session, err or desk.patron_search_empty())
                 return self._result(agent_session, err or desk.patron_search_empty())
         else:
             return self._result(agent_session, desk.guided_issue_ask_patron())
@@ -629,6 +641,9 @@ class IssueAgentCoordinator:
             return_tools,
             slots,
             patron_query=patron_query,
+            card_barcode=intent.card_barcode,
+            external_ref=intent.external_ref,
+            patron_pseudonym=intent.patron_pseudonym,
         )
 
     def _present_patron_at_desk(
@@ -641,6 +656,7 @@ class IssueAgentCoordinator:
         patron_query: str | None = None,
         card_barcode: str | None = None,
         external_ref: str | None = None,
+        patron_pseudonym: str | None = None,
         holding_barcode: str | None = None,
     ) -> AgentTurnResult:
         if holding_barcode:
@@ -692,11 +708,39 @@ class IssueAgentCoordinator:
                     agent_session,
                     desk.guided_desk_patron_not_found(card_barcode or external_ref or ""),
                 )
+        elif patron_pseudonym:
+            patron_id = agent_session.pseudonyms.resolve_patron(patron_pseudonym.upper())
+            if patron_id is None:
+                slots.awaiting_desk_patron = True
+                return self._result(
+                    agent_session,
+                    desk.guided_desk_patron_not_found(patron_pseudonym),
+                )
+            resolve = self._run_tool(
+                agent_session,
+                "resolve_patron",
+                lambda: tools.resolve_patron(slots, patron_id=patron_id),
+            )
+            if not resolve.ok:
+                slots.awaiting_desk_patron = True
+                return self._result(agent_session, resolve.message)
+            result = self._run_tool(
+                agent_session,
+                "list_patron_loans_at_desk",
+                lambda: return_tools.list_patron_loans_at_desk(
+                    slots, return_intent=slots.desk_return_intent
+                ),
+            )
         elif patron_query:
             ok, err = self._try_resolve_patron_query(
                 agent_session, tools, slots, patron_query
             )
             if not ok:
+                if slots.patron_candidates:
+                    return self._result(
+                        agent_session,
+                        err or desk.guided_desk_patron_not_found(patron_query),
+                    )
                 slots.awaiting_desk_patron = True
                 return self._result(
                     agent_session,
@@ -1092,33 +1136,11 @@ class IssueAgentCoordinator:
         if not patron_query:
             return self._result(agent_session, desk.patron_search_empty())
 
-        resolve = self._run_tool(
-            agent_session,
-            "resolve_patron",
-            lambda: tools.resolve_patron(slots, display_name=patron_query),
+        ok, err = self._try_resolve_patron_query(
+            agent_session, tools, slots, patron_query
         )
-        if not resolve.ok:
-            matches = self._run_tool(
-                agent_session,
-                "search_patrons",
-                lambda: tools.search_patrons(patron_query),
-            )
-            patrons_raw = matches.data.get("patrons", [])
-            if isinstance(patrons_raw, list) and len(patrons_raw) == 1:
-                pseudo = str(patrons_raw[0]["pseudonym"])
-                patron_id = agent_session.pseudonyms.resolve_patron(pseudo)
-                if patron_id is not None:
-                    resolve = self._run_tool(
-                        agent_session,
-                        "resolve_patron",
-                        lambda: tools.resolve_patron(
-                            slots,
-                            patron_id=patron_id,
-                            message_query=patron_query,
-                        ),
-                    )
-            if not resolve.ok:
-                return self._result(agent_session, resolve.message or matches.message)
+        if not ok:
+            return self._result(agent_session, err or desk.patron_search_empty())
 
         validation = self._run_tool(
             agent_session,
@@ -1218,8 +1240,10 @@ class IssueAgentCoordinator:
         matches = self._run_tool(
             agent_session,
             "search_patrons",
-            lambda: tools.search_patrons(patron_query),
+            lambda: tools.search_patrons(patron_query, slots=slots),
         )
+        if slots.patron_candidates:
+            return matches.message
         patrons_raw = matches.data.get("patrons", [])
         if not isinstance(patrons_raw, list):
             return matches.message
@@ -1250,14 +1274,14 @@ class IssueAgentCoordinator:
         slots: IssueSlots,
     ) -> AgentTurnResult:
         if intent.patron_query:
-            self._run_tool(
-                agent_session,
-                "resolve_patron",
-                lambda: tools.resolve_patron(slots, display_name=intent.patron_query),
+            ok, err = self._try_resolve_patron_query(
+                agent_session, tools, slots, intent.patron_query
             )
+            if not ok:
+                return self._result(agent_session, err or desk.patron_search_empty())
         if intent.catalog_query:
             catalog_query = intent.catalog_query
-            self._run_tool(
+            lendable = self._run_tool(
                 agent_session,
                 "search_lendable",
                 lambda: tools.search_lendable(
@@ -1266,6 +1290,8 @@ class IssueAgentCoordinator:
                     action=intent.action,
                 ),
             )
+            if slots.catalog_candidates:
+                return self._result(agent_session, lendable.message)
         validation = self._run_tool(
             agent_session,
             "validate_issue",
