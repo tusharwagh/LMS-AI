@@ -6,8 +6,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header
 
 from lms.api.composition import get_circulation_orchestrator
-from lms.api.deps import DbSession
-from lms.api.rbac import StaffAuth, require_staff
 from lms.api.workflows.return_book import ReturnBookWorkflow
 from lms.api.workflows.schemas import (
     FulfillmentResponse,
@@ -41,6 +39,8 @@ from lms.loan.application.circulation_orchestrator import CirculationOrchestrato
 from lms.loan.application.fulfillment_service import FulfillmentService
 from lms.loan.domain.enums import FulfillmentStatus
 from lms.loan.domain.validation import ValidationReport
+from lms.platform.auth.rbac import StaffAuth, require_staff
+from lms.shared.auth.deps import DbSession
 
 router = APIRouter(prefix="/workflows", dependencies=[require_staff])
 

@@ -707,7 +707,7 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 | Validation | Edge validation at API + invariant validation in domain | Never rely only on controller validation |
 | Cross-context calls | In-process ports only for MVP | Do not introduce network RPC across modules yet |
 
-**Error response envelope** (ADR-016; implemented in `api/errors.py`):
+**Error response envelope** (ADR-016; implemented in `shared/http/errors.py`):
 
 ```json
 {
@@ -915,7 +915,9 @@ Operational security controls shipped with the API (see `.cursor/rules/generic/s
 | Control | Implementation | Config / notes |
 |---------|----------------|----------------|
 | Password hashing | bcrypt, cost factor 12 | `shared/auth/password.py` |
-| RBAC roles / API users | ADMIN, LIBRARIAN, PATRON | `platform/auth/roles.py`, `platform/application/auth_service.py` |
+| JWT + auth deps | Bearer decode, `require_auth`, `require_roles` | `shared/auth/jwt.py`, `shared/auth/deps.py` |
+| RBAC roles / API users | ADMIN, LIBRARIAN, PATRON | `platform/auth/roles.py`, `platform/auth/rbac.py`, `platform/application/auth_service.py` |
+| HTTP middleware | Correlation ID, security headers, rate limits | `shared/http/middleware.py`, `shared/http/security_middleware.py` |
 | JWT signing | HS256 via `APP_SECRET_KEY` | Refuse default secret when `APP_ENV=production` |
 | RBAC | `ADMIN`, `LIBRARIAN`, `PATRON` on domain routes | §13.4; `domain_api_router` requires Bearer JWT |
 | Auth rate limiting | Per-IP fixed window on `/api/v1/auth/` | Default 10 requests / 15 min → `429 RATE_LIMIT_EXCEEDED` |
@@ -930,7 +932,7 @@ Operational security controls shipped with the API (see `.cursor/rules/generic/s
 
 ### 13.8 Agent and LLM security (Phase 8)
 
-Extends §13.7 for hosted LLM desk agents (OWASP LLM Top 10; IMDA MGF v1.5; Twelve-Factor App). Authority: [research.md §15](research.md), `.cursor/skills/imda-agentic-ai-governance/SKILL.md`.
+Extends §13.7 for hosted LLM desk agents (OWASP LLM Top 10; IMDA MGF v1.5; Twelve-Factor App). Authority: [research.md §15](research.md), `.cursor/skills/generic/imda-agentic-ai-governance/SKILL.md`.
 
 | Control | Implementation | Config / notes |
 |---------|----------------|----------------|

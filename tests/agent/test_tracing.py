@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from lms.agent.tracing import AgentTracing
 from lms.config import Settings
+from lms.shared.observability.tracing import LangfuseTracing
 
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def langfuse_settings() -> Settings:
 
 
 def test_tracing_without_keys_uses_structlog_only() -> None:
-    tracing = AgentTracing(
+    tracing = LangfuseTracing(
         Settings(_env_file=None, langfuse_public_key=None, langfuse_secret_key=None)
     )
     assert tracing._client is None
@@ -49,7 +49,7 @@ def test_tracing_creates_langfuse_client(langfuse_settings: Settings) -> None:
     mock_client.start_as_current_observation.return_value = mock_cm
 
     with patch("langfuse.Langfuse", return_value=mock_client) as mock_ctor:
-        tracing = AgentTracing(langfuse_settings)
+        tracing = LangfuseTracing(langfuse_settings)
 
     mock_ctor.assert_called_once_with(
         public_key="pk-test",
@@ -81,7 +81,7 @@ def test_turn_span_flushes_on_exit(langfuse_settings: Settings) -> None:
     mock_client.start_as_current_observation.return_value = mock_cm
 
     with patch("langfuse.Langfuse", return_value=mock_client):
-        tracing = AgentTracing(langfuse_settings)
+        tracing = LangfuseTracing(langfuse_settings)
 
     with tracing.turn_span(
         session_id="sess-3",

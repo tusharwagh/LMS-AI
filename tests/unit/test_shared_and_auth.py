@@ -7,11 +7,11 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from lms.api.errors import AppError, ErrorCode, error_body
 from lms.platform.auth.roles import Role
 from lms.reference.application.service import ReferenceService
 from lms.reference.infrastructure.models.models import PatronBlockModel
 from lms.shared.auth.jwt import create_access_token, decode_access_token
+from lms.shared.http.errors import AppError, ErrorCode, error_body
 from lms.shared.idempotency.service import (
     IdempotencyPayloadMismatchError,
     _payload_hash,

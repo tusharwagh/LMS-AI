@@ -5,8 +5,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from lms.api.deps import DbSession
-from lms.api.rbac import require_staff
 from lms.catalog.api.schemas import (
     CatalogCreate,
     CatalogResponse,
@@ -15,6 +13,8 @@ from lms.catalog.api.schemas import (
     HoldingResponse,
 )
 from lms.catalog.application.service import CatalogService, LendableCatalogHit
+from lms.platform.auth.rbac import require_staff
+from lms.shared.auth.deps import DbSession
 
 router = APIRouter(dependencies=[require_staff])
 

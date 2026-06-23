@@ -106,14 +106,15 @@ Phases follow [MVP.md](MVP.md) §2 journey. Each phase ends with **verify** chec
 src/lms/
   main.py                 # uvicorn entry
   config.py               # pydantic-settings (DB, JWT, LIBRARY_TIMEZONE)
-  api/                    # FastAPI app, middleware, deps, errors, health
-  shared/                 # Reusable infra: db session, JWT/password, idempotency, logging, llm gateway
-  platform/               # LMS app platform: RBAC roles, API users, auth service, library calendar
+  api/                    # FastAPI app shell: routers, workflows, agent composition
+  shared/                 # Reusable infra: db, http, auth deps, idempotency, logging, llm, observability, privacy
+  platform/               # LMS app platform: RBAC, API users, auth schemas, library calendar
   reference/              # domain / application / infrastructure / api
   catalog/
   loan/
     application/circulation_orchestrator.py
     domain/ports.py
+  reporting/              # post-MVP dashboard + custom reports (read-only)
 alembic/                  # migrations (ADR-014)
 tests/                    # unit, integration, e2e
 pyproject.toml            # hatchling, ruff, pytest, import-linter
@@ -125,7 +126,7 @@ docker-compose.yml        # PostgreSQL 16
 |------|-------------|-----------|
 | Repo layout: `reference/`, `catalog/`, `loan/`, `shared/`, `platform/` | Module folders; no cross-import violations | REQ-01, ADR-001 |
 | PostgreSQL + migration tool | Empty schema + migration pipeline | ADR-013, ADR-014 |
-| API shell: health, correlation id, error model | `X-Correlation-Id`; flat `{code, message, retriable, details}` envelope | MVP.md §10.5, §13.5 |
+| API shell: health, correlation id, error model | `shared/http/health.py`, `shared/http/middleware.py`, `shared/http/errors.py` — `X-Correlation-Id`; flat `{code, message, retriable, details}` envelope | MVP.md §10.5, §13.5 |
 | JWT auth: `api_users` table (migration `003`) | Bcrypt passwords; seed users via `platform/application/seed_api_users` | REQ-30, ADR-024 |
 | `POST /api/v1/auth/token`, `GET /api/v1/auth/me` | OAuth2 password flow; Bearer JWT on domain APIs | REQ-30 |
 | `domain_api_router` + `HTTPBearer` / Swagger `BearerJWT` | All `/api/v1/reference|catalog|loan` require token | ADR-024 |
@@ -303,7 +304,7 @@ src/lms/api/workflows/router.py
 |------|--------|--------|
 | Load test at §13.6 baselines | §13.6 | **Done** — `tests/performance/test_slo_baselines.py` |
 | Lock-contention and idempotency regression suite | §13.2, §13.3 | **Done** — `tests/hardening/` |
-| Security hardening (headers, rate limits, error disclosure) | MVP.md §13.7 | **Done** — `api/security_middleware.py`, `tests/hardening/test_security.py` |
+| Security hardening (headers, rate limits, error disclosure) | MVP.md §13.7 | **Done** — `shared/http/security_middleware.py`, `shared/http/errors.py`, `tests/hardening/test_security.py` |
 | Seed script: patron types, rules, sample catalog | §10.6 | **Done** — `make seed` (~1,614 domain rows; demo + bulk K-12) |
 | Runbook: backup, migration rollback policy | §10.6 | **Done** — [runbook.md](runbook.md) |
 | Go-live checklist sign-off | §1.2 G1–G10 | **Done** — [go-live-checklist.md](go-live-checklist.md) |
@@ -490,5 +491,5 @@ Bulk class issue, renewals, fines, guardian/notices, full OPAC, procurement — 
 | [catalog.md](catalog.md) | Catalog/holding rules |
 | [loan.md](loan.md) | Loan rules, circulation |
 | [research.md](research.md) | Deferred decisions (OQ-1 self-checkout); agent governance §15 (IMDA + Twelve-Factor) |
-| [.cursor/skills/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/imda-agentic-ai-governance/SKILL.md) | IMDA MGF v1.5 + Twelve-Factor implementation checklist |
+| [.cursor/skills/generic/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/generic/imda-agentic-ai-governance/SKILL.md) | IMDA MGF v1.5 + Twelve-Factor implementation checklist |
 | [library_domain_model_final.md](library_domain_model_final.md) | Cross-domain overview |

@@ -11,8 +11,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from lms.api.errors import ErrorCode, error_body
 from lms.config import get_settings
+from lms.shared.http.errors import ErrorCode, error_body
 
 
 @dataclass(frozen=True, slots=True)

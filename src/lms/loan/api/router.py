@@ -6,8 +6,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, Query
 
 from lms.api.composition import get_circulation_orchestrator
-from lms.api.deps import DbSession
-from lms.api.rbac import StaffAuth, require_admin, require_staff
 from lms.loan.api.schemas import (
     CheckoutRequest,
     LoanDetailResponse,
@@ -19,6 +17,8 @@ from lms.loan.api.schemas import (
 )
 from lms.loan.application.circulation_orchestrator import CirculationOrchestrator
 from lms.loan.application.service import LoanDetailRow, LoanService
+from lms.platform.auth.rbac import StaffAuth, require_admin, require_staff
+from lms.shared.auth.deps import DbSession
 
 router = APIRouter(dependencies=[require_staff])
 

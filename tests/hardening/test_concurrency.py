@@ -8,8 +8,8 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 from lms.api.composition import _build_orchestrator
-from lms.api.errors import AppError
 from lms.shared.db.session import SessionLocal
+from lms.shared.http.errors import AppError
 from tests.hardening.conftest import setup_checkout_fixture
 
 pytestmark = [pytest.mark.hardening, pytest.mark.integration]

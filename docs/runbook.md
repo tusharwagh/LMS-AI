@@ -26,6 +26,8 @@ Default API users (dev/demo only — **change before production**):
 
 Staff desk UI: `http://<host>:8000/staff/`
 
+**Code layout:** reusable infrastructure under `src/lms/shared/` (`http/`, `auth/deps`, `llm/`, `observability/`); LMS-specific RBAC and API users under `src/lms/platform/`. See [README.md](../README.md#project-layout) and [research.md §13 E30](research.md#e30--session-i-cont-sharedplatform-code-layout-refactor-jun-2026).
+
 **Staff UI build:** source in `src/lms/staff/ui/`; Vite output under `src/lms/staff/static/` is **not committed** (see `.gitignore`; only `.gitkeep` is tracked). Always build before deploy or E2E — `make staff-ui-build` runs in CI, Docker, `make setup-native`, and `scripts/deploy-native.sh`.
 
 ---
@@ -281,7 +283,7 @@ GROQ_API_KEY=...
 OPENAI_API_KEY=...
 ```
 
-Routing implementation: `src/lms/shared/llm/` (`LlmGateway` via LiteLLM `Router`, Langfuse callbacks, Postgres spend in `llm_spend_logs`). Intent classification prompt: `src/lms/agent/llm_intent_prompt.py`.
+Routing implementation: `src/lms/shared/llm/` (`LlmGateway` via LiteLLM `Router`, Langfuse callbacks, Postgres spend in `llm_spend_logs`; query service in `shared/llm/spend_queries.py`). Intent classification prompt: `src/lms/agent/llm_intent_prompt.py`. Langfuse ops check: `scripts/validate_langfuse.py` → `shared/observability/tracing.py`.
 
 **Cost reporting (staff/admin):** `GET /api/v1/llm-spend/logs` (paginated list with optional `from_date`, `to_date`, `purpose`, `model`, `session_id`, `operator_id`) and `GET /api/v1/llm-spend/summary` (aggregates by purpose/model). Requires librarian or admin JWT. Staff desk: **Administration → LLM costs** (`LlmSpendPanel`).
 

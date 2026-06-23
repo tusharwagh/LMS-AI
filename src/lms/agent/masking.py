@@ -1,22 +1,17 @@
-"""PII pseudonymization and audit redaction (ADR-026)."""
+"""PII pseudonymization and HITL detail sanitization for the agent desk (ADR-026).
+
+Generic PII pattern redaction lives in `shared.privacy.redaction`.
+This module holds LMS desk session pseudonyms (`PseudonymMap`) and approval payload cleanup.
+"""
 
 from __future__ import annotations
 
-import re
 from typing import Any
 from uuid import UUID
 
-_PII_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\b\d{3}-\d{2}-\d{4}\b"), "[SSN_REDACTED]"),
-    (re.compile(r"\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b"), "[CARD_REDACTED]"),
-]
+from lms.shared.privacy.redaction import redact_for_audit
 
-
-def redact_for_audit(text: str) -> str:
-    for pattern, replacement in _PII_PATTERNS:
-        text = pattern.sub(replacement, text)
-    return text
-
+__all__ = ["PseudonymMap", "redact_for_audit", "sanitize_approval_details"]
 
 _INTERNAL_DETAIL_KEYS = frozenset(
     {

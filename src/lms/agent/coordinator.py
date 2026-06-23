@@ -11,8 +11,9 @@ from uuid import UUID, uuid4
 from sqlalchemy.orm import Session
 
 from lms.agent import messages as desk
+from lms.agent.constants import AGENT_ID
 from lms.agent.intent_parser import LLMIntentParser
-from lms.agent.masking import redact_for_audit, sanitize_approval_details
+from lms.agent.masking import sanitize_approval_details
 from lms.agent.schemas import IntentAction, ParsedIntent
 from lms.agent.session import (
     AgentIssueSession,
@@ -30,13 +31,14 @@ from lms.agent.tools import (
     ReturnTools,
     ToolResult,
 )
-from lms.agent.tracing import AgentTracing
-from lms.api.errors import AppError, ErrorCode
 from lms.api.workflows.return_book import ReturnBookWorkflow
 from lms.api.workflows.search_and_issue import SearchAndIssueWorkflow
 from lms.config import Settings, get_settings
 from lms.loan.application.fulfillment_service import FulfillmentService
 from lms.loan.domain.enums import FulfillmentStatus
+from lms.shared.http.errors import AppError, ErrorCode
+from lms.shared.observability.tracing import LangfuseTracing
+from lms.shared.privacy.redaction import redact_for_audit
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,7 +50,6 @@ class AgentTurnResult:
 
 
 class IssueAgentCoordinator:
-    AGENT_ID = "LMS Desk Circulation Agent"
 
     def __init__(
         self,
@@ -60,7 +61,7 @@ class IssueAgentCoordinator:
         parser: LLMIntentParser,
         settings: Settings | None = None,
         store: SessionStore | None = None,
-        tracing: AgentTracing | None = None,
+        tracing: LangfuseTracing | None = None,
     ) -> None:
         self._db = session
         self._settings = settings or get_settings()
@@ -69,7 +70,7 @@ class IssueAgentCoordinator:
         self._return_workflow = return_workflow
         self._fulfillment = fulfillment
         self._parser = parser
-        self._tracing = tracing or AgentTracing(self._settings)
+        self._tracing = tracing or LangfuseTracing(self._settings)
 
     def start_session(self, operator_id: str) -> AgentIssueSession:
         self._ensure_enabled()
@@ -112,7 +113,7 @@ class IssueAgentCoordinator:
         with self._tracing.turn_span(
             session_id=str(session_id),
             operator_id=operator_id,
-            agent_id=self.AGENT_ID,
+            agent_id=AGENT_ID,
             action="message",
         ):
             intent = self._parser.parse_with_context(
@@ -188,13 +189,13 @@ class IssueAgentCoordinator:
         with self._tracing.turn_span(
             session_id=str(session_id),
             operator_id=operator_id,
-            agent_id=self.AGENT_ID,
+            agent_id=AGENT_ID,
             action="resume_approved" if approved else "resume_denied",
         ):
             self._tracing.hitl_event(
                 session_id=str(session_id),
                 operator_id=operator_id,
-                agent_id=self.AGENT_ID,
+                agent_id=AGENT_ID,
                 decision="approved" if approved else "denied",
                 kind=pending.kind.value,
             )
@@ -1561,7 +1562,7 @@ class IssueAgentCoordinator:
             tool_name=name,
             session_id=str(agent_session.session_id),
             operator_id=agent_session.operator_id,
-            agent_id=self.AGENT_ID,
+            agent_id=AGENT_ID,
         ):
             return fn()
 

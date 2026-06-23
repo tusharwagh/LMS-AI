@@ -1,6 +1,6 @@
 # Research — architecture & design discovery
 
-This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–I) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E), **ops/CI hardening** (§13 E17, session F), **agent desk spec** (§13 E18, session G), **Phase 8 implementation + quality pass** (§13 E19, session H), **agent desk UX / messages / refactor** (§13 E20, session I), **friendly query+intent desk copy** (§13 E21, session I cont.), **Langfuse validation + React staff UI MVC** (§13 E22, session I cont.), **agent return + catalog issue workflows + AI assist UI layout** (§13 E24, session I cont.), **guided desk flows + multi-provider LLM + comprehensive intent prompt** (§13 E25, session I cont.), **Twelve-Factor + IMDA governance skill alignment** (§13 E26, session I cont.), **governance audit + code hardening** (§13 E27, session I cont.), **LiteLLM native gateway + spend observability + bulk seed + staff cost UI** (§13 E28, session I cont.), and **circulation reporting module + CI ship workflow + Docker/CI test isolation** (§13 E29, session I cont.). **Context handoff** for the latest thread: [§0](#0-current-state-snapshot-jun-2026) + [§13 E29](#e29--session-i-cont-reporting-module-ci-ship--ops-fixes-jun-2026). Prior handoff: [§13 E28](#e28--session-i-cont-litellm-gateway-spend-ui--bulk-seed-jun-2026). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
+This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–I) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E), **ops/CI hardening** (§13 E17, session F), **agent desk spec** (§13 E18, session G), **Phase 8 implementation + quality pass** (§13 E19, session H), **agent desk UX / messages / refactor** (§13 E20, session I), **friendly query+intent desk copy** (§13 E21, session I cont.), **Langfuse validation + React staff UI MVC** (§13 E22, session I cont.), **agent return + catalog issue workflows + AI assist UI layout** (§13 E24, session I cont.), **guided desk flows + multi-provider LLM + comprehensive intent prompt** (§13 E25, session I cont.), **Twelve-Factor + IMDA governance skill alignment** (§13 E26, session I cont.), **governance audit + code hardening** (§13 E27, session I cont.), **LiteLLM native gateway + spend observability + bulk seed + staff cost UI** (§13 E28, session I cont.), and **circulation reporting module + CI ship workflow + Docker/CI test isolation** (§13 E29, session I cont.), **shared/platform code layout refactor + Cursor rules/skills folder restructure** (§13 E30, session I cont.). **Context handoff** for the latest thread: [§0](#0-current-state-snapshot-jun-2026) + [§13 E30](#e30--session-i-cont-sharedplatform-code-layout-refactor-jun-2026). Prior handoff: [§13 E29](#e29--session-i-cont-reporting-module-ci-ship--ops-fixes-jun-2026). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
 
 **Go-live gate (summary):** [§14](#14-go-live-checklist-summary) — full matrix in [go-live-checklist.md](go-live-checklist.md).  
 **Agent governance (summary):** [§15](#15-agent-governance-imda-mgf--enterprise-charter) — IMDA MGF v1.5 + **Twelve-Factor App** deployment discipline; Langfuse observability.  
@@ -32,14 +32,14 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 | **Desk copy** | Done | Intent-aware helpers in `messages.py`; UI renders API text verbatim |
 | **Langfuse (G13)** | Wired + validated | `make validate-langfuse`; runs on `make build`; `LANGFUSE_HOST` or `LANGFUSE_BASE_URL` |
 | **Governance skills** | Reorganized | Generic vs LMS-AI under `.cursor/rules/{generic,lms-ai}/` and `.cursor/skills/{generic,lms-ai}/` — see [.cursor/README.md](../.cursor/README.md) |
-| **Code layout** | Refactored | `src/lms/platform/` — RBAC, API users, auth service, `library_today()`; `shared/` — reusable infra only |
+| **Code layout** | Refactored | **`shared/`** — `http/`, `auth/deps`, `llm/`, `observability/`, `privacy/`; **`platform/`** — RBAC, API users, auth service, `library_today()` |
 | **Governance code** | Hardened | Production `Settings` validation; LLM input + session history redaction; HITL blocks new messages; sanitized approval `details`; `intent_span` / `hitl_event` audit |
 | **Tests** | **211 collected** | `make ci-native`; `make test-agent` → **33**; reporting RBAC + dashboard (**17**); unit LLM gateway + spend |
 | **CI ship** | Done | `make ci-ship` → `scripts/ci_commit_push.sh` (runs `ci-native`, then commit + push) |
 | **Sample seed** | **~1,614 rows** | `make seed` — demo fixtures + bulk K-12 patrons/catalog/holdings/loans |
 | **Go-live** | Pending | G1–G10 unchecked; **G13 charter sign-off** still operational |
 
-**Session I arc (post-E19):** rules/skills → messages → intent-aware copy → React CRM → Playwright → Langfuse → WF-02 return → catalog-first issue → **guided desk flows** → **issued-books inquiry** → **multi-provider LLM** → **comprehensive intent prompt** → **Twelve-Factor + IMDA skill** → **governance audit + code hardening** → **LiteLLM Router gateway + Postgres spend + staff cost UI + bulk seed** → **reporting bounded context + ci-ship + Docker/CI fixes**. Detail: §3.11, §13 E20–E29.
+**Session I arc (post-E19):** rules/skills → messages → intent-aware copy → React CRM → Playwright → Langfuse → WF-02 return → catalog-first issue → **guided desk flows** → **issued-books inquiry** → **multi-provider LLM** → **comprehensive intent prompt** → **Twelve-Factor + IMDA skill** → **governance audit + code hardening** → **LiteLLM Router gateway + Postgres spend + staff cost UI + bulk seed** → **reporting bounded context + ci-ship + Docker/CI fixes** → **shared/platform split + generic Cursor guidance folders**. Detail: §3.11, §13 E20–E30.
 
 **Open next:** G13 IMDA charter sign-off (§15.8); **durable agent session store** (Postgres/Redis for multi-worker); eval datasets; live LLM staging outside mock CI.
 
@@ -309,7 +309,7 @@ Fully summarized in **§4** below. Canonical output: `MVP.md` §8–§11.
 | Mypy strict in lint gate | H | **Done** | `make lint`; `types-python-jose`; agent tools/graph fixes |
 | Agent desk staff messages module | I | **Done** | `src/lms/agent/messages.py` — issue + next action copy |
 | Intent-aware slot / guard messages | I | **Done** | `IntentAction` in `schemas.py`; `missing_patron_for(action=)` etc.; coordinator passes `intent.action` |
-| Langfuse / structlog agent tracing | I | **Done** | `src/lms/agent/tracing.py`; `AgentTracing` in coordinator (`turn_span`, `tool_span`) |
+| Langfuse / structlog agent tracing | I | **Done** | `shared/observability/tracing.py`; `LangfuseTracing` in coordinator (`turn_span`, `tool_span`) |
 | Composed Method slot guards | I | **Done** | `tools.py` `_patron_id` / `_holding_id` / `_patron_and_holding`; `IssueSlots.has_patron_and_holding` |
 | Sonar-style intent_parser fix | I | **Done** | Typed `LITELLM_EXCEPTION_TYPES`; structlog on parse failure |
 | React staff desk UI (MVC) | I | **Done** | `src/lms/staff/ui/`; CRM layout; `make staff-ui-build` |
@@ -635,7 +635,7 @@ Governance: research.md §15; craft: §16 + clean-code-ddd-lms-ai skill.
 | [.cursor/skills/imda-agentic-ai-governance/SKILL.md](../.cursor/skills/imda-agentic-ai-governance/SKILL.md) | IMDA MGF v1.5 + Twelve-Factor App + enterprise agent charter (generic) |
 | [.cursor/skills/lms-ai/imda-agentic-ai-governance-lms-ai.md](../.cursor/skills/lms-ai/imda-agentic-ai-governance-lms-ai.md) | LMS-AI Twelve-Factor conventions addendum |
 | [.cursor/skills/imda-agentic-ai-governance/reference.md](../.cursor/skills/imda-agentic-ai-governance/reference.md) | Risk factors, multi-agent risks, Twelve-Factor appendix, Langfuse mapping |
-| [.cursor/skills/clean-code-ddd-python/SKILL.md](../.cursor/skills/clean-code-ddd-python/SKILL.md) | Clean Code, Kent Beck patterns, Vernon DDD — Python / FastAPI / LangGraph |
+| [.cursor/skills/generic/clean-code-ddd-python/SKILL.md](../.cursor/skills/generic/clean-code-ddd-python/SKILL.md) | Clean Code, Kent Beck patterns, Vernon DDD — Python / FastAPI / LangGraph |
 | [.cursor/skills/clean-code-ddd-lms-ai/SKILL.md](../.cursor/skills/clean-code-ddd-lms-ai/SKILL.md) | LMS-AI addendum — module map, import-linter, workflows, agent desk |
 | [.cursor/skills/clean-code-ddd-python/reference.md](../.cursor/skills/clean-code-ddd-python/reference.md) | Entity vs value object, module placement |
 | [.cursor/skills/generic/python-code-analysis/SKILL.md](../.cursor/skills/generic/python-code-analysis/SKILL.md) | Static & dynamic analysis — ruff, mypy, import-linter, pytest |
@@ -882,7 +882,7 @@ Chronological record of the **implementation and workflow design** conversation.
 
 | Area | Detail |
 |------|--------|
-| Middleware | `api/security_middleware.py` — security headers (CSP, X-Frame-Options, etc.), per-IP rate limits on auth + API |
+| Middleware | `shared/http/security_middleware.py` — security headers (CSP, X-Frame-Options, etc.), per-IP rate limits on auth + API |
 | Errors | Generic validation/500 responses when `APP_DEBUG=false`; flat `{code, message, retriable, details}` envelope |
 | Config | Production guards: reject default `APP_SECRET_KEY` and `CORS_ORIGINS=*` when `APP_ENV=production` |
 | Tests | `tests/hardening/test_security.py` — headers, rate limit, error disclosure, production config |
@@ -1320,7 +1320,7 @@ make ci-native
 | Tool guards | `src/lms/agent/tools.py` | Composed Method: `_patron_id`, `_holding_id`, `_patron_and_holding(slots, action)` — each returns `UUID \| ToolResult` with intent-specific message |
 | Coordinator | `src/lms/agent/coordinator.py` | Passes `intent.action` into tools (`search_lendable`, `select_barcode`, `validate_issue`) and uses `messages.*` for responses |
 | Intent parser | `src/lms/agent/intent_parser.py` | Sonar fix: catch typed `LITELLM_EXCEPTION_TYPES`; structlog on failure; imports desk copy from `messages` |
-| Tracing (G13) | `src/lms/agent/tracing.py` | `AgentTracing` — structlog audit always; optional Langfuse `tool_span` / `turn_span` when keys configured |
+| Tracing (G13) | `shared/observability/tracing.py` | `LangfuseTracing` — structlog audit always; optional Langfuse `tool_span` / `turn_span` when keys configured |
 | Tests | `tests/agent/` | Intent messages, masking, graph, CHAT routing, query echo — **28 tests** in agent package |
 
 #### E20.2 Message design (desk staff UX)
@@ -1373,7 +1373,7 @@ Graceful degradation: structlog `agent_tool_call` always; Langfuse client only w
 | Artifact | Update |
 |----------|--------|
 | `.cursor/skills/clean-code-ddd-lms-ai/SKILL.md` | Agent module map: `messages.py`, `tracing.py`, intent-aware guards, desk copy guidelines |
-| `.cursor/skills/clean-code-ddd-python/SKILL.md` | Composed Method + message builder pattern on agent tools |
+| `.cursor/skills/generic/clean-code-ddd-python/SKILL.md` | Composed Method + message builder pattern on agent tools |
 | `.cursor/rules/code-simplification.md` | Slot guard decomposition; centralize scattered desk copy |
 | `.cursor/rules/sonarqube-quality.md` | Typed exceptions; agent desk copy smells |
 | `.cursor/rules/api-and-interface-design.md` | Agent API response fields (`assistant_message`, approvals) |
@@ -2058,6 +2058,57 @@ Response includes `holdings_by_status` (incl. **DAMAGED** / **LOST**), `circulat
 
 ---
 
+### E30 — Session I (cont.): Shared/platform code layout refactor (Jun 2026)
+
+**User asks (sequence):** Mirror the Cursor **generic vs LMS-AI** split at the **source level** — move reusable infrastructure into `shared/`; keep LMS-specific auth, RBAC, and calendar in `platform/`; update scripts and docs.
+
+#### E30.1 `shared/` — generic infrastructure
+
+| Package | Path | Role |
+|---------|------|------|
+| HTTP | `shared/http/` | `AppError` / `ErrorCode`, exception handlers, correlation + security middleware, rate limits, OpenAPI bearer, `/health` |
+| Auth deps | `shared/auth/deps.py` | `DbSession`, JWT `get_auth_context`, `require_auth`, `require_roles(*str)` |
+| Observability | `shared/observability/tracing.py` | `LangfuseTracing` (+ `AgentTracing` alias) |
+| Privacy | `shared/privacy/redaction.py` | `redact_for_audit` (SSN/card patterns) |
+| LLM spend | `shared/llm/spend_queries.py`, `spend_schemas.py` | `LlmSpendQueryService` + report DTOs |
+| Existing | `shared/db/`, `idempotency/`, `auth/jwt.py`, `auth/password.py`, `logging.py`, `llm/` | Unchanged generic infra |
+
+#### E30.2 `platform/` — LMS application shell
+
+| Module | Path | Role |
+|--------|------|------|
+| RBAC | `platform/auth/rbac.py` | `StaffAuth`, `AdminAuth`, `require_staff`, `require_admin` |
+| Auth schemas | `platform/auth/schemas.py` | `TokenResponse`, `UserResponse` (with `Role`) |
+| OpenAPI hint | `platform/auth/openapi.py` | LMS seed credential text for Swagger |
+| Roles / users | `platform/auth/roles.py`, `application/auth_service.py`, `application/seed_api_users.py` | ADMIN / LIBRARIAN / PATRON |
+
+#### E30.3 `api/` — HTTP shell only
+
+Routers, `app.py`, workflows, agent composition — **no** generic errors, middleware, deps, or rbac modules (removed).
+
+#### E30.4 Import-linter
+
+Six contracts: reference, catalog, loan, agent, **shared must not import platform/bounded contexts**, **platform must not import bounded-context infrastructure**.
+
+#### E30.5 Agent alignment
+
+- `agent/constants.py` — single `AGENT_ID` for Langfuse spans (coordinator, intent parser, `validate_langfuse.py`)
+- `llm_intent_prompt.py` — governance section (classify-only, pseudonym selection, HITL gate)
+- Agent imports: `shared.observability.tracing`, `shared.privacy.redaction`, `shared.http.errors`
+
+#### E30.6 Docs / scripts updated
+
+`README.md`, `plan-mvp.md`, `MVP.md`, `runbook.md`, `go-live-checklist.md`, `.cursor/skills/lms-ai/*`; `scripts/validate_langfuse.py` imports `shared.observability.tracing`.
+
+#### E30.7 Verification
+
+| Gate | Result |
+|------|--------|
+| `make lint` | pass — ruff, import-linter 6/6, mypy |
+| `make test-unit` | **109** passed |
+
+---
+
 ## 16. Clean Code, DDD & implementation patterns
 
 **Session focus (Jun 2026):** Codify engineering craft for this repo — **Clean Code** (Robert C. Martin), **Implementation Patterns** (Kent Beck), **Implementing DDD** (Vaughn Vernon) — applied to **Python 3.12**, **FastAPI**, **SQLAlchemy**, **LangChain / LangGraph**, and **Langfuse**.
@@ -2066,9 +2117,9 @@ Response includes `holdings_by_status` (incl. **DAMAGED** / **LOST**), `circulat
 
 | Skill | Path | Role |
 |-------|------|------|
-| General principles | [.cursor/skills/clean-code-ddd-python/SKILL.md](../.cursor/skills/clean-code-ddd-python/SKILL.md) | Uncle Bob + Beck + Vernon for the stack |
-| LMS-AI addendum | [.cursor/skills/clean-code-ddd-lms-ai/SKILL.md](../.cursor/skills/clean-code-ddd-lms-ai/SKILL.md) | This repo’s modules, import rules, agent desk |
-| DDD supplement | [.cursor/skills/clean-code-ddd-python/reference.md](../.cursor/skills/clean-code-ddd-python/reference.md) | Entity vs value object, module placement |
+| General principles | [.cursor/skills/generic/clean-code-ddd-python/SKILL.md](../.cursor/skills/generic/clean-code-ddd-python/SKILL.md) | Uncle Bob + Beck + Vernon for the stack |
+| LMS-AI addendum | [.cursor/skills/lms-ai/clean-code-ddd-lms-ai/SKILL.md](../.cursor/skills/lms-ai/clean-code-ddd-lms-ai/SKILL.md) | This repo’s modules, import rules, agent desk |
+| DDD supplement | [.cursor/skills/generic/clean-code-ddd-python/reference.md](../.cursor/skills/generic/clean-code-ddd-python/reference.md) | Entity vs value object, module placement |
 | Static & dynamic analysis | [.cursor/skills/generic/python-code-analysis/SKILL.md](../.cursor/skills/generic/python-code-analysis/SKILL.md) | ruff, mypy, import-linter, pytest markers |
 | Analysis addendum | [.cursor/skills/lms-ai/python-code-analysis-lms-ai.md](../.cursor/skills/lms-ai/python-code-analysis-lms-ai.md) | Makefile, CI, change-type test scope |
 | SonarQube rules | [.cursor/rules/generic/sonarqube-quality.md](../.cursor/rules/generic/sonarqube-quality.md) + [.cursor/rules/lms-ai/sonarqube-quality-lms-ai.md](../.cursor/rules/lms-ai/sonarqube-quality-lms-ai.md) | Quality gate, bugs, smells, security hotspots |
@@ -2093,7 +2144,7 @@ When implementing or reviewing code:
 |------|------|
 | Names | Reveal intent: `CirculationOrchestrator`, `resolve_patron_by_card` |
 | Functions | One job; &lt;20 lines where practical; guard clauses over nesting |
-| Errors | Raise `AppError` / `ValidationReport` in domain; HTTP translation in `errors.py` only |
+| Errors | Raise `AppError` / `ValidationReport` in domain; HTTP translation in `shared/http/errors.py` only |
 | Classes | Small; `dataclass(frozen=True, slots=True)` for value bundles |
 | Comments | Why (ADR, policy), not what |
 | Tests | Behavior specs: `test_issue_rejected_when_patron_blocked` |
@@ -2139,10 +2190,11 @@ When implementing or reviewing code:
 | Tools | Allowlisted delegation to workflows | `lms/agent/tools.py` |
 | Intent parser | NL → `ParsedIntent` / `IntentAction` | `lms/agent/intent_parser.py` |
 | LLM intent prompt | All workflows + examples for hosted LLM | `lms/agent/llm_intent_prompt.py` |
-| LLM router | LiteLLM multi-provider + fallback | `lms/agent/llm.py` |
+| LLM router | LiteLLM multi-provider + fallback | `shared/llm/gateway.py` (facade: `agent/llm.py`) |
 | Graph | Structural SOP only (`enter → parse → govern`) | `lms/agent/graph.py` |
 | Staff messages | Intent-aware desk copy (issue + next action) | `lms/agent/messages.py` |
-| Tracing | structlog audit + optional Langfuse spans | `lms/agent/tracing.py` |
+| Tracing | structlog audit + optional Langfuse spans | `shared/observability/tracing.py` |
+| Desk masking | Session pseudonyms + HITL detail sanitization | `lms/agent/masking.py` |
 
 - **Read tools** (`search_*`, `validate_*`, `lookup_return`, `search_catalog`, `select_*`) vs **write tools** (`commit_issue`, `commit_desk_return`, `cancel_issue`, `transition_fulfillment`, `initiate_return_pickup`, `apply_return_selection`) — writes require HITL via `resume(approved=...)`.
 - **`RESTRICTED_TOOL_NAMES`** never bound — deny-by-default (aligns with §15 charter).

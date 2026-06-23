@@ -11,7 +11,7 @@ Addendum to [imda-agentic-ai-governance/SKILL.md](../../generic/imda-agentic-ai-
 | Build / release / run | `make ci-native` (build+test) → deploy script / `make deploy-native` (run only) |
 | Stateless processes | Session + HITL state in DB via agent session layer, not worker RAM |
 | Dev/prod parity | `make test-agent` with mock LLM; production requires real keys + `agent_issue_enabled` |
-| Logs & traces | `src/lms/agent/tracing.py` — structlog audit + optional Langfuse spans |
+| Logs & traces | `src/lms/shared/observability/tracing.py` — structlog audit + optional Langfuse spans |
 | Admin one-offs | `make migrate`, `make seed`, `make validate-langfuse` — never invoked from graph nodes |
 
 ```python

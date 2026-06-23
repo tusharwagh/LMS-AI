@@ -9,14 +9,15 @@ import structlog
 from litellm.exceptions import LITELLM_EXCEPTION_TYPES
 
 from lms.agent import messages as desk
+from lms.agent.constants import AGENT_ID
 from lms.agent.llm_intent_prompt import LLM_INTENT_SYSTEM
-from lms.agent.masking import redact_for_audit
 from lms.agent.schemas import IntentAction, ParsedIntent
-from lms.agent.tracing import AgentTracing
 from lms.config import Settings
 from lms.loan.domain.enums import FulfillmentMode, FulfillmentStatus
 from lms.shared.llm import LlmGateway, llm_live_enabled
 from lms.shared.llm.models import LlmGatewayError
+from lms.shared.observability.tracing import LangfuseTracing
+from lms.shared.privacy.redaction import redact_for_audit
 
 _APPROVE_RE = re.compile(r"^(yes|y|approve|confirm|go ahead|proceed|ok)\.?$", re.I)
 _DENY_RE = re.compile(r"^(no|n|deny|cancel|stop)\.?$", re.I)
@@ -631,12 +632,10 @@ class IntentParser:
 class LLMIntentParser(IntentParser):
     """Optional LiteLLM-backed parser; falls back to rules on failure."""
 
-    AGENT_ID = "LMS Desk Circulation Agent"
-
-    def __init__(self, settings: Settings, *, tracing: AgentTracing | None = None) -> None:
+    def __init__(self, settings: Settings, *, tracing: LangfuseTracing | None = None) -> None:
         self._settings = settings
         self._rules = IntentParser()
-        self._tracing = tracing or AgentTracing(settings)
+        self._tracing = tracing or LangfuseTracing(settings)
 
     def parse(
         self,
@@ -751,7 +750,7 @@ class LLMIntentParser(IntentParser):
         with self._tracing.intent_span(
             session_id=trace_session_id,
             operator_id=trace_operator_id,
-            agent_id=self.AGENT_ID,
+            agent_id=AGENT_ID,
         ):
             user = json.dumps(
                 {

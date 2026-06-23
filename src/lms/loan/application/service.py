@@ -8,11 +8,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import Executable
 from sqlalchemy.sql.elements import BindParameter
 
-from lms.api.errors import AppError, ErrorCode
 from lms.loan.api.schemas import LoanRuleSetCreate, LoanRuleSetUpdate
 from lms.loan.domain.enums import CalendarPolicy
 from lms.loan.infrastructure.models.models import LoanModel, LoanRuleSetModel
 from lms.platform.time import library_today
+from lms.shared.http.errors import AppError, ErrorCode
 
 _LOAN_DETAIL_SELECT = """
     SELECT

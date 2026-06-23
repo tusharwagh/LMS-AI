@@ -1,4 +1,4 @@
-"""LLM spend reporting API schemas."""
+"""LLM spend reporting schemas."""
 
 from __future__ import annotations
 

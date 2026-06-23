@@ -10,7 +10,7 @@ Supplement to [python-code-analysis/SKILL.md](../../generic/python-code-analysis
 |------|--------|-------|
 | Ruff | `pyproject.toml` `[tool.ruff]` | `E,F,I,UP,B`; line length 100; py312 |
 | mypy | `pyproject.toml` `[tool.mypy]` | `strict = true`; packages `lms` |
-| import-linter | `pyproject.toml` `[tool.importlinter]` | 4 contracts (reference, catalog, loan, agent) |
+| import-linter | `pyproject.toml` `[tool.importlinter]` | 6 contracts (reference, catalog, loan, agent, shared, platform) |
 | pytest | `pyproject.toml` `[tool.pytest.ini_options]` | markers: unit, integration, e2e, hardening, performance, agent |
 
 **CI** (`.github/workflows/ci.yml`): `ruff check`, `lint-imports`, `mypy`, `alembic upgrade head`, `pytest`, `npm audit`, diagram script.
@@ -71,6 +71,8 @@ Touching circulation writes / auth / middleware: include `make test-hardening` a
 | Catalog must not import Reference or Loan infrastructure | `lms.catalog` | `reference.infrastructure`, `loan.infrastructure` |
 | Loan must not import Reference or Catalog infrastructure | `lms.loan` | `reference.infrastructure`, `catalog.infrastructure` |
 | Agent must not import domain infrastructure | `lms.agent` | all three `*.infrastructure` (narrow ignore list in pyproject) |
+| Shared must not import platform or bounded contexts | `lms.shared` | `platform`, `catalog`, `loan`, `reference`, `agent` |
+| Platform must not import bounded context infrastructure | `lms.platform` | `*.infrastructure`, `agent` |
 
 Failure = architectural defect — fix ports/adapters/workflows per [clean-code-ddd-lms-ai](../clean-code-ddd-lms-ai/SKILL.md).
 

@@ -6,7 +6,6 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from lms.api.errors import AppError, ErrorCode
 from lms.api.workflows.issue_eligibility_validator import IssueEligibilityValidator
 from lms.catalog.application.service import CatalogService
 from lms.catalog.domain.enums import CatalogingStatus, HoldingStatus
@@ -19,6 +18,7 @@ from lms.loan.infrastructure.models.models import CirculationFulfillmentModel, L
 from lms.loan.infrastructure.policy_resolver import PolicyResolver
 from lms.reference.application.service import ReferenceService
 from lms.reference.infrastructure.models.models import PatronModel
+from lms.shared.http.errors import AppError, ErrorCode
 from lms.shared.idempotency.service import (
     IdempotencyPayloadMismatchError,
     find_cached_response,

@@ -1,12 +1,12 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from lms.api.errors import AppError, ErrorCode
 from lms.config import get_settings
 from lms.platform.auth.roles import Role
 from lms.platform.infrastructure.models.api_user import ApiUserModel
 from lms.shared.auth.jwt import create_access_token
 from lms.shared.auth.password import verify_password
+from lms.shared.http.errors import AppError, ErrorCode
 
 
 class AuthService:

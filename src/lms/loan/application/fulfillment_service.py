@@ -5,13 +5,13 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from lms.api.errors import AppError, ErrorCode
 from lms.loan.domain.enums import (
     FulfillmentDirection,
     FulfillmentMode,
     FulfillmentStatus,
 )
 from lms.loan.infrastructure.models.models import CirculationFulfillmentModel, LoanModel
+from lms.shared.http.errors import AppError, ErrorCode
 from lms.shared.idempotency.service import (
     IdempotencyPayloadMismatchError,
     find_cached_response,

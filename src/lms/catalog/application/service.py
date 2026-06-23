@@ -4,10 +4,10 @@ from uuid import UUID
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session
 
-from lms.api.errors import AppError, ErrorCode
 from lms.catalog.api.schemas import CatalogCreate, CatalogUpdate, HoldingCreate
 from lms.catalog.domain.enums import CatalogingStatus, HoldingStatus
 from lms.catalog.infrastructure.models.models import CatalogModel, HoldingModel
+from lms.shared.http.errors import AppError, ErrorCode
 
 
 @dataclass(frozen=True, slots=True)

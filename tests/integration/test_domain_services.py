@@ -6,7 +6,6 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from tests.helpers import unique_tag
 
-from lms.api.errors import AppError, ErrorCode
 from lms.catalog.api.schemas import CatalogCreate, HoldingCreate
 from lms.catalog.application.service import CatalogService
 from lms.catalog.domain.enums import CatalogingStatus, HoldingStatus
@@ -15,6 +14,7 @@ from lms.loan.application.service import LoanService
 from lms.loan.infrastructure.policy_resolver import PolicyResolver
 from lms.reference.api.schemas import ClassSectionCreate, PatronCreate, PatronTypeCreate
 from lms.reference.application.service import ReferenceService
+from lms.shared.http.errors import AppError, ErrorCode
 
 pytestmark = pytest.mark.integration
 

@@ -8,15 +8,16 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from lms.agent import messages as desk
-from lms.agent.masking import PseudonymMap, redact_for_audit
+from lms.agent.masking import PseudonymMap
 from lms.agent.schemas import IntentAction
 from lms.agent.session import DeskFlow, IssueSlots
-from lms.api.errors import AppError
 from lms.api.workflows.return_book import ReturnBookWorkflow, ReturnCandidate
 from lms.api.workflows.search_and_issue import CatalogLendableCopy, SearchAndIssueWorkflow
 from lms.loan.application.fulfillment_service import FulfillmentService
 from lms.loan.domain.enums import FulfillmentStatus
 from lms.loan.domain.validation import ValidationReport
+from lms.shared.http.errors import AppError
+from lms.shared.privacy.redaction import redact_for_audit
 
 READ_TOOL_NAMES = frozenset(
     {

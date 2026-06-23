@@ -8,8 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from lms.api.llm_spend.service import LlmSpendQueryService
 from lms.shared.llm.spend import LlmSpendLog
+from lms.shared.llm.spend_queries import LlmSpendQueryService
 
 pytestmark = pytest.mark.integration
 

@@ -7,15 +7,17 @@ from fastapi.openapi.utils import get_openapi
 
 BEARER_SCHEME_NAME = "BearerJWT"
 
-BEARER_SCHEME_DESCRIPTION = (
-    "JWT access token. Obtain via **POST /api/v1/auth/token** "
-    "(form: username + password), then paste the `access_token` value here "
-    "(without the `Bearer ` prefix). "
-    "After `make seed`: `librarian` / `changeme` or `admin` / `changeme`."
+DEFAULT_BEARER_SCHEME_DESCRIPTION = (
+    "JWT access token. Obtain via the auth token endpoint, "
+    "then paste the `access_token` value here (without the `Bearer ` prefix)."
 )
 
 
-def configure_openapi(app: FastAPI) -> None:
+def configure_openapi(
+    app: FastAPI,
+    *,
+    bearer_description: str = DEFAULT_BEARER_SCHEME_DESCRIPTION,
+) -> None:
     """Register a named HTTP Bearer scheme so Swagger shows a token input."""
 
     def custom_openapi() -> dict[str, Any]:
@@ -34,7 +36,7 @@ def configure_openapi(app: FastAPI) -> None:
             "type": "http",
             "scheme": "bearer",
             "bearerFormat": "JWT",
-            "description": BEARER_SCHEME_DESCRIPTION,
+            "description": bearer_description,
         }
         app.openapi_schema = schema
         return app.openapi_schema

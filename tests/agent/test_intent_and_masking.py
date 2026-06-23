@@ -4,10 +4,10 @@ import pytest
 
 from lms.agent import messages as desk
 from lms.agent.intent_parser import IntentParser, ParsedIntent
-from lms.agent.masking import redact_for_audit
 from lms.agent.schemas import IntentAction
 from lms.agent.session import PendingActionKind
 from lms.loan.domain.enums import FulfillmentStatus
+from lms.shared.privacy.redaction import redact_for_audit
 
 pytestmark = pytest.mark.unit
 

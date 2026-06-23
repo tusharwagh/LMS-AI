@@ -5,8 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from lms.api.deps import DbSession
-from lms.api.rbac import require_admin, require_staff
+from lms.platform.auth.rbac import require_admin, require_staff
 from lms.reference.api.schemas import (
     AssignClassSectionRequest,
     AssignPatronToSectionRequest,
@@ -23,6 +22,7 @@ from lms.reference.api.schemas import (
     PatronUpdate,
 )
 from lms.reference.application.service import ReferenceService
+from lms.shared.auth.deps import DbSession
 
 router = APIRouter(dependencies=[require_staff])
 

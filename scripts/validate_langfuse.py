@@ -5,10 +5,9 @@ from __future__ import annotations
 
 import sys
 
-from lms.agent.tracing import AgentTracing
+from lms.agent.constants import AGENT_ID
 from lms.config import get_settings
-
-AGENT_ID = "LMS Desk Issue & Fulfillment Agent"
+from lms.shared.observability.tracing import LangfuseTracing
 
 
 def main() -> int:
@@ -20,7 +19,7 @@ def main() -> int:
         return 0
 
     print(f"host: {settings.langfuse_host}")
-    tracing = AgentTracing(settings)
+    tracing = LangfuseTracing(settings)
 
     if tracing._client is None:
         print("FAIL: Langfuse client did not initialize (check logs for langfuse_client_init_failed)")

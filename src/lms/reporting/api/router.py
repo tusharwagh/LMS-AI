@@ -8,9 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 
-from lms.api.deps import DbSession
-from lms.api.errors import AppError, ErrorCode
-from lms.api.rbac import require_staff
+from lms.platform.auth.rbac import require_staff
 from lms.reporting.api.schemas import (
     CirculationSummaryResponse,
     DailySeriesPoint,
@@ -25,6 +23,8 @@ from lms.reporting.api.schemas import (
 from lms.reporting.application.dashboard_service import DashboardService
 from lms.reporting.application.report_service import ReportService
 from lms.reporting.domain.enums import ReportFormat
+from lms.shared.auth.deps import DbSession
+from lms.shared.http.errors import AppError, ErrorCode
 
 router = APIRouter(prefix="/reporting", dependencies=[require_staff])
 

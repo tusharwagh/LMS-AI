@@ -7,10 +7,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from lms.api.deps import DbSession
-from lms.api.llm_spend.schemas import LlmSpendLogListResponse, LlmSpendSummaryResponse
-from lms.api.llm_spend.service import LlmSpendQueryService
-from lms.api.rbac import require_staff
+from lms.platform.auth.rbac import require_staff
+from lms.shared.auth.deps import DbSession
+from lms.shared.llm.spend_queries import LlmSpendQueryService
+from lms.shared.llm.spend_schemas import LlmSpendLogListResponse, LlmSpendSummaryResponse
 
 router = APIRouter(prefix="/llm-spend", dependencies=[require_staff])
 

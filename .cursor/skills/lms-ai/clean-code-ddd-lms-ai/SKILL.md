@@ -17,13 +17,13 @@ This addendum maps those principles onto **this repository's** modules, ADRs, an
 
 ```
 src/lms/
-├── api/                 # HTTP shell: app, auth, errors, middleware, workflows, agent router
+├── api/                 # HTTP shell: app, routers, workflows, agent router
 ├── agent/               # Desk agent: coordinator, tools, intent, messages, graph, masking
 ├── reference/           # Bounded context: patrons, patron types, class sections
 ├── catalog/             # Bounded context: catalog records, holdings
 ├── loan/                # Bounded context: loans, circulation, fulfillment
-├── platform/            # LMS app platform: RBAC roles, API users, auth service, library calendar
-├── shared/              # Reusable infra: db, JWT/password, idempotency, logging, llm gateway
+├── platform/            # LMS app platform: RBAC, API users, auth service, library calendar
+├── shared/              # Reusable infra: db, http, auth/JWT, idempotency, logging, llm, observability, privacy
 ├── staff/               # Staff desk: React UI (`ui/`) + built static (`static/`) + router
 └── config.py            # pydantic-settings (Settings)
 ```
@@ -86,6 +86,8 @@ Violations fail CI. Do not "fix" by adding ignore without ADR.
 | Catalog | Must not import `reference.infrastructure` or `loan.infrastructure` |
 | Loan | Must not import `reference.infrastructure` or `catalog.infrastructure` |
 | Agent | Must not import any domain `infrastructure` (explicit ignore list for composition/workflows only) |
+| Shared | Must not import `platform` or any bounded context (`catalog`, `loan`, `reference`, `agent`) |
+| Platform | Must not import bounded-context `infrastructure` or `agent` |
 
 **DDD implication**: Cross-context data flows through **ports + adapters** or **workflow orchestration** in `api/workflows/`, not through ORM imports in the wrong context.
 
@@ -104,19 +106,19 @@ class PatronEligibilityAdapter(PatronEligibilityPort): ...
 
 ### App assembly (`lms/api/app.py`)
 
-- `create_app()` registers middleware: correlation ID, security headers, rate limit, CORS.
-- Routers: health, auth, `domain_api_router` (JWT required), agent, staff static.
+- `create_app()` registers middleware from `shared/http/`: correlation ID, security headers, rate limit, plus CORS.
+- Routers: health (`shared/http/health.py`), auth, `domain_api_router` (JWT required), agent, staff static.
 
-### Authentication and RBAC (`lms/api/rbac.py`)
+### Authentication and RBAC (`lms/platform/auth/rbac.py`)
 
 ```python
 StaffAuth = Annotated[AuthContext, Depends(require_roles(Role.ADMIN, Role.LIBRARIAN))]
 AdminAuth = Annotated[AuthContext, Depends(require_roles(Role.ADMIN))]
 ```
 
-Use `StaffAuth` for desk operations; `AdminAuth` for configuration. Do not duplicate role checks inside services.
+Generic JWT deps live in `lms/shared/auth/deps.py`. Use `StaffAuth` for desk operations; `AdminAuth` for configuration. Do not duplicate role checks inside services.
 
-### Errors (`lms/api/errors.py`)
+### Errors (`lms/shared/http/errors.py`)
 
 Always raise `AppError` with `ErrorCode` for domain and application failures:
 
@@ -187,10 +189,12 @@ Architecture (ADR-021, ADR-025):
 | `tools.py` | `IssueTools` — allowlisted delegation to workflows/services |
 | `intent_parser.py` | `LLMIntentParser` → `ParsedIntent` / `IntentAction` (defined in `schemas.py`) |
 | `session.py` | `AgentIssueSession`, `PendingApproval`, in-memory `SessionStore` |
-| `masking.py` | PII pseudonyms + `redact_for_audit` |
+| `masking.py` | Desk pseudonyms (`PseudonymMap`) + HITL `sanitize_approval_details` |
+| `constants.py` | `AGENT_ID` (tracing) and `AGENT_CHARTER_NAME` (IMDA charter) |
+| `llm_intent_prompt.py` | `LLM_INTENT_SYSTEM` — all workflows; governance + session_context |
 | `messages.py` | Staff-facing desk copy — single source for `assistant_message` and approval summaries |
 | `schemas.py` | `IntentAction`, `ParsedIntent`, agent API Pydantic models |
-| `tracing.py` | Optional Langfuse spans + structlog audit at tool/turn boundaries |
+| `tracing.py` | Re-export facade → `shared.observability.tracing.LangfuseTracing` |
 | `graph.py` | Minimal LangGraph SOP (structural; business logic stays in coordinator) |
 
 ### Tool design rules

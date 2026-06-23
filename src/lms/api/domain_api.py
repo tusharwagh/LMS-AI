@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends
 
-from lms.api.deps import require_auth
 from lms.api.llm_spend.router import router as llm_spend_router
 from lms.api.workflows.router import router as workflows_router
 from lms.catalog.api.router import router as catalog_router
 from lms.loan.api.router import router as loan_router
 from lms.reference.api.router import router as reference_router
 from lms.reporting.api.router import router as reporting_router
+from lms.shared.auth.deps import require_auth
 
 # Every domain route requires a valid Bearer JWT (Reference, Catalog, Loan).
 domain_api_router = APIRouter(

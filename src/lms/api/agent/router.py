@@ -17,8 +17,8 @@ from lms.agent.schemas import (
 )
 from lms.agent.session import AgentIssueSession
 from lms.api.agent_composition import get_issue_agent_coordinator
-from lms.api.deps import DbSession
-from lms.api.rbac import StaffAuth, require_staff
+from lms.platform.auth.rbac import StaffAuth, require_staff
+from lms.shared.auth.deps import DbSession
 
 router = APIRouter(prefix="/agent/issue", dependencies=[require_staff])
 

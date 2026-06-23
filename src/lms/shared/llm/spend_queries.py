@@ -1,4 +1,4 @@
-"""LLM spend log queries for staff cost reporting."""
+"""LLM spend log queries for cost reporting."""
 
 from __future__ import annotations
 
@@ -8,13 +8,13 @@ from typing import Any
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
-from lms.api.llm_spend.schemas import (
+from lms.shared.llm.spend import LlmSpendLog
+from lms.shared.llm.spend_schemas import (
     LlmSpendLogListResponse,
     LlmSpendLogResponse,
     LlmSpendSummaryGroup,
     LlmSpendSummaryResponse,
 )
-from lms.shared.llm.spend import LlmSpendLog
 
 
 class LlmSpendQueryService:

@@ -1,0 +1,1 @@
+"""Privacy helpers — PII redaction."""

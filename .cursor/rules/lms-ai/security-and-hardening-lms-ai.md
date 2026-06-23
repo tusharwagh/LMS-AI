@@ -27,9 +27,11 @@ Shipped controls map to environment variables via Pydantic `Settings` (see `.env
 |---------|--------|
 | Password hashing (bcrypt cost 12) | `src/lms/shared/auth/password.py` |
 | JWT encode/decode | `src/lms/shared/auth/jwt.py` |
+| Auth FastAPI deps | `src/lms/shared/auth/deps.py` |
 | RBAC roles (ADMIN/LIBRARIAN/PATRON) | `src/lms/platform/auth/roles.py` |
+| Staff/admin RBAC aliases | `src/lms/platform/auth/rbac.py` |
 | Auth service + API users | `src/lms/platform/application/auth_service.py` |
-| Security middleware | `src/lms/api/middleware.py` |
+| HTTP middleware + errors | `src/lms/shared/http/middleware.py`, `security_middleware.py`, `errors.py` |
 | Production validator | `Settings.validate_production_security()` in `config.py` |
 
 **Tests:** `tests/hardening/test_security.py`, `tests/unit/test_shared_and_auth.py`

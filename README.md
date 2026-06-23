@@ -252,7 +252,7 @@ Conversational circulation for librarians — governed per [research.md §15](do
 
 All **writes** (issue, return, cancel, fulfillment transition) require explicit librarian approval — deny-by-default. Staff-facing copy is built in `src/lms/agent/messages.py`; the UI renders API text verbatim.
 
-**Key modules:** `coordinator.py`, `tools.py`, `intent_parser.py`, `llm_intent_prompt.py`, `shared/llm/` (Router gateway + spend logger), `tracing.py`
+**Key modules:** `coordinator.py`, `tools.py`, `intent_parser.py`, `llm_intent_prompt.py`, `shared/llm/` (Router gateway + spend), `shared/observability/tracing.py`, `agent/masking.py`
 
 **LLM cost reporting** (librarian/admin JWT or staff UI **Administration → LLM costs**):
 
@@ -340,31 +340,48 @@ Or use `make seed` / `make destroy-native`.
 
 ```
 src/lms/
-  api/           # FastAPI app, auth, workflow coordinators, agent router
-  agent/         # Desk agent: coordinator, tools, intent, LLM, tracing
+  api/           # FastAPI app shell: routers, workflows, agent composition
+  agent/         # Desk agent: coordinator, tools, intent, messages (LMS-specific masking)
   reference/     # Patrons, types, class sections
   catalog/       # Bibliographic records, holdings
   loan/          # Circulation, orchestrator, fulfillment
-  platform/      # LMS app platform: RBAC roles, API users, auth service, library calendar
+  platform/      # LMS app platform: RBAC, API users, auth schemas, library calendar
   reporting/     # Dashboard + custom reports (read-only bounded context)
-  shared/        # Reusable infra: db session, JWT/password, idempotency, logging, llm gateway
+  shared/        # Reusable infra (see breakdown below)
   staff/ui/      # React + Vite source (CRM + AI assist + Dashboard)
   staff/static/  # Built staff desk (not committed — make staff-ui-build)
   config.py      # pydantic-settings (Twelve-Factor config)
+
+shared/
+  auth/          # jwt.py, password.py, deps.py (DbSession, require_auth)
+  db/            # session, base, mixins
+  http/          # errors, middleware, security_middleware, openapi, health
+  idempotency/   # store + service
+  llm/           # gateway, routing, spend, spend_queries, guardrails
+  logging.py     # structlog + correlation id helpers
+  observability/ # LangfuseTracing
+  privacy/       # redact_for_audit
+  time.py        # utc_now()
+
+platform/
+  auth/          # roles, rbac, schemas, openapi hint
+  application/   # auth_service, seed_api_users
+  time.py        # library_today(), library_timezone()
+  infrastructure/models/api_user.py
+
 alembic/         # Database migrations
-scripts/         # Deploy, seed, SQL helpers
+scripts/         # Deploy, seed, SQL helpers, validate_langfuse.py
 tests/           # unit, integration, e2e, agent, hardening, performance
 docs/            # MVP spec, domain models, runbook, governance notes
-.cursor/         # Cursor guidance — see .cursor/README.md (rules/skills → generic/ + lms-ai/)
-  generic/       # Portable rules & skills
-  lms-ai/        # LMS-AI addenda
-  rules/         # Symlinks (Cursor discovery)
-  skills/        # Symlinks (Cursor discovery)
+.cursor/
+  rules/generic/ + rules/lms-ai/
+  skills/generic/ + skills/lms-ai/
+  README.md      # Cursor guidance layout
 ```
 
 **CI:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on push/PR to `main` (`make ci-native`; `setup-python@v6`). Local ship gate: `make ci-ship`.
 
-**Architecture boundaries:** enforced by `import-linter` — agent module must not import domain `infrastructure` directly; `shared/` holds reusable infra only; LMS-specific auth/RBAC lives in `platform/`.
+**Architecture boundaries:** enforced by `import-linter` (6 contracts) — agent module must not import domain `infrastructure` directly; `shared/` holds reusable infra only; LMS-specific auth/RBAC/calendar lives in `platform/`.
 
 ---
 

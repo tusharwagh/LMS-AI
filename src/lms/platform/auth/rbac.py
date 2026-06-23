@@ -1,11 +1,11 @@
-"""Shared JWT + RBAC dependencies for domain API routers."""
+"""LMS JWT + RBAC dependencies for domain API routers."""
 
 from typing import Annotated
 
 from fastapi import Depends
 
-from lms.api.deps import require_auth, require_roles
 from lms.platform.auth.roles import Role
+from lms.shared.auth.deps import require_auth, require_roles
 from lms.shared.auth.jwt import AuthContext
 
 # JWT required — any authenticated API user.

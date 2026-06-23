@@ -108,7 +108,7 @@ def test_orchestrator_rejects_max_active_loans(db_session) -> None:
 
     orchestrator.checkout(patron.id, h1.id, idempotency_key=f"k1-{tag}")
 
-    from lms.api.errors import AppError
+    from lms.shared.http.errors import AppError
 
     with pytest.raises(AppError) as exc:
         orchestrator.checkout(patron.id, h2.id, idempotency_key=f"k2-{tag}")

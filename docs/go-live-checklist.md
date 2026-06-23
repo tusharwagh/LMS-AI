@@ -48,7 +48,9 @@ Sign-off against [plan-mvp.md §1.2](plan-mvp.md) success criteria (**G1–G13**
 | Control | Verify command / check | Status |
 |---------|------------------------|--------|
 | bcrypt passwords (cost ≥ 12) | Code review `shared/auth/password.py` | ☐ |
-| RBAC roles (ADMIN/LIBRARIAN/PATRON) | Code review `platform/auth/roles.py` | ☐ |
+| JWT auth deps | Code review `shared/auth/deps.py` | ☐ |
+| RBAC roles (ADMIN/LIBRARIAN/PATRON) | Code review `platform/auth/roles.py`, `platform/auth/rbac.py` | ☐ |
+| HTTP security middleware | Code review `shared/http/security_middleware.py`, `shared/http/errors.py` | ☐ |
 | JWT on all domain APIs | `pytest tests/e2e/test_api_journeys.py -k auth` | ☐ |
 | Generic errors when not in debug | `pytest tests/hardening/test_security.py::test_unhandled_error_hides_internals` | ☐ |
 | Production rejects default secret / wildcard CORS | `pytest tests/hardening/test_security.py -k production` | ☐ |

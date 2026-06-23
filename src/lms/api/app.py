@@ -5,12 +5,13 @@ from fastapi.staticfiles import StaticFiles
 from lms.api.agent.router import router as agent_router
 from lms.api.auth_router import router as auth_router
 from lms.api.domain_api import domain_api_router
-from lms.api.errors import register_exception_handlers
-from lms.api.health import router as health_router
-from lms.api.middleware import CorrelationIdMiddleware
-from lms.api.openapi import configure_openapi
-from lms.api.security_middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 from lms.config import get_settings
+from lms.platform.auth.openapi import LMS_BEARER_SCHEME_DESCRIPTION
+from lms.shared.http.errors import register_exception_handlers
+from lms.shared.http.health import router as health_router
+from lms.shared.http.middleware import CorrelationIdMiddleware
+from lms.shared.http.openapi import configure_openapi
+from lms.shared.http.security_middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 from lms.shared.logging import configure_logging
 from lms.staff.router import router as staff_router
 from lms.staff.router import staff_static_directory
@@ -31,7 +32,7 @@ def create_app() -> FastAPI:
         swagger_ui_parameters={"persistAuthorization": True},
     )
 
-    configure_openapi(app)
+    configure_openapi(app, bearer_description=LMS_BEARER_SCHEME_DESCRIPTION)
 
     app.add_middleware(CorrelationIdMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
