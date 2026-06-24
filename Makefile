@@ -175,7 +175,7 @@ lint:
 	PYTHONPATH=src $(BIN)/lint-imports
 	$(BIN)/mypy
 
-ci-native: lint staff-ui-build staff-ui-typecheck test-unit test-integration test-e2e test-e2e-playwright test-agent test-hardening test-performance
+ci-native: install lint staff-ui-build staff-ui-typecheck test-unit test-integration test-e2e test-e2e-playwright test-agent test-hardening test-performance
 
 ci-ship:
 	@chmod +x scripts/ci_commit_push.sh

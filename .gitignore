@@ -31,6 +31,7 @@ src/lms/staff/static/styles.css
 *.key
 
 # IDE (commit shared debug config; ignore local overrides)
+*.mcp
 .idea/
 .vscode/*
 !.vscode/launch.json
