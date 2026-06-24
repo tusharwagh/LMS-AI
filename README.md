@@ -24,11 +24,13 @@ Python **modular monolith** for K-12 school library circulation: reference data,
 | **Desk workflows** | Search & issue, return, delivery / pick-up fulfillment |
 | **Staff UI** | React CRM at `/staff/` — wizards, **AI assist**, **Dashboard** + **LLM costs** (Administration) |
 | **Reporting** | Dashboard + custom reports (JSON/CSV); `GET /api/v1/reporting/*`; holdings include **DAMAGED** / **LOST** |
-| **Agent desk** | Natural-language issue, return, catalog browse, patron lookup, issued-books inquiry |
+| **Agent desk** | Natural-language issue, return, catalog browse, patron lookup, issued-books inquiry (partial names, business keys) |
+| **Lookup disambiguation** | Multiple patrons/copies/loans → candidate list with **PATRON_N**, **COPY_N**, **LOAN_N**, **CARD-***, **ADM-*** — staff pick; no hard errors |
+| **Workflow patron lookup** | WF-01/WF-02 accept combined `patron_query` (UUID, **CARD-***, **ADM-***, partial name); 409 with `details.patrons` on ambiguity |
 | **HITL** | Librarian approves all writes via approval cards + `/resume` |
 | **LLM routing** | LiteLLM **Router** (`src/lms/shared/llm/`) — cache, RPM, fallbacks; rule-based parser in CI |
-| **LLM spend** | Postgres `llm_spend_logs`; staff API + UI; Langfuse traces when configured |
-| **Observability** | structlog → stdout; optional Langfuse traces (`make validate-langfuse`) |
+| **LLM spend** | Postgres `llm_spend_logs`; staff API + UI; Langfuse agent spans when configured |
+| **Observability** | structlog → stdout; **Langfuse SDK 4.x** agent spans via `LangfuseTracing` (`make validate-langfuse`); LiteLLM Langfuse callback skipped on v4 (incompatible) |
 
 ---
 
@@ -200,7 +202,9 @@ LANGFUSE_PUBLIC_KEY=...
 LANGFUSE_SECRET_KEY=...
 ```
 
-Validate Langfuse connectivity: `make validate-langfuse`
+Validate Langfuse connectivity: `make validate-langfuse` (uses `LangfuseTracing` in `shared/observability/tracing.py`; pinned `langfuse>=4.0,<5` in `pyproject.toml`).
+
+**Langfuse note:** Agent turn/tool/intent spans use the Langfuse SDK v4 client. LiteLLM’s built-in `"langfuse"` callback expects SDK v2 (`langfuse.version`) and is **skipped** automatically when v4 is installed — LLM completion traces may be absent until LiteLLM catches up; agent audit spans remain fully wired.
 
 ---
 
@@ -236,10 +240,11 @@ Conversational circulation for librarians — governed per [research.md §15](do
 |------|------------------------|
 | Guided issue | “I want to issue a book” → patron → criteria → search → HITL commit |
 | One-shot issue | “Issue Harry Potter to Riya, desk pickup” |
-| Issued books | “What books are issued to Riya?” |
+| Issued books | “What books are issued to Riya?” / “Which books are issued to Priya?” (partial name) |
+| Patron disambiguation | Multiple matches → list with **PATRON_1**, **CARD-***, **ADM-***; reply “PATRON_2” to select |
 | Return | “Return barcode ABC-123” / guided return |
 | Catalog browse | “Browse catalog” / “mystery novels” |
-| Patron lookup | “Lookup patron Riya Sharma” |
+| Patron lookup | “Lookup patron Riya Sharma” / “CARD-12345” / “ADM-2024-001” |
 
 **API** (requires `AGENT_ISSUE_ENABLED=true` and librarian JWT):
 
@@ -342,7 +347,7 @@ Or use `make seed` / `make destroy-native`.
 src/lms/
   api/           # FastAPI app shell: routers, workflows, agent composition
   agent/         # Desk agent: coordinator, tools, intent, messages (LMS-specific masking)
-  reference/     # Patrons, types, class sections
+  reference/     # Patrons, types, class sections; patron_query.py (CARD-/ADM-/name resolution)
   catalog/       # Bibliographic records, holdings
   loan/          # Circulation, orchestrator, fulfillment
   platform/      # LMS app platform: RBAC, API users, auth schemas, library calendar

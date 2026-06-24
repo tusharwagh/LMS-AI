@@ -1,6 +1,6 @@
 # Research — architecture & design discovery
 
-This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–I) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E), **ops/CI hardening** (§13 E17, session F), **agent desk spec** (§13 E18, session G), **Phase 8 implementation + quality pass** (§13 E19, session H), **agent desk UX / messages / refactor** (§13 E20, session I), **friendly query+intent desk copy** (§13 E21, session I cont.), **Langfuse validation + React staff UI MVC** (§13 E22, session I cont.), **agent return + catalog issue workflows + AI assist UI layout** (§13 E24, session I cont.), **guided desk flows + multi-provider LLM + comprehensive intent prompt** (§13 E25, session I cont.), **Twelve-Factor + IMDA governance skill alignment** (§13 E26, session I cont.), **governance audit + code hardening** (§13 E27, session I cont.), **LiteLLM native gateway + spend observability + bulk seed + staff cost UI** (§13 E28, session I cont.), and **circulation reporting module + CI ship workflow + Docker/CI test isolation** (§13 E29, session I cont.), **shared/platform code layout refactor + Cursor rules/skills folder restructure** (§13 E30, session I cont.). **Context handoff** for the latest thread: [§0](#0-current-state-snapshot-jun-2026) + [§13 E30](#e30--session-i-cont-sharedplatform-code-layout-refactor-jun-2026). Prior handoff: [§13 E29](#e29--session-i-cont-reporting-module-ci-ship--ops-fixes-jun-2026). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
+This document preserves **conversation history and reasoning** for **LMS-AI** — the K‑12 Library Management system—including **prior Cursor sessions** (§3, sessions A–I) and the **architecture discovery session** (§4, session D) plus the **implementation & workflow session** (§13, session E), **ops/CI hardening** (§13 E17, session F), **agent desk spec** (§13 E18, session G), **Phase 8 implementation + quality pass** (§13 E19, session H), **agent desk UX / messages / refactor** (§13 E20, session I), **friendly query+intent desk copy** (§13 E21, session I cont.), **Langfuse validation + React staff UI MVC** (§13 E22, session I cont.), **agent return + catalog issue workflows + AI assist UI layout** (§13 E24, session I cont.), **guided desk flows + multi-provider LLM + comprehensive intent prompt** (§13 E25, session I cont.), **Twelve-Factor + IMDA governance skill alignment** (§13 E26, session I cont.), **governance audit + code hardening** (§13 E27, session I cont.), **LiteLLM native gateway + spend observability + bulk seed + staff cost UI** (§13 E28, session I cont.), and **circulation reporting module + CI ship workflow + Docker/CI test isolation** (§13 E29, session I cont.), **shared/platform code layout refactor + Cursor rules/skills folder restructure** (§13 E30, session I cont.), **Langfuse v4 compatibility, multi-record disambiguation, workflow patron_query, issued-books wildcards** (§13 E31, session I cont.). **Context handoff** for the latest thread: [§0](#0-current-state-snapshot-jun-2026) + [§13 E31](#e31--session-i-cont-langfuse-v4-disambiguation--workflow-patron-query-jun-2026). Prior handoff: [§13 E30](#e30--session-i-cont-sharedplatform-code-layout-refactor-jun-2026). Use it to **rebuild context** after a break, onboard collaborators, or infer **user/product preferences** when extending the system.
 
 **Go-live gate (summary):** [§14](#14-go-live-checklist-summary) — full matrix in [go-live-checklist.md](go-live-checklist.md).  
 **Agent governance (summary):** [§15](#15-agent-governance-imda-mgf--enterprise-charter) — IMDA MGF v1.5 + **Twelve-Factor App** deployment discipline; Langfuse observability.  
@@ -22,15 +22,17 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 | **Agent desk** | Done | `coordinator.py`, `tools.py`, `messages.py`, `tracing.py`, `llm.py`, `llm_intent_prompt.py` |
 | **Agent WF-01** | Done | Guided + one-shot issue; catalog search → copy → patron → HITL commit → fulfillment |
 | **Agent WF-02** | Done | Return by barcode / title / patron; multi-loan list; HITL select + commit; rollback on failure |
-| **Patron desk** | Done | “What books are issued to [patron]?” → list loans → next action (return / issue / catalog / done) |
+| **Patron desk** | Done | “What books are issued to [patron]?” — partial names (“Priya”); **CARD-***/**ADM-***/**PATRON_N**; list loans → next action |
+| **Lookup disambiguation** | Done | Multiple patrons/copies/loans → candidate list with business keys; staff select — no hard ambiguity errors |
+| **Workflow patron_query** | Done | `patron_query.py`; WF-01/WF-02 combined lookup; 409 + `details.patrons` on wizard ambiguity |
 | **Guided flows** | Done | Issue, return, catalog browse, patron lookup — step-by-step with cancel (`decline_continue`) |
-| **LLM routing** | Done | **`src/lms/shared/llm/`** — LiteLLM **Router**, native cache/RPM, Langfuse callbacks, Postgres spend |
+| **LLM routing** | Done | **`src/lms/shared/llm/`** — LiteLLM **Router**, native cache/RPM, Postgres spend; LiteLLM Langfuse callback skipped on SDK v4 |
 | **LLM cost reporting** | Done | `llm_spend_logs` table; `GET /api/v1/llm-spend/*`; staff UI **LLM costs** panel |
 | **Intent prompt** | Done | `llm_intent_prompt.py` — all 33 `IntentAction` values, 8 workflows, session_context table, 40+ examples |
 | **Reporting** | Done | `src/lms/reporting/` — dashboard API, custom reports (JSON/CSV), presets; `HoldingStatus` **DAMAGED** / **LOST** |
 | **Staff UI** | Done | `src/lms/staff/ui/` → `make staff-ui-build`; AI assist + **Administration → Dashboard** + **LLM costs** |
 | **Desk copy** | Done | Intent-aware helpers in `messages.py`; UI renders API text verbatim |
-| **Langfuse (G13)** | Wired + validated | `make validate-langfuse`; runs on `make build`; `LANGFUSE_HOST` or `LANGFUSE_BASE_URL` |
+| **Langfuse (G13)** | Wired + validated | SDK **4.x** agent spans in `tracing.py`; `make validate-langfuse`; LiteLLM callback auto-skipped on v4 |
 | **Governance skills** | Reorganized | Generic vs LMS-AI under `.cursor/rules/{generic,lms-ai}/` and `.cursor/skills/{generic,lms-ai}/` — see [.cursor/README.md](../.cursor/README.md) |
 | **Code layout** | Refactored | **`shared/`** — `http/`, `auth/deps`, `llm/`, `observability/`, `privacy/`; **`platform/`** — RBAC, API users, auth service, `library_today()` |
 | **Governance code** | Hardened | Production `Settings` validation; LLM input + session history redaction; HITL blocks new messages; sanitized approval `details`; `intent_span` / `hitl_event` audit |
@@ -39,7 +41,7 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 | **Sample seed** | **~1,614 rows** | `make seed` — demo fixtures + bulk K-12 patrons/catalog/holdings/loans |
 | **Go-live** | Pending | G1–G10 unchecked; **G13 charter sign-off** still operational |
 
-**Session I arc (post-E19):** rules/skills → messages → intent-aware copy → React CRM → Playwright → Langfuse → WF-02 return → catalog-first issue → **guided desk flows** → **issued-books inquiry** → **multi-provider LLM** → **comprehensive intent prompt** → **Twelve-Factor + IMDA skill** → **governance audit + code hardening** → **LiteLLM Router gateway + Postgres spend + staff cost UI + bulk seed** → **reporting bounded context + ci-ship + Docker/CI fixes** → **shared/platform split + generic Cursor guidance folders**. Detail: §3.11, §13 E20–E30.
+**Session I arc (post-E19):** … → **shared/platform split + generic Cursor guidance folders** → **Langfuse v4 + disambiguation + workflow patron_query** (E31). Detail: §3.11, §13 E20–E31.
 
 **Open next:** G13 IMDA charter sign-off (§15.8); **durable agent session store** (Postgres/Redis for multi-worker); eval datasets; live LLM staging outside mock CI.
 
@@ -1028,10 +1030,11 @@ Agent-specific controls layered on standard app security:
 
 ### 15.4 Observability — Langfuse (not LangSmith)
 
-Observability stack standardized on **Langfuse**:
+Observability stack standardized on **Langfuse** (pinned **`langfuse>=4.0,<5`**):
 
-- **Integration:** `langfuse.langchain.CallbackHandler` or `@observe` decorator on tool spans
-- **Env:** `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST`
+- **Agent spans (primary):** `shared/observability/tracing.py` — `LangfuseTracing` with SDK v4 client (`turn_span`, `tool_span`, `intent_span`, `hitl_event`); `_langfuse_observation()` swallows enter/exit failures only — body exceptions propagate
+- **LiteLLM callback (optional):** registered in `shared/llm/setup.py` only when SDK exposes `langfuse.version` (v2 API); **skipped on v4** — LiteLLM’s LangFuseLogger is incompatible until upstream fix
+- **Env:** `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST` / `LANGFUSE_BASE_URL`
 - **Metadata:** `agent_id`, `thread_id`, `risk_tier` on every trace
 - **Metrics:** execution time (ms), tool success/failure rate, human override count, policy blocks, PII access count
 - **Evals:** Langfuse datasets + scores for regression on tool selection and policy adherence
@@ -1884,7 +1887,7 @@ Applied: `.cursor/skills/imda-agentic-ai-governance/SKILL.md`, `clean-code-ddd-l
 | API leakage | `masking.py`, `coordinator.py` | `sanitize_approval_details()` strips UUIDs from HITL `details` on API |
 | Observability (Factor XI) | `tracing.py` | `intent_span`, `hitl_event`, `args_redacted=True` on tool logs |
 | Composition | `agent_composition.py` | Shared `AgentTracing` for coordinator + parser |
-| Desk copy | `messages.py` | Plain language — no `LOAN_N` / `COPY_N` / `PATRON_N` in staff strings |
+| Desk copy | `messages.py` | Plain language — no raw UUIDs in staff strings; **business keys** (PATRON_N, COPY_N, LOAN_N, CARD-*, ADM-*) in candidate lists |
 | Session store doc | `session.py` | Documented in-process MVP limit (Factor VI gap) |
 | Tests | `test_security.py`, `test_agent_issue.py`, `test_intent_and_masking.py` | Production config, pending block, redaction/sanitize |
 
@@ -1918,14 +1921,14 @@ Replaced manual `litellm.completion()` loop with **`litellm.Router`** and idempo
 |-----------|------|------|
 | Router config | `shared/llm/routing.py` | `build_router_config()` — model_list, fallbacks, deployment RPM |
 | Gateway | `shared/llm/gateway.py` | `LlmGateway.complete()` — guardrails → Router or optional `LLM_PROXY_URL` pass-through |
-| Setup | `shared/llm/setup.py` | `configure_litellm()` — `litellm.cache`, Langfuse callbacks, spend logger |
+| Setup | `shared/llm/setup.py` | `configure_litellm()` — `litellm.cache`, conditional Langfuse callback (SDK v2 only), spend logger |
 | Spend ORM + callback | `shared/llm/spend.py` | `LlmSpendLog`, `LlmSpendLogger(CustomLogger)` → Postgres |
 | Migration | `alembic/versions/005_llm_spend_logs.py` | Table `llm_spend_logs` |
 | Agent facade | `agent/llm.py` | Re-exports from `shared.llm` |
 
 **Removed:** custom `cache.py`, `rate_limit.py` (replaced by LiteLLM cache + Router RPM). **Kept:** `guardrails.py` (pre-call validation), `cost.py` (result extraction).
 
-**Langfuse:** when `LANGFUSE_*` set, LiteLLM `success_callback` / `failure_callback` include `"langfuse"`; agent HITL/tool spans remain in `tracing.py`.
+**Langfuse:** when `LANGFUSE_*` set, LiteLLM registers `"langfuse"` callback **only if** SDK v2 API present (`langfuse.version`); on SDK v4 the callback is skipped — agent HITL/tool spans remain in `tracing.py`.
 
 **New env vars:** `LLM_PROXY_URL`, `LLM_PROXY_API_KEY`, `LLM_CACHE_TYPE` (`local`|`redis`), `LLM_CACHE_REDIS_URL`.
 
@@ -2109,6 +2112,58 @@ Six contracts: reference, catalog, loan, agent, **shared must not import platfor
 
 ---
 
+### E31 — Session I (cont.): Langfuse v4, disambiguation & workflow patron_query (Jun 2026)
+
+**User asks (sequence):** Pin Langfuse SDK 4.x; fix LiteLLM callback crash; improve agent/workflow patron lookup (partial names, business keys); multi-record disambiguation without hard errors; issued-books wildcards (“Which books are issued to Priya?”); revert dev config defaults.
+
+#### E31.1 Langfuse SDK 4.x + LiteLLM compatibility
+
+| Issue | Fix |
+|-------|-----|
+| LiteLLM `LangFuseLogger` imports `langfuse.version.__version__` (SDK v2) | `shared/llm/setup.py` — `_litellm_langfuse_callback_compatible()` checks `hasattr(langfuse, "version")`; skips `"langfuse"` callback on v4 with structlog `litellm_langfuse_callback_skipped` |
+| Dependency drift | `pyproject.toml` — `langfuse>=4.0,<5` |
+| Span context manager swallowed body exceptions | `tracing.py` — `_langfuse_observation()` catches enter/exit failures only; exceptions inside `turn_span` / `tool_span` / `intent_span` bodies propagate |
+
+**Audit path:** Agent spans via `LangfuseTracing` (SDK v4 client) remain primary G13 evidence; `make validate-langfuse` unchanged.
+
+#### E31.2 Agent multi-record disambiguation
+
+When lookups return multiple patrons, catalog copies, or open loans:
+
+- Coordinator/tools list **candidates with business keys** — **PATRON_N**, **COPY_N**, **LOAN_N**, plus **CARD-***, **ADM-***, barcodes when applicable
+- Staff reply with a key from the list (`select_patron`, `select_catalog_copy`, `select_return_loan`) — **not** a terminal error
+- Files: `coordinator.py`, `tools.py`, `intent_parser.py`, `messages.py`, `llm_intent_prompt.py`
+
+#### E31.3 Issued-books / partial-name intents
+
+Rule parser `_parse_issued_books_query()` and LLM prompt § workflows C handle:
+
+- Partial names: “Which books are issued to Priya?”
+- Business keys in message: **CARD-***, **ADM-***, **PATRON_N**
+- Maps to `start_patron_desk` + `patron_query` / `card_barcode` / `external_ref` / `patron_pseudonym`
+
+#### E31.4 Workflow business-key resolution
+
+| Component | Role |
+|-----------|------|
+| `reference/application/patron_query.py` | `parse_patron_query()` — UUID, **CARD-***, **ADM-***, partial name (punctuation stripped) |
+| `ReferenceService.search_patrons()` | Wildcard search using parsed query |
+| `ReferenceService.resolve_patron_lookup()` | Single patron; **409** + `details.patrons` on name ambiguity |
+| WF-01 schemas | `IssueStartRequest.patron_query`, `IssueSearchPatronsRequest.query` |
+| WF-02 | `return_book.py` — same patron resolution |
+
+Tests: `tests/unit/test_patron_query.py`, `tests/integration/test_domain_services.py`, `tests/e2e/test_workflow_issue_return.py`.
+
+#### E31.5 Config defaults (dev)
+
+Reverted in `config.py`: `agent_issue_enabled: bool = False`, `agent_mock_llm: bool = True` — agent off and mock LLM in fresh `.env` unless explicitly enabled.
+
+#### E31.6 Docs updated
+
+`README.md`, `MVP.md`, `runbook.md`, `reference.md`, `research.md` §0 + E31; `.cursor/skills/lms-ai/*`.
+
+---
+
 ## 16. Clean Code, DDD & implementation patterns
 
 **Session focus (Jun 2026):** Codify engineering craft for this repo — **Clean Code** (Robert C. Martin), **Implementation Patterns** (Kent Beck), **Implementing DDD** (Vaughn Vernon) — applied to **Python 3.12**, **FastAPI**, **SQLAlchemy**, **LangChain / LangGraph**, and **Langfuse**.
@@ -2202,7 +2257,7 @@ When implementing or reviewing code:
 - **Intent-aware messages** — slot guards and coordinator responses use `messages.*(action=IntentAction.…)`; never generic “missing field” strings (§13 E20–E21).
 - **Query echo** — search/success/not-found helpers include the librarian’s typed query or selected barcode/title where helpful.
 - **CHAT vs search** — `intent_parser.py` routes greetings and help to `IntentAction.CHAT`; empty message → `EMPTY_MESSAGE`; coordinator uses `reply_hint` or `help_for_unknown_intent`.
-- **Plain desk copy** — all staff strings in `messages.py`; ban UUIDs, pseudonyms, tool names, “slots”, “HITL”, internal IDs in `assistant_message`.
+- **Plain desk copy** — all staff strings in `messages.py`; ban raw UUIDs and internal jargon in `assistant_message`; **business keys** in candidate lists are intentional (§13 E31).
 - **Composed Method guards** — `_patron_id` / `_holding_id` / `_patron_and_holding(action)`; `IssueSlots.has_patron_and_holding` for commit preconditions; first missing slot wins with its action-specific message.
 - Langfuse via `AgentTracing` at coordinator boundary; PII via pseudonyms + `redact_for_audit`; ops check via `make validate-langfuse`.
 - **Twelve-Factor:** config via `Settings` only; stateless workers + DB session; structlog stdout + Langfuse spans — see §15.9.

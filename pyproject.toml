@@ -81,10 +81,25 @@ python_version = "3.12"
 strict = true
 packages = ["lms"]
 mypy_path = "src"
+exclude = ["^\\.venv/", "^\\.mypy_cache/"]
 
 [[tool.mypy.overrides]]
 module = ["jose.*"]
 ignore_missing_imports = true
+
+# Skip deep traversal of heavy third-party trees (faster CI; avoids OneDrive
+# timeouts when .venv files are cloud-only).
+[[tool.mypy.overrides]]
+module = [
+    "markdown_it.*",
+    "mdurl.*",
+    "langchain.*",
+    "langchain_core.*",
+    "langgraph.*",
+    "langfuse.*",
+    "langsmith.*",
+]
+follow_imports = "skip"
 
 [tool.importlinter]
 root_package = "lms"

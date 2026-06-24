@@ -18,11 +18,11 @@ Execution plan for the LMS-AI K‑12 Library Management MVP.
 | 3 Catalog | **Done** | Draft/publish/holdings under `/api/v1/catalog` |
 | 4 Circulation | **Done** | `CirculationOrchestrator`, ports, partial unique index |
 | 5 Queries | **Done** | Lendable search, open/overdue with display labels; G1 E2E |
-| **5A Workflows** | **Done** | WF-01, WF-02 + rollback/name lookup |
+| **5A Workflows** | **Done** | WF-01, WF-02 + rollback; **`patron_query`** (UUID, CARD-*, ADM-*, partial name); 409 ambiguity |
 | **5B Fulfillment** | **Done** | Delivery/pick-up in MVP scope (MVP.md §5.1) |
 | 6 Staff UI | **Done** | Issue/return wizards at `/staff/` |
 | 7 Hardening | **Done** | Concurrency, idempotency, SLO tests; [runbook.md](runbook.md), [go-live-checklist.md](go-live-checklist.md) |
-| **8 Agent desk** | **Done** | Guided flows + patron desk; LiteLLM Router gateway; Postgres spend + staff cost UI; governance hardening (E27); `make test-agent` (33) |
+| **8 Agent desk** | **Done** | Guided flows + patron desk; multi-record disambiguation; LiteLLM Router; Langfuse SDK 4.x spans; `make test-agent` (33) |
 | **9 Reporting** | **Done** | Dashboard + custom reports (JSON/CSV); `src/lms/reporting/`; staff **Dashboard** panel; `HoldingStatus` DAMAGED/LOST; **17** tests (E29) |
 
 ---
@@ -365,7 +365,7 @@ src/lms/api/workflows/router.py
 | Catalog-first issue via agent | **Done** — `test_agent_catalog_issue.py` |
 | LangGraph SOP graph | **Partial** — compiles; business logic in `IssueAgentCoordinator` |
 | Staff desk copy (`messages.py`) | **Done** — centralized plain-language copy; intent-aware guards; CHAT routing |
-| Langfuse integration | **Done** — `tracing.py` + `AgentTracing` in coordinator; charter sign-off still pending |
+| Langfuse integration | **Done** — SDK 4.x `LangfuseTracing` in `tracing.py`; LiteLLM callback skipped on v4; charter sign-off still pending |
 | Twelve-Factor ops baseline | **Done** — config in `Settings`; `make ci-native` gate; structlog stdout; admin via Makefile |
 | Governance runtime controls (E27) | **Done** — production config validation; LLM/history redaction; HITL message block; sanitized approval details; audit spans |
 | Durable agent session store | **Pending** — in-process MVP; Postgres/Redis for multi-worker |

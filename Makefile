@@ -14,6 +14,9 @@ BIN := $(VENV)/bin
 NODE ?= node
 NPM ?= npm
 PLAYWRIGHT_BROWSERS_PATH ?= $(CURDIR)/.playwright-browsers
+# Outside OneDrive — avoids corrupted SQLite shards and sync stalls during mypy.
+MYPY_CACHE_DIR ?= /tmp/lms-ai-mypy-cache
+export MYPY_CACHE_DIR
 COMPOSE := docker compose
 IMAGE ?= lms-ai:local
 API_HOST ?= 127.0.0.1
@@ -52,6 +55,7 @@ help:
 	@echo "  make phase8                Agent desk tests (G11–G13)"
 	@echo "  make diagram               Regenerate docs/diagrams/lms-architecture.tldr"
 	@echo "  make lint                  Run ruff, import-linter, and mypy"
+	@echo "  make clean-mypy-cache      Remove mypy cache (fix INTERNAL ERROR / timeouts)"
 	@echo "  make ci                    Lint + test + Docker build"
 	@echo "  make ci-native             Lint + test (no Docker)"
 	@echo "  make ci-ship               ci-native, then prompt commit message and push"
@@ -162,6 +166,9 @@ ensure-node-modules: ensure-node
 
 diagram: ensure-node-modules
 	$(NODE) scripts/generate-architecture-diagram.mjs
+
+clean-mypy-cache:
+	rm -rf .mypy_cache "$(MYPY_CACHE_DIR)"
 
 lint:
 	$(BIN)/ruff check src tests scripts

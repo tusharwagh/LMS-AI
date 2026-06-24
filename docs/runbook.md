@@ -283,7 +283,11 @@ GROQ_API_KEY=...
 OPENAI_API_KEY=...
 ```
 
-Routing implementation: `src/lms/shared/llm/` (`LlmGateway` via LiteLLM `Router`, Langfuse callbacks, Postgres spend in `llm_spend_logs`; query service in `shared/llm/spend_queries.py`). Intent classification prompt: `src/lms/agent/llm_intent_prompt.py`. Langfuse ops check: `scripts/validate_langfuse.py` → `shared/observability/tracing.py`.
+Routing implementation: `src/lms/shared/llm/` (`LlmGateway` via LiteLLM `Router`, optional Langfuse callbacks, Postgres spend in `llm_spend_logs`; query service in `shared/llm/spend_queries.py`). Intent classification prompt: `src/lms/agent/llm_intent_prompt.py`. Langfuse ops check: `scripts/validate_langfuse.py` → `shared/observability/tracing.py`.
+
+**Langfuse SDK 4.x:** dependency pinned `langfuse>=4.0,<5`. Agent audit spans (`turn_span`, `tool_span`, `intent_span`) use `LangfuseTracing` (SDK v4 client). LiteLLM registers `"langfuse"` in success/failure callbacks only when the SDK exposes `langfuse.version` (v2 API); on v4, `setup.py` skips that callback and logs `litellm_langfuse_callback_skipped` — `make validate-langfuse` still validates agent spans.
+
+**Patron lookup (workflows + agent):** `reference/application/patron_query.py` — `parse_patron_query()` accepts patron UUID, **CARD-***, **ADM-***, or partial display name (trailing `?.!,` stripped). WF-01 `IssueStartRequest.patron_query` and `IssueSearchPatronsRequest.query`; return workflow uses the same resolution. Ambiguous name → **409 CONFLICT** with `details.patrons` (wizard) or candidate list in agent chat (**PATRON_N**, card, admission).
 
 **Cost reporting (staff/admin):** `GET /api/v1/llm-spend/logs` (paginated list with optional `from_date`, `to_date`, `purpose`, `model`, `session_id`, `operator_id`) and `GET /api/v1/llm-spend/summary` (aggregates by purpose/model). Requires librarian or admin JWT. Staff desk: **Administration → LLM costs** (`LlmSpendPanel`).
 
@@ -330,14 +334,16 @@ Writes require librarian approval via `pending_approval` and `POST /api/v1/agent
 | Patron desk / issued books | “What books are issued to Riya?”, “List open loans for Sharma” | `start_patron_desk`, `provide_patron_for_desk`, `desk_start_*` |
 | Return | “Return barcode ABC-123”, “I want to return a book” | `lookup_return`, `start_return`, `request_commit_return` |
 | Catalog browse | “Browse catalog”, “mystery novels” | `start_catalog_search`, `provide_catalog_criteria` |
-| Patron lookup | “Lookup patron”, “Riya Sharma” | `start_patron_lookup`, `provide_patron_lookup` |
+| Patron lookup | “Lookup patron”, “Riya Sharma”, “CARD-12345” | `start_patron_lookup`, `provide_patron_lookup`, `select_patron` |
 | Cancel guided flow | “cancel”, “never mind” | `decline_continue` |
 
-Full action list and LLM examples: `src/lms/agent/llm_intent_prompt.py`. Rule-based fallback: `src/lms/agent/intent_parser.py` (used when `AGENT_MOCK_LLM=true` or LLM unavailable).
+**Disambiguation:** When patron, catalog copy, or return-loan lookups return multiple rows, the agent lists candidates with business keys (**PATRON_N**, **COPY_N**, **LOAN_N**, plus **CARD-***/**ADM-***/barcode when shown). Staff reply with a key from the list — ambiguity is never a terminal error.
+
+Full action list and LLM examples: `src/lms/agent/llm_intent_prompt.py`. Rule-based fallback: `src/lms/agent/intent_parser.py` (used when `AGENT_MOCK_LLM=true` or LLM unavailable); issued-books partial names via `_parse_issued_books_query()`.
 
 ### Staff-facing messages
 
-Librarians see `assistant_message` and approval `summary` from the API — built in `src/lms/agent/messages.py`, not in the UI. Copy is plain desk language (patron names, titles, barcodes); it echoes search queries where relevant and always includes a next action. If responses look technical (UUIDs, tool names, “missing slot”), treat as a defect — see [research.md §13 E21](research.md).
+Librarians see `assistant_message` and approval `summary` from the API — built in `src/lms/agent/messages.py`, not in the UI. Copy is plain desk language (patron names, titles, barcodes). Candidate lists include business keys (**PATRON_N**, **COPY_N**, **LOAN_N**, **CARD-***, **ADM-***) for selection; raw UUIDs must not appear. If responses look technical (UUIDs, tool names, “missing slot”), treat as a defect — see [research.md §13 E21](research.md).
 
 ### Pre-enable checklist
 
@@ -353,7 +359,7 @@ Librarians see `assistant_message` and approval `summary` from the API — built
 make validate-langfuse
 ```
 
-Expect `auth_ok: True` and a test `turn:validate` / `tool:search_patrons` span in your Langfuse project. US cloud projects must use `https://us.cloud.langfuse.com`, not the default EU host.
+Expect `auth_ok: True` and a test `turn:validate` / `tool:search_patrons` span in your Langfuse project (agent tracing via SDK v4). US cloud projects must use `https://us.cloud.langfuse.com`, not the default EU host.
 
 ### Incident response (agent)
 

@@ -194,7 +194,7 @@ Architecture (ADR-021, ADR-025):
 | `llm_intent_prompt.py` | `LLM_INTENT_SYSTEM` — all workflows; governance + session_context |
 | `messages.py` | Staff-facing desk copy — single source for `assistant_message` and approval summaries |
 | `schemas.py` | `IntentAction`, `ParsedIntent`, agent API Pydantic models |
-| `tracing.py` | Re-export facade → `shared.observability.tracing.LangfuseTracing` |
+| `tracing.py` | Re-export facade → `shared.observability.tracing.LangfuseTracing` (SDK v4; `_langfuse_observation` propagates body exceptions) |
 | `graph.py` | Minimal LangGraph SOP (structural; business logic stays in coordinator) |
 
 ### Tool design rules
@@ -207,6 +207,8 @@ RESTRICTED_TOOL_NAMES  # never bound: direct_db, admin_api, remote_mcp, ...
 
 - Tools return `ToolResult(ok, message, data)` — consistent agent-consumable shape.
 - Use pseudonyms in tool output; map back to real IDs only inside coordinator on approved writes.
+- **Multi-match disambiguation:** return candidate lists with business keys (**PATRON_N**, **COPY_N**, **LOAN_N**, CARD-*, ADM-*); never fail hard on ambiguity — staff select via `select_*` intents.
+- Patron resolution delegates to `ReferenceService` / `parse_patron_query()` — same as WF-01/WF-02 `patron_query`.
 - `IssueTools` receives `SearchAndIssueWorkflow` and `FulfillmentService` — not raw ORM queries.
 - **Slot guards (Composed Method):** one prerequisite per private helper; compose for multi-slot tools.
   - `_patron_id(slots, action)` / `_holding_id(slots, action)` — each returns `UUID | ToolResult` with an intent-specific message from `messages.py` (`missing_patron_for`, `missing_copy_for`).
@@ -256,7 +258,7 @@ Coordinator passes `intent.action` into tool guards and uses desk helpers for tu
 ## Observability
 
 - **structlog** via `lms/shared/logging.py` — structured fields, correlation ID from middleware.
-- **Langfuse**: configure from `Settings`; trace LLM intent parsing and agent turns at coordinator boundary.
+- **Langfuse**: SDK **4.x** (`langfuse>=4.0,<5`); agent spans via `LangfuseTracing` in `shared/observability/tracing.py`; LiteLLM `"langfuse"` callback skipped when SDK lacks `langfuse.version`.
 - Never log raw patron names/barcodes in production traces; use `redact_for_audit`.
 
 ---

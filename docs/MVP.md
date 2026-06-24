@@ -35,7 +35,7 @@ Two primary **librarian workflows** compose existing domain commands and queries
 
 | Step | Action | Type | Domain rules validated |
 |------|--------|------|------------------------|
-| 1 | Identify patron (card / admission no. / **name**) | Query | Patron exists |
+| 1 | Identify patron (card / admission no. / **name** / **`patron_query`**) | Query | Patron exists; 409 + candidate list if ambiguous |
 | 2 | Pre-flight eligibility preview | Query via ports | REF-P6, REF-B2, LN-R1, LN-R2 |
 | 3 | Search catalog (title / ISBN / call no.) | Query | CAT-5, XCAT-1 (published only for issue UI) |
 | 4 | Select copy / scan barcode | Query | LN-H1, HLD-4, HLD-5 (`AVAILABLE`, `circulating`) |
@@ -80,7 +80,7 @@ sequenceDiagram
 - Authoritative checks remain in domain ports and the orchestrator; the workflow aggregates failures for desk UX.
 - Rule IDs map to existing catalogs: REF-P*, REF-B*, CAT-*, XCAT-*, LN-P*, LN-H*, LN-R*, LN-X*.
 
-**Planned API surface:** `POST /api/v1/workflows/issue/start`, `.../issue/search-patrons`, `.../issue/back`, `.../issue/cancel`, `.../issue/commit`, `POST /api/v1/workflows/return/...` (see [plan-mvp.md](plan-mvp.md) Phase 5A/5B).
+**Planned API surface:** `POST /api/v1/workflows/issue/start` (`patron_query` or legacy fields), `.../issue/search-patrons` (`query`), `.../issue/back`, `.../issue/cancel`, `.../issue/commit`, `POST /api/v1/workflows/return/...` (same patron resolution). Combined lookup: UUID, **CARD-***, **ADM-***, or partial display name via `reference/application/patron_query.py` (see [plan-mvp.md](plan-mvp.md) Phase 5A/5B).
 
 **Rollback:** Before commit, **`POST .../issue/back`** returns the desk to an earlier wizard step (client-held state). After commit, **`POST .../issue/cancel`** reverses the loan via `ReturnHolding` and cancels open ISSUE fulfillments (orchestrator only).
 
@@ -108,7 +108,7 @@ Librarians interact with WF-01/WF-02 as a **dialogue** instead of only the fixed
 
 | Graph step | Librarian intent (examples) | Tools (read / write) | HITL |
 |------------|----------------------------|----------------------|------|
-| 1 | “Find patron Riya” / admission no. | `search_patrons`, `resolve_patron` (read) | If multiple matches |
+| 1 | “Find patron Riya” / admission no. / **CARD-*** / partial “Priya” | `search_patrons`, `resolve_patron` (read) | If multiple matches → **candidate list** (PATRON_N, CARD-*, ADM-*); staff select — not a hard error |
 | 2 | “Can she borrow?” | `resolve_patron` (includes patron eligibility), `validate_issue` (read) | If violations — explain only |
 | 3 | “Search Harry Potter” | `search_lendable` (read) | If ambiguous title |
 | 4 | “Use barcode ABC123” | `select_barcode` (read; via `find_lendable_copy_by_barcode`) | — |
@@ -133,7 +133,7 @@ On tool failure: **halt and notify** — no unbounded self-retry (IMDA SOP; see 
 |----------|---------|----------------------|
 | **Guided issue** | Step-by-step checkout when details are missing | “I want to issue a book” → patron → subject/title → copy → HITL |
 | **One-shot issue** | Title + patron in one turn | “Issue Harry Potter to Riya Sharma, desk pickup” |
-| **Patron desk** | List books currently issued to a patron | “What books are issued to Riya Sharma?” |
+| **Patron desk** | List books currently issued to a patron | “What books are issued to Riya Sharma?” / “Which books are issued to Priya?” |
 | **Return** | Check-in by barcode, title, or patron | “Return barcode ABC-123”, “I want to return a book” |
 | **Catalog browse** | Find lendable copies without issuing yet | “Browse catalog”, “science fiction” |
 | **Patron lookup** | Identity / eligibility only | “Lookup patron”, “Riya Sharma” |
@@ -149,7 +149,8 @@ All librarian-visible text is built in `src/lms/agent/messages.py` and returned 
 
 | Guideline | Requirement |
 |-----------|-------------|
-| Plain language | Patron names, titles, barcodes — never UUIDs, pseudonyms, tool names, "slots", "HITL", or internal field names |
+| Plain language | Patron names, titles, barcodes — never raw UUIDs, tool names, "slots", "HITL", or internal field names |
+| Business keys in lists | When multiple patrons/copies/loans match, show **PATRON_N**, **COPY_N**, **LOAN_N**, **CARD-***, **ADM-*** so staff can reply with a key — not internal UUIDs |
 | Intent-specific | Messages tied to `IntentAction` (e.g. missing patron before commit vs before barcode select) |
 | Query echo | Search and not-found replies reference what the librarian typed (`'Riya Sharma'`, `'Harry Potter'`) |
 | Issue + next action | Every response states what is wrong/missing **and** what to do next |
@@ -656,7 +657,7 @@ Decisions are numbered **ADR-001** … for traceability in §11.
 | **Application** | **Workflow coordinators** (§2.1) | `SearchAndIssueWorkflow`, `ReturnBookWorkflow`; `IssueEligibilityValidator` → `ValidationReport` |
 | **Application** | **Fulfillment service** | `CirculationFulfillment` state transitions for delivery/pick-up |
 | **Application** | **Agent coordinator** (§2.2, Phase 8) | `IssueAgentCoordinator` — LangGraph SOP, governance node, HITL; tools → workflow layer |
-| **Infrastructure** | **LLM router** | LiteLLM → Groq (primary) / HF Inference (fallback); Langfuse callbacks |
+| **Infrastructure** | **LLM router** | LiteLLM Router → multi-provider; agent Langfuse spans (SDK 4.x); LiteLLM Langfuse callback conditional |
 | **Domain** | Aggregates | `Patron`, `PatronType`, `ClassSection`, `PatronBlock`; `Catalog`, `Holding`; `Loan`, `LoanRuleSet`, `CirculationFulfillment` |
 | **Domain** | **PolicyResolver** | Resolve `LoanRuleSet` from patron type; compute `dueDate` |
 | **Domain** | Ports | `PatronEligibilityPort`, `HoldingLendabilityPort` |
@@ -942,7 +943,7 @@ Extends §13.7 for hosted LLM desk agents (OWASP LLM Top 10; IMDA MGF v1.5; Twel
 | HITL on writes | `pending_approval` + `/resume` before commit, cancel, fulfillment transition; new messages blocked while pending | ADR-027; deny-by-default |
 | Bounded consumption | `max_tokens`, max tool calls/turn, API + LLM rate limits | `AGENT_MAX_TOOL_CALLS_PER_TURN` |
 | Secrets | Never in prompts, graph checkpoints, or Langfuse spans | `GROQ_API_KEY`, `HF_TOKEN` in env only; production validator enforces keys when agent enabled |
-| Observability | Langfuse: `agent_id`, `thread_id`, redacted args, HITL events; intent + HITL audit spans | Correlate with `X-Correlation-Id` (ADR-018) |
+| Observability | Langfuse SDK **4.x**: `LangfuseTracing` (`turn_span`, `tool_span`, `intent_span`); redacted args, HITL events; correlate with `X-Correlation-Id` (ADR-018). LiteLLM `"langfuse"` callback skipped on v4 (SDK v2 API) — agent spans remain primary audit path | `langfuse>=4.0,<5`; `make validate-langfuse` |
 | Third-party LLM | Document Groq/HF residual risk; pin model versions | ADR-028; no `:fastest` HF routing in prod |
 | Supply chain | No remote MCP for circulation; local tools only | Groq Compound / HF MCP disabled for desk agent |
 | Checkpoint store | Encrypt Postgres checkpointer; retention TTL; no JWT in state | Same classification as app DB |
@@ -978,7 +979,7 @@ Current codebase vs planned work. Authoritative execution tracking: **[plan-mvp.
 | Phase 3 — Catalog | **Done** | Draft/publish/holdings; REST under `/api/v1/catalog` |
 | Phase 4 — Circulation | **Done** | `CirculationOrchestrator`, ports, partial unique index |
 | Phase 5 — Queries | **Done** | Lendable search, open/overdue with display labels; G1 E2E |
-| Phase 5A — Desk workflows | **Done** | WF-01, WF-02 + rollback/name lookup (§2.1) |
+| Phase 5A — Desk workflows | **Done** | WF-01, WF-02 + rollback; **`patron_query`** resolution (UUID, CARD-*, ADM-*, partial name); 409 ambiguity (§2.1) |
 | Phase 5B — Fulfillment | **Done** | Delivery/pick-up in MVP scope (§5.1) |
 | Phase 6 — Staff UI | **Done** | Issue/return wizards at `/staff/` |
 | Phase 7 — Hardening | **Done** | Concurrency, idempotency, SLO, security tests (`test_security.py`); [runbook.md](runbook.md), [go-live-checklist.md](go-live-checklist.md) |

@@ -678,6 +678,18 @@ Attribute notes include **usage** and **standards / references** where applicabl
 
 **See also:** §3.3 **Reference domain ontology** (workflow ↔ use case ↔ action type).
 
+### 8.3 Shipped lookup helpers (application layer)
+
+Workflow and agent desk share patron resolution in `src/lms/reference/application/`:
+
+| Helper | Role |
+|--------|------|
+| `parse_patron_query()` (`patron_query.py`) | Parse combined string → UUID, **CARD-***, **ADM-***, or partial display name |
+| `ReferenceService.search_patrons()` | Wildcard search by parsed query (name ilike, card, admission) |
+| `ReferenceService.resolve_patron_lookup()` | Resolve one patron; **404** if none; **409 CONFLICT** + `details.patrons` if multiple name matches |
+
+WF-01: `IssueStartRequest.patron_query`, `IssueSearchPatronsRequest.query`. WF-02 return uses the same fields. Agent tools delegate to these services — candidate lists use desk pseudonyms (**PATRON_N**) in chat.
+
 ---
 
 ## 9. Standards quick reference (Reference)
