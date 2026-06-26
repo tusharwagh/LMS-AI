@@ -72,8 +72,10 @@ class Settings(BaseSettings):
     langfuse_host: str | None = Field(
         default="https://us.cloud.langfuse.com",
         validation_alias=AliasChoices("LANGFUSE_HOST", "LANGFUSE_BASE_URL"),
- 
     )
+    # NeMo Guardrails (optional — wraps LiteLLM gateway input/output)
+    nemo_guardrails_enabled: bool = False
+    nemo_guardrails_config_path: str = "guardrails/nemoguards"
 
     @property
     def is_production(self) -> bool:

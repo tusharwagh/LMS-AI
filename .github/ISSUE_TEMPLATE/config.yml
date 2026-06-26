@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: AI SDLC charter
+    url: https://github.com/tusharwagh/LMS-AI/blob/main/docs/ai-sdlc/CHARTER.md
+    about: Scope, autonomy levels, and human gates for AI-assisted delivery
+  - name: REQ traceability (plan-mvp §5)
+    url: https://github.com/tusharwagh/LMS-AI/blob/main/docs/plan-mvp.md#5-req-traceability-checklist
+    about: Requirement IDs REQ-01 through REQ-34

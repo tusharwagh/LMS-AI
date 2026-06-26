@@ -84,6 +84,7 @@ Requires [MVP.md §2.2](MVP.md), §13.8, and [research.md §15](research.md) (IM
 | Wizard mode still passes G7–G10 with agent enabled | Regression E2E | ☐ |
 | HF / Together fallback provider pinned (if enabled) | ADR-028; prefer `LLM_PROVIDERS` chain | ☐ |
 | Residual risk (PII to hosted LLM provider(s)) accepted in writing | Charter | ☐ |
+| NeMo Guardrails configured (if enabled) | `NEMO_GUARDRAILS_*`, `NVIDIA_API_KEY` or `OPENAI_API_KEY` per profile; [runbook.md §10](runbook.md) | ☐ |
 | `make ci-native` green on release candidate | Build/test gate before deploy (Twelve-Factor V) | ☐ |
 | Migrations applied before agent run (not via agent tools) | `make migrate` (Twelve-Factor XII) | ☐ |
 | Logs aggregated from stdout (not container log files only) | Ops / school IT log pipeline | ☐ |

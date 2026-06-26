@@ -1,0 +1,63 @@
+name: Feature
+description: New capability or enhancement
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Link work to a requirement where possible. See [REQ checklist](https://github.com/tusharwagh/LMS-AI/blob/main/docs/plan-mvp.md#5-req-traceability-checklist).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / intent
+      description: What user or system need does this address?
+      placeholder: Librarians need to …
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Testable outcomes (bullet list).
+      placeholder: |
+        - Given … when … then …
+        - API returns …
+    validations:
+      required: true
+
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement ID
+      description: From plan-mvp §5 (e.g. REQ-26). Use `N/A` only for net-new scope not yet in MVP.
+      placeholder: REQ-26
+    validations:
+      required: true
+
+  - type: dropdown
+    id: bounded-context
+    attributes:
+      label: Primary bounded context
+      options:
+        - reference
+        - catalog
+        - loan
+        - agent
+        - staff-ui
+        - platform / shared
+        - cross-cutting
+    validations:
+      required: true
+
+  - type: textarea
+    id: test-plan
+    attributes:
+      label: Test plan
+      description: Pytest markers, make targets, or manual steps.
+      placeholder: make test-integration; tests/integration/test_…
+    validations:
+      required: false

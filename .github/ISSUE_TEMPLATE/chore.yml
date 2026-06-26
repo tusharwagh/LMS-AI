@@ -1,0 +1,30 @@
+name: Chore / tooling
+description: Repo hygiene, CI, docs, dependencies (no product feature)
+title: "chore: "
+labels:
+  - chore
+body:
+  - type: textarea
+    id: intent
+    attributes:
+      label: Intent
+      description: What maintenance task and why now?
+    validations:
+      required: true
+
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement ID
+      description: Use `N/A` for chores with no REQ mapping.
+      value: N/A
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      placeholder: make lint; make ci-native
+    validations:
+      required: false

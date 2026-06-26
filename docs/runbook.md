@@ -248,8 +248,11 @@ Conversational circulation desk ([MVP.md §2.2](MVP.md)): guided issue, return, 
 | `LLM_FALLBACK_ENABLED` | `false` | Legacy fallback when `LLM_PROVIDERS` unset |
 | `LLM_FALLBACK_PROVIDER` | `together` | Pin provider; no `:fastest` in production |
 | `LLM_FALLBACK_MODEL` | `Qwen/Qwen2.5-72B-Instruct` | Pin model id |
-| `LLM_MAX_PROMPT_CHARS` | `12000` | Guardrail — max total prompt characters |
-| `LLM_MAX_TOKENS_CAP` | `4096` | Guardrail — max `max_tokens` per request |
+| `LLM_MAX_PROMPT_CHARS` | `12000` | Structural guardrail — max total prompt characters |
+| `LLM_MAX_TOKENS_CAP` | `4096` | Structural guardrail — max `max_tokens` per request |
+| `NEMO_GUARDRAILS_ENABLED` | `false` | Enable NVIDIA NeMo Guardrails input/output rails on `LlmGateway.complete()` |
+| `NEMO_GUARDRAILS_CONFIG_PATH` | `guardrails/nemoguards` | Directory with `config.yml` (+ `prompts.yaml` when needed) |
+| `NVIDIA_API_KEY` | — | Required for **nemoguards** profile (content safety, topic control, jailbreak NIM) |
 | `LLM_CACHE_ENABLED` | `true` | LiteLLM response cache (`LLM_CACHE_TYPE`) |
 | `LLM_CACHE_TYPE` | `local` | `local` or `redis` |
 | `LLM_CACHE_TTL_SECONDS` | `600` | Cache entry lifetime |
@@ -283,7 +286,22 @@ GROQ_API_KEY=...
 OPENAI_API_KEY=...
 ```
 
-Routing implementation: `src/lms/shared/llm/` (`LlmGateway` via LiteLLM `Router`, optional Langfuse callbacks, Postgres spend in `llm_spend_logs`; query service in `shared/llm/spend_queries.py`). Intent classification prompt: `src/lms/agent/llm_intent_prompt.py`. Langfuse ops check: `scripts/validate_langfuse.py` → `shared/observability/tracing.py`.
+**Example — NeMo Guardrails (nemoguards profile):**
+
+```env
+NEMO_GUARDRAILS_ENABLED=true
+NEMO_GUARDRAILS_CONFIG_PATH=guardrails/nemoguards
+NVIDIA_API_KEY=...
+# Intent parsing still uses LiteLLM (e.g. GROQ_API_KEY above)
+```
+
+Alternative **self-check** profile (OpenAI only for rail LLM calls): `NEMO_GUARDRAILS_CONFIG_PATH=guardrails/self-check` and set `OPENAI_API_KEY`.
+
+Routing implementation: `src/lms/shared/llm/` — `LlmGateway.complete()` runs **structural validation** (`guardrails.py`), optional **NeMo input/output rails** (`nemo_guardrails.py`), then LiteLLM `Router` (or optional `LLM_PROXY_URL` pass-through). Postgres spend in `llm_spend_logs`; query service in `shared/llm/spend_queries.py`. Intent classification prompt: `src/lms/agent/llm_intent_prompt.py`. Langfuse ops check: `scripts/validate_langfuse.py` → `shared/observability/tracing.py`.
+
+**NeMo Guardrails flow (when enabled):** staff/user message → NeMo **input** rails (jailbreak / topic / content safety per config) → LiteLLM completion → NeMo **output** rails → `LLMIntentParser` → coordinator (HITL unchanged). Blocked requests raise `LlmGuardrailError`; intent parser falls back to rule-based parsing on LLM/guardrail failure.
+
+**Install:** package extra `guardrails` (`nemoguardrails>=0.22.0`). Dev/CI: `pip install -e ".[dev]"` (includes `nemoguardrails` in dev deps). Production with rails only: `pip install 'lms-ai[guardrails]'`. Config bundles: `guardrails/nemoguards/` (NVIDIA NIMs), `guardrails/self-check/` (LLM self-check). Docs: [NVIDIA NeMo Guardrails](https://docs.nvidia.com/nemo/guardrails/latest/get-started/installation-guide.html).
 
 **Langfuse SDK 4.x:** dependency pinned `langfuse>=4.0,<5`. Agent audit spans (`turn_span`, `tool_span`, `intent_span`) use `LangfuseTracing` (SDK v4 client). LiteLLM registers `"langfuse"` in success/failure callbacks only when the SDK exposes `langfuse.version` (v2 API); on v4, `setup.py` skips that callback and logs `litellm_langfuse_callback_skipped` — `make validate-langfuse` still validates agent spans.
 
@@ -351,6 +369,7 @@ Librarians see `assistant_message` and approval `summary` from the API — built
 - [ ] Residual risk accepted (student/patron data pseudonymized but sent to hosted LLM provider(s))
 - [ ] Langfuse project created; retention policy set
 - [ ] `AGENT_ISSUE_ENABLED=true` only on pilot cohort
+- [ ] If `NEMO_GUARDRAILS_ENABLED=true`: `NVIDIA_API_KEY` (nemoguards) or `OPENAI_API_KEY` (self-check) set; config path exists under `guardrails/`
 - [ ] Wizard workflows (G7–G10) regression-tested with agent flag on
 
 **Validate Langfuse locally** (runs automatically on `make build`; also `make validate-langfuse`):
@@ -369,6 +388,7 @@ Expect `auth_ok: True` and a test `turn:validate` / `tool:search_patrons` span i
 | Wrong issue after approval | Use agent `"Cancel the issue"` (HITL) or WF-01 cancel API; review HITL audit trace |
 | Groq / OpenAI / other provider outage | Agent falls back to next `LLM_PROVIDERS` entry; if all fail, rule parser or 503; use wizard UI at `/staff/` |
 | Suspected prompt injection | Disable agent; review Langfuse trace + governance blocks |
+| NeMo Guardrails blocking legitimate desk phrases | Review `guardrails/*/prompts.yaml` topic rules; temporarily set `NEMO_GUARDRAILS_ENABLED=false`; check structlog `nemo_guardrails_blocked` events |
 
 ---
 

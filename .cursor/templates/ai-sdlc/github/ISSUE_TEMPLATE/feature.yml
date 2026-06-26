@@ -1,0 +1,36 @@
+name: Feature
+description: New capability or enhancement
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / intent
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Testable outcomes (bullet list).
+    validations:
+      required: true
+
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement ID
+      description: From your requirements doc (e.g. REQ-01). Use `N/A` if not mapped yet.
+      placeholder: REQ-01
+    validations:
+      required: true
+
+  - type: textarea
+    id: test-plan
+    attributes:
+      label: Test plan
+    validations:
+      required: false

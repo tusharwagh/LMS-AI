@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: AI SDLC charter
+    url: <REPO_URL>/blob/main/docs/ai-sdlc/CHARTER.md
+    about: Scope and gates for AI-assisted delivery
+  - name: Requirements catalog
+    url: <REPO_URL>/blob/main/docs/<REQUIREMENTS_DOC>.md
+    about: Requirement IDs for traceability

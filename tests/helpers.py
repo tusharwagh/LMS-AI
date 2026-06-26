@@ -22,6 +22,8 @@ _LLM_ISOLATION_DEFAULTS: dict[str, object] = {
     "langfuse_secret_key": None,
     "langfuse_host": None,
     "agent_mock_llm": False,
+    "nemo_guardrails_enabled": False,
+    "nemo_guardrails_config_path": "guardrails/nemoguards",
 }
 
 

@@ -1,0 +1,27 @@
+name: Chore / tooling
+description: Repo hygiene, CI, docs, dependencies
+title: "chore: "
+labels:
+  - chore
+body:
+  - type: textarea
+    id: intent
+    attributes:
+      label: Intent
+    validations:
+      required: true
+
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement ID
+      value: N/A
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+    validations:
+      required: false

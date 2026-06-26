@@ -26,7 +26,7 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 | **Lookup disambiguation** | Done | Multiple patrons/copies/loans → candidate list with business keys; staff select — no hard ambiguity errors |
 | **Workflow patron_query** | Done | `patron_query.py`; WF-01/WF-02 combined lookup; 409 + `details.patrons` on wizard ambiguity |
 | **Guided flows** | Done | Issue, return, catalog browse, patron lookup — step-by-step with cancel (`decline_continue`) |
-| **LLM routing** | Done | **`src/lms/shared/llm/`** — LiteLLM **Router**, native cache/RPM, Postgres spend; LiteLLM Langfuse callback skipped on SDK v4 |
+| **LLM routing** | Done | **`src/lms/shared/llm/`** — LiteLLM **Router**, structural + optional **NeMo Guardrails** I/O rails, native cache/RPM, Postgres spend; LiteLLM Langfuse callback skipped on SDK v4 |
 | **LLM cost reporting** | Done | `llm_spend_logs` table; `GET /api/v1/llm-spend/*`; staff UI **LLM costs** panel |
 | **Intent prompt** | Done | `llm_intent_prompt.py` — all 33 `IntentAction` values, 8 workflows, session_context table, 40+ examples |
 | **Reporting** | Done | `src/lms/reporting/` — dashboard API, custom reports (JSON/CSV), presets; `HoldingStatus` **DAMAGED** / **LOST** |
@@ -41,7 +41,7 @@ This document preserves **conversation history and reasoning** for **LMS-AI** �
 | **Sample seed** | **~1,614 rows** | `make seed` — demo fixtures + bulk K-12 patrons/catalog/holdings/loans |
 | **Go-live** | Pending | G1–G10 unchecked; **G13 charter sign-off** still operational |
 
-**Session I arc (post-E19):** … → **shared/platform split + generic Cursor guidance folders** → **Langfuse v4 + disambiguation + workflow patron_query** (E31). Detail: §3.11, §13 E20–E31.
+**Session I arc (post-E19):** … → **shared/platform split + generic Cursor guidance folders** → **Langfuse v4 + disambiguation + workflow patron_query** (E31) → **NeMo Guardrails on LLM gateway** (E32). Detail: §3.11, §13 E20–E32.
 
 **Open next:** G13 IMDA charter sign-off (§15.8); **durable agent session store** (Postgres/Redis for multi-worker); eval datasets; live LLM staging outside mock CI.
 
@@ -1920,13 +1920,13 @@ Replaced manual `litellm.completion()` loop with **`litellm.Router`** and idempo
 | Component | Path | Role |
 |-----------|------|------|
 | Router config | `shared/llm/routing.py` | `build_router_config()` — model_list, fallbacks, deployment RPM |
-| Gateway | `shared/llm/gateway.py` | `LlmGateway.complete()` — guardrails → Router or optional `LLM_PROXY_URL` pass-through |
+| Gateway | `shared/llm/gateway.py` | `LlmGateway.complete()` — structural guardrails → optional NeMo I/O rails → Router or optional `LLM_PROXY_URL` pass-through |
 | Setup | `shared/llm/setup.py` | `configure_litellm()` — `litellm.cache`, conditional Langfuse callback (SDK v2 only), spend logger |
 | Spend ORM + callback | `shared/llm/spend.py` | `LlmSpendLog`, `LlmSpendLogger(CustomLogger)` → Postgres |
 | Migration | `alembic/versions/005_llm_spend_logs.py` | Table `llm_spend_logs` |
 | Agent facade | `agent/llm.py` | Re-exports from `shared.llm` |
 
-**Removed:** custom `cache.py`, `rate_limit.py` (replaced by LiteLLM cache + Router RPM). **Kept:** `guardrails.py` (pre-call validation), `cost.py` (result extraction).
+**Removed:** custom `cache.py`, `rate_limit.py` (replaced by LiteLLM cache + Router RPM). **Kept:** `guardrails.py` (structural pre-call validation), `cost.py` (result extraction). **Added (E32):** `nemo_guardrails.py` (optional NVIDIA NeMo input/output rails).
 
 **Langfuse:** when `LANGFUSE_*` set, LiteLLM registers `"langfuse"` callback **only if** SDK v2 API present (`langfuse.version`); on SDK v4 the callback is skipped — agent HITL/tool spans remain in `tracing.py`.
 
@@ -2161,6 +2161,44 @@ Reverted in `config.py`: `agent_issue_enabled: bool = False`, `agent_mock_llm: b
 #### E31.6 Docs updated
 
 `README.md`, `MVP.md`, `runbook.md`, `reference.md`, `research.md` §0 + E31; `.cursor/skills/lms-ai/*`.
+
+---
+
+### E32 — Session I (cont.): NeMo Guardrails on LLM gateway (Jun 2026)
+
+**User ask:** Integrate **NVIDIA NeMo Guardrails** in-process on the LiteLLM gateway — input rails (jailbreak / topic / safety) before provider calls, output rails after — without replacing LiteLLM or changing HITL.
+
+#### E32.1 Gateway wiring
+
+| Component | Path | Role |
+|-----------|------|------|
+| Checker | `shared/llm/nemo_guardrails.py` | `NemoGuardrailsChecker` — `LLMRails.check()` with `RailType.INPUT` / `OUTPUT` |
+| Gateway | `shared/llm/gateway.py` | Input rails → `Router.completion()` → output rails |
+| Structural caps | `shared/llm/guardrails.py` | Length, roles, `max_tokens` (unchanged) |
+| Settings | `config.py` | `NEMO_GUARDRAILS_ENABLED`, `NEMO_GUARDRAILS_CONFIG_PATH` |
+
+**Flow:** staff message → NeMo input rails → LiteLLM → NeMo output rails → `LLMIntentParser` → coordinator (HITL unchanged). Blocked → `LlmGuardrailError`; intent parser rule fallback unchanged.
+
+#### E32.2 Config bundles
+
+| Directory | Rails | Keys |
+|-----------|-------|------|
+| `guardrails/nemoguards/` | Content safety, topic control, jailbreak detect (NIM) | `NVIDIA_API_KEY` |
+| `guardrails/self-check/` | LLM self-check input/output | `OPENAI_API_KEY` |
+
+#### E32.3 Packaging & CI
+
+| Item | Detail |
+|------|--------|
+| Optional extra | `pyproject.toml` — `[project.optional-dependencies] guardrails` |
+| Dev / CI | `nemoguardrails>=0.22.0` in `[dev]`; `make install` → `pip install -e ".[dev]"` |
+| Production (rails only) | `pip install 'lms-ai[guardrails]'` |
+| Tests | `tests/unit/test_nemo_guardrails.py`, gateway integration mocks in `test_llm_gateway.py` |
+| Mypy | `nemoguardrails.*` — `ignore_missing_imports` |
+
+#### E32.4 Docs updated
+
+`runbook.md` §10, `MVP.md` §2.2 + §13.8, `go-live-checklist.md`, `research.md` E32.
 
 ---
 

@@ -15,6 +15,10 @@ from lms.shared.llm.models import (
     LlmGatewayError,
     LlmRateLimitError,
 )
+from lms.shared.llm.nemo_guardrails import (
+    NemoGuardrailsChecker,
+    apply_output_content,
+)
 from lms.shared.llm.routing import (
     RouterConfig,
     build_router_config,
@@ -40,6 +44,7 @@ class LlmGateway:
         self._settings = settings
         self._router = router
         self._router_config = router_config
+        self._nemo_guardrails = NemoGuardrailsChecker.from_settings(settings)
 
     @classmethod
     def from_settings(cls, settings: Settings) -> LlmGateway:
@@ -75,6 +80,7 @@ class LlmGateway:
             messages=messages,
             max_tokens=max_tokens,
         )
+        self._nemo_guardrails.validate_input(messages, purpose=purpose)
 
         router_config = self._router_config or build_router_config(self._settings)
         if not router_config.endpoints and not self._settings.llm_proxy_url:
@@ -135,6 +141,15 @@ class LlmGateway:
         usage = extract_usage(response)
         cost_usd = 0.0 if cached else extract_cost_usd(response)
 
+        assistant_content = response.choices[0].message.content or ""
+        validated_content = self._nemo_guardrails.validate_output(
+            messages,
+            assistant_content,
+            purpose=purpose,
+        )
+        if validated_content != assistant_content:
+            apply_output_content(response, validated_content)
+
         logger.info(
             "llm_completion_ok",
             purpose=purpose,
@@ -146,6 +161,7 @@ class LlmGateway:
             prompt_tokens=usage.prompt_tokens if usage else None,
             completion_tokens=usage.completion_tokens if usage else None,
             proxy=bool(self._settings.llm_proxy_url),
+            nemo_guardrails=self._nemo_guardrails.enabled,
         )
 
         return LlmCompletionResult(

@@ -49,3 +49,10 @@ Cursor discovers **rules** under `.cursor/rules/` (including subfolders) and **s
 | `rules/generic/sonarqube-quality.md` | `rules/lms-ai/sonarqube-quality-lms-ai.md` |
 
 Standalone generic rules (no addendum): `code-simplification.md`, `doubt-driven-development.md`.
+
+| Generic rule | LMS-AI addendum |
+|--------------|-----------------|
+| `rules/generic/ai-sdlc-change-log.md` | `rules/lms-ai/ai-sdlc-change-log-lms-ai.md` |
+| `rules/generic/ai-sdlc-charter.md` | `rules/lms-ai/ai-sdlc-charter-lms-ai.md` |
+
+**AI SDLC template** (bootstrap other repos): `.cursor/templates/ai-sdlc/` — see `README.md` there. Live docs: `docs/ai-sdlc/CHARTER.md`, `docs/ai-sdlc/CHANGELOG.md`.

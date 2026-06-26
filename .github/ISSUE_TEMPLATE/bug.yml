@@ -1,0 +1,58 @@
+name: Bug
+description: Report incorrect behavior
+title: "fix: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Include steps to reproduce and expected vs actual behavior.
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. …
+        2. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement ID (if known)
+      description: REQ-XX from [plan-mvp §5](https://github.com/tusharwagh/LMS-AI/blob/main/docs/plan-mvp.md#5-req-traceability-checklist), or `N/A`
+      placeholder: REQ-24
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - API / workflows
+        - Staff UI
+        - Agent desk
+        - Auth / security
+        - Database / migrations
+        - CI / tooling
+        - Other
+    validations:
+      required: true

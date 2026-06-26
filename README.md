@@ -11,6 +11,7 @@ Python **modular monolith** for K-12 school library circulation: reference data,
 | [runbook.md](docs/runbook.md) | Deploy, backup, agent/LLM env (§10), incidents |
 | [go-live-checklist.md](docs/go-live-checklist.md) | Pre-production verification (G1–G13) |
 | [research.md](docs/research.md) | Design history; agent governance (§15) |
+| [ai-sdlc.md](docs/ai-sdlc.md) | AI-assisted SDLC charter and change log |
 
 **Agent governance:** IMDA MGF v1.5 + Twelve-Factor deployment — [`.cursor/skills/generic/imda-agentic-ai-governance/SKILL.md`](.cursor/skills/generic/imda-agentic-ai-governance/SKILL.md)
 

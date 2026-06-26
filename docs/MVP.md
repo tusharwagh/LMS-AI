@@ -196,7 +196,7 @@ sequenceDiagram
 | **Legacy fallback** | `LLM_FALLBACK_ENABLED` + `LLM_FALLBACK_PROVIDER` | When `LLM_PROVIDERS` unset; pin model — no `:fastest` in production |
 | **Fast routing (optional)** | `LLM_MODEL_FAST` | Short clarifications only |
 
-Routing via **LiteLLM** (`src/lms/agent/llm.py` — `completion_with_fallback`); intent classification via `LLMIntentParser` + `llm_intent_prompt.py`. Orchestration via **LangGraph** (fixed `StateGraph` edges). **Do not** use Groq Compound remote MCP or arbitrary HF MCP servers for circulation tools (IMDA supply-chain control).
+Routing via **LiteLLM** (`src/lms/agent/llm.py` — `completion_with_fallback`); intent classification via `LLMIntentParser` + `llm_intent_prompt.py`. Optional **NVIDIA NeMo Guardrails** wrap the gateway (`NEMO_GUARDRAILS_ENABLED`) — input/output safety before/after the LiteLLM call without replacing the provider (see [runbook.md §10](runbook.md)). Orchestration via **LangGraph** (fixed `StateGraph` edges). **Do not** use Groq Compound remote MCP or arbitrary HF MCP servers for circulation tools (IMDA supply-chain control).
 
 #### Data masking & token minimization (ADR-026)
 
@@ -938,9 +938,10 @@ Extends §13.7 for hosted LLM desk agents (OWASP LLM Top 10; IMDA MGF v1.5; Twel
 | Control | Implementation | Config / notes |
 |---------|----------------|----------------|
 | LLM output untrusted | Pydantic-validated tool args only; no raw LLM → SQL/shell/orchestrator | Governance node on tool path |
-| Prompt injection | Catalog titles / patron text treated as data; structural tool allowlist | Not prompt-only restrictions |
+| Prompt injection | Catalog titles / patron text treated as data; structural tool allowlist; optional NeMo input rails (jailbreak / topic / content safety) on gateway | `NEMO_GUARDRAILS_*`; not prompt-only restrictions |
 | PII in prompts | Pseudonyms in LLM context; intent input redacted via `redact_for_audit`; full IDs in server session only | ADR-026 |
 | HITL on writes | `pending_approval` + `/resume` before commit, cancel, fulfillment transition; new messages blocked while pending | ADR-027; deny-by-default |
+| LLM gateway safety | NeMo `check()` input/output rails on `LlmGateway.complete()`; structural length/role caps in `guardrails.py` | Off by default; `guardrails/nemoguards/` or `guardrails/self-check/` |
 | Bounded consumption | `max_tokens`, max tool calls/turn, API + LLM rate limits | `AGENT_MAX_TOOL_CALLS_PER_TURN` |
 | Secrets | Never in prompts, graph checkpoints, or Langfuse spans | `GROQ_API_KEY`, `HF_TOKEN` in env only; production validator enforces keys when agent enabled |
 | Observability | Langfuse SDK **4.x**: `LangfuseTracing` (`turn_span`, `tool_span`, `intent_span`); redacted args, HITL events; correlate with `X-Correlation-Id` (ADR-018). LiteLLM `"langfuse"` callback skipped on v4 (SDK v2 API) — agent spans remain primary audit path | `langfuse>=4.0,<5`; `make validate-langfuse` |

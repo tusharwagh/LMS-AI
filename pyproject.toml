@@ -27,6 +27,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+guardrails = [
+    "nemoguardrails>=0.22.0",
+]
 dev = [
     "pytest>=8.3.0",
     "pytest-cov>=6.0.0",
@@ -36,6 +39,7 @@ dev = [
     "mypy>=1.13.0",
     "types-python-jose>=3.3.0",
     "import-linter>=2.1",
+    "nemoguardrails>=0.22.0",
 ]
 
 [project.scripts]
@@ -84,7 +88,7 @@ mypy_path = "src"
 exclude = ["^\\.venv/", "^\\.mypy_cache/"]
 
 [[tool.mypy.overrides]]
-module = ["jose.*"]
+module = ["jose.*", "nemoguardrails.*"]
 ignore_missing_imports = true
 
 # Skip deep traversal of heavy third-party trees (faster CI; avoids OneDrive
