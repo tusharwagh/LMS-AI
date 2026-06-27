@@ -1,6 +1,5 @@
 .PHONY: help install install-node build test lint ci ci-native ci-ship check-traceability \
-	standards-sync-fixture check-standards-fixture standards-materialize-fixture test-standards-fixture \
-	bootstrap-org-ai-standards check-standards standards-materialize standards-upgrade verify-phase3 \
+	check-standards standards-materialize standards-upgrade standards-contribute verify-phase3 verify-phase4 \
 	diagram \
 	migrate ddl seed seed-sql \
 	destroy-data destroy-schema destroy-db destroy destroy-all \
@@ -192,26 +191,6 @@ check-traceability:
 	@chmod +x scripts/check_pr_traceability.sh
 	@./scripts/check_pr_traceability.sh
 
-standards-sync-fixture:
-	@chmod +x scripts/standards-fixture/sync-reference.sh
-	@./scripts/standards-fixture/sync-reference.sh
-
-check-standards-fixture:
-	@chmod +x scripts/check-standards.sh
-	@./scripts/check-standards.sh
-
-standards-materialize-fixture:
-	@chmod +x scripts/standards-materialize.sh
-	@DRY_RUN=$(DRY_RUN) ./scripts/standards-materialize.sh
-
-test-standards-fixture: standards-sync-fixture
-	@chmod +x scripts/standards-fixture/test-standards-fixture.sh
-	@./scripts/standards-fixture/test-standards-fixture.sh
-
-bootstrap-org-ai-standards:
-	@chmod +x scripts/bootstrap-org-ai-standards.sh
-	@./scripts/bootstrap-org-ai-standards.sh
-
 check-standards:
 	@test -d standards/scripts || (echo "standards/ submodule missing — run: git submodule update --init standards" && exit 1)
 	@chmod +x standards/scripts/check-standards.sh
@@ -228,9 +207,18 @@ standards-upgrade:
 	@chmod +x scripts/standards-upgrade.sh
 	@./scripts/standards-upgrade.sh $(VERSION)
 
+standards-contribute:
+	@test -x standards/scripts/standards-contribute.sh || (echo "standards-contribute missing — upgrade standards/ submodule to v1.0.2+" && exit 1)
+	@chmod +x standards/scripts/standards-contribute.sh
+	@$(STANDARDS_ENV) OPEN=$(OPEN) ./standards/scripts/standards-contribute.sh
+
 verify-phase3:
 	@chmod +x scripts/verify-phase3.sh
 	@./scripts/verify-phase3.sh
+
+verify-phase4:
+	@chmod +x scripts/verify-phase4.sh
+	@./scripts/verify-phase4.sh
 
 ci-native: install lint staff-ui-build staff-ui-typecheck test-unit test-integration test-e2e test-e2e-playwright test-agent test-hardening test-performance
 

@@ -572,8 +572,8 @@ Future **AI-Led** stages can raise autonomy in **per-project CHARTER** without c
 | Jun 2026 — portable layer | **Two-layer model** — `docs/standards/` SOT; thin Cursor enforcers; paired manifest entries; link-integrity checks |
 | Jun 2026 — backlog | §15 open items prioritized; governance + org-level standards (architecture/technology/business); simplification packages |
 | Jun 2026 — plan | [template-standards-plan.md](template-standards-plan.md) — verification-first phases 0–6 |
-| Jun 2026 — Phase 0 | Governance locked — [GOVERNANCE.md](template-standards/GOVERNANCE.md); maintainers own template; Minimal package; Option D org tiers |
-| Jun 2026 — Phase 1 | Mechanics lab — `check-standards`, materialize, profiles, T1–T10 pass ([TEST-RESULTS.md](../scripts/standards-fixture/TEST-RESULTS.md)) |
+| Jun 2026 — Phase 0 | Governance locked — [standards/GOVERNANCE.md](../standards/GOVERNANCE.md); maintainers own template; Minimal package; Option D org tiers |
+| Jun 2026 — Phase 1 | Mechanics lab (removed post–Phase 3) — promoted to [org-ai-standards](https://github.com/tusharwagh/org-ai-standards) |
 | Jun 2026 — Phase 2 | Template repo `../org-ai-standards` @ `v1.0.0`; V2.1–V2.4 pass |
 | Jun 2026 — Phase 3 | LMS-AI `standards/` submodule pilot @ `v1.0.1`; warn-only CI; upgrade cycle; CI submodule push-order documented |
 

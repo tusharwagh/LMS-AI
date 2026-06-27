@@ -20,13 +20,15 @@ git submodule update --init standards   # after clone
 make standards-materialize            # copy standards/ → .cursor/
 make check-standards                  # drift check (warn-only)
 make standards-upgrade VERSION=1.0.1  # bump pin + re-materialize
-make verify-phase3                    # Phase 3 verification script
+make standards-contribute             # issue body from drift (v1.0.2+)
+make verify-phase3                    # Phase 3 verification
+make verify-phase4                    # Phase 4 verification
 ```
 
 ## Rules
 
 - **Do not edit** managed generic copies in place — use `.cursor/rules/lms-ai/` overlay or upstream PR to [org-ai-standards](https://github.com/tusharwagh/org-ai-standards), then `make standards-upgrade`.
-- **Template owner** cuts releases; **repository maintainers** bump pin via PR ([GOVERNANCE.md](GOVERNANCE.md) §5).
+- **Template owner** cuts releases; **repository maintainers** bump pin via PR ([standards/GOVERNANCE.md](../../standards/GOVERNANCE.md) §5).
 
 ## CI
 
@@ -62,17 +64,16 @@ Use HTTPS in `.gitmodules`, not `../org-ai-standards`. Run `git submodule sync s
 
 | Doc | Purpose |
 |-----|---------|
-| [GOVERNANCE.md](GOVERNANCE.md) | Roles, change flow, contributions (LMS-AI draft; canonical copy in template repo) |
+| [standards/GOVERNANCE.md](../../standards/GOVERNANCE.md) | Roles, change flow, contributions (submodule @ pin) |
 | [PHASE3-RESULTS.md](PHASE3-RESULTS.md) | Pilot verification + CI fix |
-| [template-standards-plan.md](../template-standards-plan.md) | Full phased plan |
-| [template-standards-research.md](../template-standards-research.md) | Spec and decisions |
+| [REFACTOR-AUDIT.md](REFACTOR-AUDIT.md) | What stays in LMS vs template repo |
+| [template-standards-plan.md](../template-standards-plan.md) | Rollout history (Phases 0–6) |
+| [template-standards-research.md](../template-standards-research.md) | Original spec |
 
 ## Phase status
 
 | Phase | Status |
 |-------|--------|
-| 0 Governance | Complete |
-| 1 Mechanics lab | Complete |
-| 2 Template repo | Complete @ v1.0.0 |
-| 3 LMS-AI pilot | Complete @ v1.0.1 |
-| 4 Contribution loop | Next |
+| 0–3 | Complete (see [org-ai-standards](https://github.com/tusharwagh/org-ai-standards)) |
+| 4 Contribution loop | Complete @ v1.0.2 — [PHASE4-RESULTS.md](PHASE4-RESULTS.md) |
+| 5 Fail mode | Next |

@@ -363,11 +363,13 @@ Complete before locking `manifest.json`. LMS-AI mapping:
 
 ## Immediate next steps
 
-1. ~~**Complete Phase 0**~~ — done 2026-06-26 ([GOVERNANCE.md](template-standards/GOVERNANCE.md)).
-2. ~~**Complete Phase 1**~~ — done 2026-06-27 (`make test-standards-fixture`).
-3. ~~**Complete Phase 2**~~ — done 2026-06-27 (`../org-ai-standards` @ `v1.0.0`).
+1. ~~**Complete Phase 0**~~ — done 2026-06-26 ([standards/GOVERNANCE.md](../standards/GOVERNANCE.md)).
+2. ~~**Complete Phase 1**~~ — done 2026-06-27 (lab promoted to org-ai-standards; fixture removed from LMS-AI).
+3. ~~**Complete Phase 2**~~ — done 2026-06-27 (`org-ai-standards` @ `v1.0.0`).
 4. ~~**Complete Phase 3**~~ — done 2026-06-27 (submodule pilot @ `v1.0.1`, [PHASE3-RESULTS](template-standards/PHASE3-RESULTS.md)).
-5. **Start Phase 4** — contribution loop (GitHub issues on template repo).
+5. ~~**Refactor cleanup**~~ — done 2026-06-27 ([REFACTOR-AUDIT](template-standards/REFACTOR-AUDIT.md)).
+6. ~~**Start Phase 4**~~ — done 2026-06-27 ([PHASE4-RESULTS](template-standards/PHASE4-RESULTS.md), org-ai-standards v1.0.2).
+7. **Start Phase 5** — fail mode on diverged managed paths.
 
 ---
 
@@ -379,4 +381,4 @@ Complete before locking `manifest.json`. LMS-AI mapping:
 
 ---
 
-*Last updated: Jun 2026 — verification-first phased plan; Phase 1 is the active starting point after Phase 0 governance lock.*
+*Last updated: Jun 2026 — Phases 0–3 complete; Phase 1 lab removed from LMS-AI; Phase 4 next.*

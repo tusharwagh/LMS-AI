@@ -29,9 +29,6 @@ src/lms/staff/static/styles.css
 .env.*.local
 *.pem
 
-# Standards fixture (generated; run make standards-sync-fixture)
-scripts/standards-fixture/reference/
-scripts/standards-fixture/test-workspace/
 *.key
 
 # IDE (commit shared debug config; ignore local overrides)

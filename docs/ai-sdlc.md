@@ -8,8 +8,6 @@ Governance for AI-assisted delivery in this repository.
 
 → **[Template standards hub](template-standards/README.md)** — submodule `standards/` · `make check-standards` · CI troubleshooting
 
-→ **[Template repo](https://github.com/tusharwagh/org-ai-standards)** @ v1.0.1 · [Release checklist](https://github.com/tusharwagh/org-ai-standards/blob/main/docs/RELEASE.md)
+→ **[Template repo](https://github.com/tusharwagh/org-ai-standards)** @ v1.0.2 · [Release checklist](https://github.com/tusharwagh/org-ai-standards/blob/main/docs/RELEASE.md)
 
-→ **[Research](template-standards-research.md)** · **[Plan](template-standards-plan.md)** · **[Governance](template-standards/GOVERNANCE.md)** · **[Phase 3 results](template-standards/PHASE3-RESULTS.md)**
-
-→ **Phase 1 fixture:** `make test-standards-fixture` · [fixture README](../scripts/standards-fixture/README.md)
+→ **[Research](template-standards-research.md)** · **[Plan](template-standards-plan.md)** · **[Governance](standards/GOVERNANCE.md)** · **[Phase 4 results](template-standards/PHASE4-RESULTS.md)**

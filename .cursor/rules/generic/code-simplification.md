@@ -26,6 +26,7 @@ Simplify code by reducing complexity while preserving exact behavior. The goal i
 - You don't understand what the code does yet — comprehend before you simplify
 - The code is performance-critical and the "simpler" version would be measurably slower
 - You're about to rewrite the module entirely — simplifying throwaway code wastes effort
+- You have a generic improvement for org-wide standards — open a [standard contribution](https://github.com/tusharwagh/org-ai-standards/issues/new?template=standard-contribution.yml) instead of editing managed copies in a product repo
 
 ## The Five Principles
 

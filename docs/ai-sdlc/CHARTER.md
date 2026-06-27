@@ -63,9 +63,9 @@ Aligned with runtime agent governance (IMDA MGF v1.5, HITL on writes) documented
 | Secrets, LLM keys, Langfuse | Human | `.env.example`; never in prompts or graph state |
 | Agent enabled in production | Human | `AGENT_ISSUE_ENABLED`, `validate_production_security()` |
 | Go-live G1–G13 | Human | [go-live-checklist.md](../go-live-checklist.md) |
-| Template standards pin bump / `standards upgrade` | Repository maintainers (PR) | [GOVERNANCE.md](../template-standards/GOVERNANCE.md) §5; AI blocked unless user requests |
+| Template standards pin bump / `standards upgrade` | Repository maintainers (PR) | [standards/GOVERNANCE.md](../../standards/GOVERNANCE.md) §5; AI blocked unless user requests |
 
-**Managed generic standards:** Do not edit `.cursor/rules/generic/` or `.cursor/skills/generic/` copies in place — use `.cursor/rules/lms-ai/` overlay or upstream PR to the template repo, then upgrade. See [template-standards/GOVERNANCE.md](../template-standards/GOVERNANCE.md).
+**Managed generic standards:** Do not edit `.cursor/rules/generic/` or `.cursor/skills/generic/` copies in place — use `.cursor/rules/lms-ai/` overlay or upstream PR to the template repo, then upgrade. See [standards/GOVERNANCE.md](../../standards/GOVERNANCE.md).
 
 ---
 
@@ -94,7 +94,7 @@ Record commands in [CHANGELOG.md](CHANGELOG.md). Recommended before merge: `make
 | Generic change-log rule | `.cursor/rules/generic/ai-sdlc-change-log.md` |
 | LMS-AI addendum | `.cursor/rules/lms-ai/ai-sdlc-change-log-lms-ai.md` |
 | Reusable template pack | `.cursor/templates/ai-sdlc/` |
-| Template standards governance | [template-standards/GOVERNANCE.md](../template-standards/GOVERNANCE.md) |
+| Template standards governance | [standards/GOVERNANCE.md](../../standards/GOVERNANCE.md) |
 | Requirements traceability | `docs/plan-mvp.md` (REQ-01–34) |
 | MVP / architecture | `docs/MVP.md` |
 
@@ -148,5 +148,5 @@ When modifying LMS-AI, AI agents **must**:
 | [plan-mvp.md](../plan-mvp.md) | Phased plan and REQ map |
 | [runbook.md](../runbook.md) | Operations and agent env |
 | [go-live-checklist.md](../go-live-checklist.md) | Pre-production verification |
-| [template-standards/GOVERNANCE.md](../template-standards/GOVERNANCE.md) | Template ownership, upgrade, contributions |
+| [standards/GOVERNANCE.md](../../standards/GOVERNANCE.md) | Template ownership, upgrade, contributions |
 | [template-standards-plan.md](../template-standards-plan.md) | Phased rollout (verify-first) |

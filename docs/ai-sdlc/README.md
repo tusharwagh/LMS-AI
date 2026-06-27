@@ -15,9 +15,9 @@ Generic engineering standards come from [org-ai-standards](https://github.com/tu
 | Doc | Purpose |
 |-----|---------|
 | [template-standards/README.md](../template-standards/README.md) | Submodule ops, `make check-standards`, CI troubleshooting |
-| [template-standards/GOVERNANCE.md](../template-standards/GOVERNANCE.md) | Ownership, upgrade, contributions |
+| [standards/GOVERNANCE.md](../../standards/GOVERNANCE.md) | Ownership, upgrade, contributions (submodule @ pin) |
 | [template-standards/PHASE3-RESULTS.md](../template-standards/PHASE3-RESULTS.md) | Pilot verification |
 
-**Research / plan:** [template-standards-research.md](../template-standards-research.md) · [template-standards-plan.md](../template-standards-plan.md)
+**Research / plan (historical):** [template-standards-research.md](../template-standards-research.md) · [template-standards-plan.md](../template-standards-plan.md)
 
-**Legacy bootstrap path:** [.cursor/templates/ai-sdlc/README.md](../../.cursor/templates/ai-sdlc/README.md) (content also in `standards/docs/ai-sdlc/templates/`)
+**Managed copies:** `.cursor/rules/generic/`, `.cursor/skills/generic/`, `.cursor/templates/ai-sdlc/` (materialized from `standards/`)
