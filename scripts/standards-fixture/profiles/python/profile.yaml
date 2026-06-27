@@ -1,0 +1,7 @@
+# Python services profile.
+includes:
+  - cursor/rules/generic/security-and-hardening.md
+  - cursor/rules/generic/api-and-interface-design.md
+  - cursor/rules/generic/sonarqube-quality.md
+  - cursor/skills/generic/clean-code-ddd-python/**
+  - cursor/skills/generic/python-code-analysis/**

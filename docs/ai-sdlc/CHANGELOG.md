@@ -38,6 +38,17 @@ Each entry uses this block (copy per change):
 
 ## Entries
 
+### 2026-06-27 — Phase 3 template standards pilot (submodule @ v1.0.1)
+
+| Field | Value |
+|-------|-------|
+| **Stage** | chore |
+| **Intent** | Wire LMS-AI to org-ai-standards template via submodule, copy materialization, warn-only drift check |
+| **Changes** | `standards/` submodule; `.standards-version`, `.standards-latest`, `.standards-profiles`, `.standards-copied-at`; `make check-standards`, `standards-materialize`, `standards-upgrade`; CI warn step |
+| **Verification** | `make check-standards` clean; `make standards-upgrade VERSION=1.0.1`; `./scripts/verify-phase3.sh` |
+| **Human gate** | pending |
+| **Follow-ups** | Push `org-ai-standards` remote URL in `.gitmodules` for CI; Phase 4 contribution loop |
+
 ### 2026-06-24 — Phase 1 traceability (issue/PR templates + CI)
 
 | Field | Value |

@@ -26,6 +26,8 @@ jobs:
       DATABASE_URL: postgresql+psycopg://lms:lms@localhost:5432/lms
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -87,3 +89,21 @@ jobs:
 
       - name: Docker build
         run: docker build -t lms-ai:ci .
+
+      - name: Check template standards drift (warn-only, Phase 3)
+        if: hashFiles('standards/manifest.json') != ''
+        run: |
+          chmod +x standards/scripts/check-standards.sh
+          set +e
+          STANDARDS_ROOT="$PWD" STANDARDS_REFERENCE=standards \
+            STANDARDS_MANIFEST=standards/manifest.json \
+            STANDARDS_VERSION_FILE=.standards-version \
+            STANDARDS_LATEST_FILE=.standards-latest \
+            STANDARDS_PROFILES_FILE=.standards-profiles \
+            CI_POLICY=warn \
+            ./standards/scripts/check-standards.sh
+          rc=$?
+          set -e
+          if [ "$rc" -eq 2 ]; then echo "check-standards: warn (allowed)"; exit 0; fi
+          exit "$rc"
+        continue-on-error: true

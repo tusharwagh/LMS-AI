@@ -1,0 +1,7 @@
+# Delivery profile: every AI-assisted repo (required).
+includes:
+  - cursor/rules/generic/ai-sdlc-charter.md
+  - cursor/rules/generic/ai-sdlc-change-log.md
+  - cursor/rules/generic/code-simplification.md
+  - cursor/rules/generic/doubt-driven-development.md
+  - docs/ai-sdlc/templates/**

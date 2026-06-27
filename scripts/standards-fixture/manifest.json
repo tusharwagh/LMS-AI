@@ -1,0 +1,224 @@
+{
+  "version": 1,
+  "never_manage": [
+    ".env",
+    ".env.*"
+  ],
+  "never_compare": [
+    ".cursor/rules/lms-ai/**",
+    ".cursor/skills/lms-ai/**",
+    "docs/ai-sdlc/CHARTER.md",
+    "docs/ai-sdlc/CHANGELOG.md",
+    "docs/ai-sdlc/TRACEABILITY.md"
+  ],
+  "entries": [
+    {
+      "id": "cursor__rules__generic__ai-sdlc-change-log.md",
+      "reference": "cursor/rules/generic/ai-sdlc-change-log.md",
+      "materialize_to": ".cursor/rules/generic/ai-sdlc-change-log.md",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "cursor__rules__generic__ai-sdlc-charter.md",
+      "reference": "cursor/rules/generic/ai-sdlc-charter.md",
+      "materialize_to": ".cursor/rules/generic/ai-sdlc-charter.md",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "cursor__rules__generic__api-and-interface-design.md",
+      "reference": "cursor/rules/generic/api-and-interface-design.md",
+      "materialize_to": ".cursor/rules/generic/api-and-interface-design.md",
+      "profiles": [
+        "python"
+      ]
+    },
+    {
+      "id": "cursor__rules__generic__code-simplification.md",
+      "reference": "cursor/rules/generic/code-simplification.md",
+      "materialize_to": ".cursor/rules/generic/code-simplification.md",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "cursor__rules__generic__doubt-driven-development.md",
+      "reference": "cursor/rules/generic/doubt-driven-development.md",
+      "materialize_to": ".cursor/rules/generic/doubt-driven-development.md",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "cursor__rules__generic__frontend-ui-engineering.md",
+      "reference": "cursor/rules/generic/frontend-ui-engineering.md",
+      "materialize_to": ".cursor/rules/generic/frontend-ui-engineering.md",
+      "profiles": [
+        "frontend"
+      ]
+    },
+    {
+      "id": "cursor__rules__generic__security-and-hardening.md",
+      "reference": "cursor/rules/generic/security-and-hardening.md",
+      "materialize_to": ".cursor/rules/generic/security-and-hardening.md",
+      "profiles": [
+        "python"
+      ]
+    },
+    {
+      "id": "cursor__rules__generic__sonarqube-quality.md",
+      "reference": "cursor/rules/generic/sonarqube-quality.md",
+      "materialize_to": ".cursor/rules/generic/sonarqube-quality.md",
+      "profiles": [
+        "python"
+      ]
+    },
+    {
+      "id": "cursor__skills__generic__clean-code-ddd-python__SKILL.md",
+      "reference": "cursor/skills/generic/clean-code-ddd-python/SKILL.md",
+      "materialize_to": ".cursor/skills/generic/clean-code-ddd-python/SKILL.md",
+      "profiles": [
+        "python"
+      ]
+    },
+    {
+      "id": "cursor__skills__generic__clean-code-ddd-python__reference.md",
+      "reference": "cursor/skills/generic/clean-code-ddd-python/reference.md",
+      "materialize_to": ".cursor/skills/generic/clean-code-ddd-python/reference.md",
+      "profiles": [
+        "python"
+      ]
+    },
+    {
+      "id": "cursor__skills__generic__imda-agentic-ai-governance__SKILL.md",
+      "reference": "cursor/skills/generic/imda-agentic-ai-governance/SKILL.md",
+      "materialize_to": ".cursor/skills/generic/imda-agentic-ai-governance/SKILL.md",
+      "profiles": [
+        "agentic"
+      ]
+    },
+    {
+      "id": "cursor__skills__generic__imda-agentic-ai-governance__reference.md",
+      "reference": "cursor/skills/generic/imda-agentic-ai-governance/reference.md",
+      "materialize_to": ".cursor/skills/generic/imda-agentic-ai-governance/reference.md",
+      "profiles": [
+        "agentic"
+      ]
+    },
+    {
+      "id": "cursor__skills__generic__python-code-analysis__SKILL.md",
+      "reference": "cursor/skills/generic/python-code-analysis/SKILL.md",
+      "materialize_to": ".cursor/skills/generic/python-code-analysis/SKILL.md",
+      "profiles": [
+        "python"
+      ]
+    },
+    {
+      "id": "docs__ai-sdlc__templates__CHANGELOG.template.md",
+      "reference": "docs/ai-sdlc/templates/CHANGELOG.template.md",
+      "materialize_to": ".cursor/templates/ai-sdlc/CHANGELOG.template.md",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "docs__ai-sdlc__templates__CHARTER.template.md",
+      "reference": "docs/ai-sdlc/templates/CHARTER.template.md",
+      "materialize_to": ".cursor/templates/ai-sdlc/CHARTER.template.md",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "docs__ai-sdlc__templates__README.md",
+      "reference": "docs/ai-sdlc/templates/README.md",
+      "materialize_to": ".cursor/templates/ai-sdlc/README.md",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "docs__ai-sdlc__templates__ai-sdlc-change-log.addendum.template.md",
+      "reference": "docs/ai-sdlc/templates/ai-sdlc-change-log.addendum.template.md",
+      "materialize_to": ".cursor/templates/ai-sdlc/ai-sdlc-change-log.addendum.template.md",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "docs__ai-sdlc__templates__ai-sdlc-change-log.rule.md",
+      "reference": "docs/ai-sdlc/templates/ai-sdlc-change-log.rule.md",
+      "materialize_to": ".cursor/templates/ai-sdlc/ai-sdlc-change-log.rule.md",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "docs__ai-sdlc__templates__ai-sdlc-charter.rule.md",
+      "reference": "docs/ai-sdlc/templates/ai-sdlc-charter.rule.md",
+      "materialize_to": ".cursor/templates/ai-sdlc/ai-sdlc-charter.rule.md",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "docs__ai-sdlc__templates__github__ISSUE_TEMPLATE__bug.yml",
+      "reference": "docs/ai-sdlc/templates/github/ISSUE_TEMPLATE/bug.yml",
+      "materialize_to": ".cursor/templates/ai-sdlc/github/ISSUE_TEMPLATE/bug.yml",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "docs__ai-sdlc__templates__github__ISSUE_TEMPLATE__chore.yml",
+      "reference": "docs/ai-sdlc/templates/github/ISSUE_TEMPLATE/chore.yml",
+      "materialize_to": ".cursor/templates/ai-sdlc/github/ISSUE_TEMPLATE/chore.yml",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "docs__ai-sdlc__templates__github__ISSUE_TEMPLATE__config.yml",
+      "reference": "docs/ai-sdlc/templates/github/ISSUE_TEMPLATE/config.yml",
+      "materialize_to": ".cursor/templates/ai-sdlc/github/ISSUE_TEMPLATE/config.yml",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "docs__ai-sdlc__templates__github__ISSUE_TEMPLATE__feature.yml",
+      "reference": "docs/ai-sdlc/templates/github/ISSUE_TEMPLATE/feature.yml",
+      "materialize_to": ".cursor/templates/ai-sdlc/github/ISSUE_TEMPLATE/feature.yml",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "docs__ai-sdlc__templates__github__check_pr_traceability.sh",
+      "reference": "docs/ai-sdlc/templates/github/check_pr_traceability.sh",
+      "materialize_to": ".cursor/templates/ai-sdlc/github/check_pr_traceability.sh",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "docs__ai-sdlc__templates__github__pull_request_template.md",
+      "reference": "docs/ai-sdlc/templates/github/pull_request_template.md",
+      "materialize_to": ".cursor/templates/ai-sdlc/github/pull_request_template.md",
+      "profiles": [
+        "core"
+      ]
+    },
+    {
+      "id": "docs__ai-sdlc__templates__github__workflows__traceability.yml",
+      "reference": "docs/ai-sdlc/templates/github/workflows/traceability.yml",
+      "materialize_to": ".cursor/templates/ai-sdlc/github/workflows/traceability.yml",
+      "profiles": [
+        "core"
+      ]
+    }
+  ]
+}

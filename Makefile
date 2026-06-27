@@ -1,4 +1,7 @@
-.PHONY: help install install-node build test lint ci ci-native ci-ship check-traceability diagram \
+.PHONY: help install install-node build test lint ci ci-native ci-ship check-traceability \
+	standards-sync-fixture check-standards-fixture standards-materialize-fixture test-standards-fixture \
+	bootstrap-org-ai-standards check-standards standards-materialize standards-upgrade verify-phase3 \
+	diagram \
 	migrate ddl seed seed-sql \
 	destroy-data destroy-schema destroy-db destroy destroy-all \
 	deploy-destroy destroy-native \
@@ -17,7 +20,13 @@ PLAYWRIGHT_BROWSERS_PATH ?= $(CURDIR)/.playwright-browsers
 # Outside OneDrive — avoids corrupted SQLite shards and sync stalls during mypy.
 MYPY_CACHE_DIR ?= /tmp/lms-ai-mypy-cache
 export MYPY_CACHE_DIR
-COMPOSE := docker compose
+STANDARDS_ENV = STANDARDS_ROOT=$(CURDIR) STANDARDS_REFERENCE=standards \
+	STANDARDS_MANIFEST=standards/manifest.json \
+	STANDARDS_VERSION_FILE=.standards-version \
+	STANDARDS_LATEST_FILE=.standards-latest \
+	STANDARDS_PROFILES_FILE=.standards-profiles \
+	CI_POLICY=warn
+
 IMAGE ?= lms-ai:local
 API_HOST ?= 127.0.0.1
 API_PORT ?= 8000
@@ -60,6 +69,9 @@ help:
 	@echo "  make ci-native             Lint + test (no Docker)"
 	@echo "  make ci-ship               ci-native, then prompt commit message and push"
 	@echo "  make check-traceability    Verify PR body has issue + REQ (PR_BODY_FILE=...)"
+	@echo "  make check-standards       Template drift check (warn-only; Phase 3 pilot)"
+	@echo "  make standards-materialize Copy standards/ → .cursor/ managed paths"
+	@echo "  make standards-upgrade     Bump submodule pin + re-materialize (VERSION=1.0.1)"
 	@echo ""
 	@echo "Native (no Docker) — requires local Postgres + DATABASE_URL in .env"
 	@echo "  make setup-native          install + migrate (+ SEED=1 for demo data)"
@@ -179,6 +191,46 @@ lint:
 check-traceability:
 	@chmod +x scripts/check_pr_traceability.sh
 	@./scripts/check_pr_traceability.sh
+
+standards-sync-fixture:
+	@chmod +x scripts/standards-fixture/sync-reference.sh
+	@./scripts/standards-fixture/sync-reference.sh
+
+check-standards-fixture:
+	@chmod +x scripts/check-standards.sh
+	@./scripts/check-standards.sh
+
+standards-materialize-fixture:
+	@chmod +x scripts/standards-materialize.sh
+	@DRY_RUN=$(DRY_RUN) ./scripts/standards-materialize.sh
+
+test-standards-fixture: standards-sync-fixture
+	@chmod +x scripts/standards-fixture/test-standards-fixture.sh
+	@./scripts/standards-fixture/test-standards-fixture.sh
+
+bootstrap-org-ai-standards:
+	@chmod +x scripts/bootstrap-org-ai-standards.sh
+	@./scripts/bootstrap-org-ai-standards.sh
+
+check-standards:
+	@test -d standards/scripts || (echo "standards/ submodule missing — run: git submodule update --init standards" && exit 1)
+	@chmod +x standards/scripts/check-standards.sh
+	@$(STANDARDS_ENV) ./standards/scripts/check-standards.sh; rc=$$?; \
+	 if [ $$rc -eq 2 ]; then echo "check-standards: warn (non-blocking)"; exit 0; fi; \
+	 exit $$rc
+
+standards-materialize:
+	@test -d standards/bootstrap || (echo "standards/ submodule missing" && exit 1)
+	@chmod +x standards/bootstrap/standards-materialize.sh
+	@$(STANDARDS_ENV) ./standards/bootstrap/standards-materialize.sh
+
+standards-upgrade:
+	@chmod +x scripts/standards-upgrade.sh
+	@./scripts/standards-upgrade.sh $(VERSION)
+
+verify-phase3:
+	@chmod +x scripts/verify-phase3.sh
+	@./scripts/verify-phase3.sh
 
 ci-native: install lint staff-ui-build staff-ui-typecheck test-unit test-integration test-e2e test-e2e-playwright test-agent test-hardening test-performance
 
