@@ -4,12 +4,12 @@ Governance for AI-assisted delivery in this repository.
 
 → **[docs/ai-sdlc/](ai-sdlc/README.md)** — [Charter](ai-sdlc/CHARTER.md) · [Traceability](ai-sdlc/TRACEABILITY.md) · [Change log](ai-sdlc/CHANGELOG.md)
 
-→ **[Template standards research](template-standards-research.md)** — separate repo spec (drift, submodule, profiles)
+## Template standards
 
-→ **[Template standards plan](template-standards-plan.md)** — phased implementation (verify-first)
+→ **[Template standards hub](template-standards/README.md)** — submodule `standards/` · `make check-standards` · CI troubleshooting
 
-→ **[Template standards governance](template-standards/GOVERNANCE.md)** — ownership, upgrade, contributions (Phase 0)
+→ **[Template repo](https://github.com/tusharwagh/org-ai-standards)** @ v1.0.1 · [Release checklist](https://github.com/tusharwagh/org-ai-standards/blob/main/docs/RELEASE.md)
 
-→ **Phase 1 mechanics:** `make test-standards-fixture` · [fixture README](../scripts/standards-fixture/README.md)
+→ **[Research](template-standards-research.md)** · **[Plan](template-standards-plan.md)** · **[Governance](template-standards/GOVERNANCE.md)** · **[Phase 3 results](template-standards/PHASE3-RESULTS.md)**
 
-→ **Phase 3 pilot:** `standards/` submodule · `make check-standards` · [PHASE3-RESULTS](template-standards/PHASE3-RESULTS.md)
+→ **Phase 1 fixture:** `make test-standards-fixture` · [fixture README](../scripts/standards-fixture/README.md)

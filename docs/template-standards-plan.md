@@ -220,6 +220,16 @@ Step F  One deliberate standards upgrade cycle (v1.0.0 → v1.0.1 patch)
 
 **Status: complete (2026-06-27).** See [PHASE3-RESULTS.md](template-standards/PHASE3-RESULTS.md). Next: [Phase 4 — Contribution loop](#phase-4--contribution-loop).
 
+### CI submodule troubleshooting
+
+If GitHub Actions fails with `not our ref <sha>` on `standards/`:
+
+1. Push template first: `git push origin main --tags` in [org-ai-standards](https://github.com/tusharwagh/org-ai-standards)
+2. Ensure `.gitmodules` uses `https://github.com/tusharwagh/org-ai-standards.git` (not a relative path)
+3. Re-run CI
+
+Detail: [template-standards/PHASE3-RESULTS.md](template-standards/PHASE3-RESULTS.md) · template [docs/RELEASE.md](https://github.com/tusharwagh/org-ai-standards/blob/main/docs/RELEASE.md)
+
 ---
 
 ## Phase 4 — Contribution loop

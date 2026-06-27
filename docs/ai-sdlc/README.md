@@ -8,6 +8,16 @@ AI-assisted software delivery (**option 1: AI assists humans**).
 | [TRACEABILITY.md](TRACEABILITY.md) | Issue/PR templates, REQ links, CI traceability check |
 | [CHANGELOG.md](CHANGELOG.md) | Append-only record of AI-assisted change batches |
 
-**Template / standards research (separate repo spec):** [template-standards-research.md](../template-standards-research.md)
+## Template standards (delivery)
 
-**Bootstrap other repos:** [.cursor/templates/ai-sdlc/README.md](../../.cursor/templates/ai-sdlc/README.md)
+Generic engineering standards come from [org-ai-standards](https://github.com/tusharwagh/org-ai-standards) via the `standards/` submodule.
+
+| Doc | Purpose |
+|-----|---------|
+| [template-standards/README.md](../template-standards/README.md) | Submodule ops, `make check-standards`, CI troubleshooting |
+| [template-standards/GOVERNANCE.md](../template-standards/GOVERNANCE.md) | Ownership, upgrade, contributions |
+| [template-standards/PHASE3-RESULTS.md](../template-standards/PHASE3-RESULTS.md) | Pilot verification |
+
+**Research / plan:** [template-standards-research.md](../template-standards-research.md) · [template-standards-plan.md](../template-standards-plan.md)
+
+**Legacy bootstrap path:** [.cursor/templates/ai-sdlc/README.md](../../.cursor/templates/ai-sdlc/README.md) (content also in `standards/docs/ai-sdlc/templates/`)

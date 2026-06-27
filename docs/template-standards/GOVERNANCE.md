@@ -3,9 +3,10 @@
 **Status:** Active (Phase 0 — Jun 2026)  
 **Scope:** Delivery template (`core`, `python`, `agentic`, `frontend`) for AI-assisted repos  
 **Spec:** [template-standards-research.md](../template-standards-research.md)  
-**Plan:** [template-standards-plan.md](../template-standards-plan.md)
+**Plan:** [template-standards-plan.md](../template-standards-plan.md)  
+**Template repo:** [org-ai-standards](https://github.com/tusharwagh/org-ai-standards) (submodule at `standards/`)
 
-This document will move to the future `org-ai-standards` template repository. Until then it lives in LMS-AI as the authoritative governance draft.
+Governance for delivery standards. The canonical copy also lives in the template repo [GOVERNANCE.md](https://github.com/tusharwagh/org-ai-standards/blob/main/GOVERNANCE.md). This file tracks LMS-AI-specific notes during rollout.
 
 ---
 
@@ -84,6 +85,8 @@ Org-level profiles (`org-architecture`, `org-technology`, `org-business`) are de
 
 After upgrade: append entry to [docs/ai-sdlc/CHANGELOG.md](../ai-sdlc/CHANGELOG.md).
 
+**Publish order:** Push [org-ai-standards](https://github.com/tusharwagh/org-ai-standards) (`git push origin main --tags`) **before** committing a new submodule pointer in LMS-AI. See [README.md](README.md#ci-troubleshooting) and template [RELEASE.md](https://github.com/tusharwagh/org-ai-standards/blob/main/docs/RELEASE.md).
+
 ---
 
 ## 6. Contribution loop (G5)
@@ -150,7 +153,5 @@ v1: **No waivers.** Fix diverged paths by revert, overlay, or upstream. Revisit 
 | [CHARTER.md](../ai-sdlc/CHARTER.md) | LMS-AI AI-SDLC gates including standards upgrade |
 | [template-standards-research.md](../template-standards-research.md) | Full spec |
 | [template-standards-plan.md](../template-standards-plan.md) | Phased implementation |
-
----
-
-*Promote this file to the template repo root as `GOVERNANCE.md` in Phase 2.*
+| [template-standards/README.md](README.md) | LMS-AI submodule ops + CI troubleshooting |
+| [org-ai-standards RELEASE](https://github.com/tusharwagh/org-ai-standards/blob/main/docs/RELEASE.md) | Push template before bumping submodule |
