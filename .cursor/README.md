@@ -1,35 +1,35 @@
 # Cursor guidance layout
 
-Portable engineering guidance is split from LMS-AI-specific addenda. Generic and project-specific content each live under **`rules/`** and **`skills/`** — not as top-level folders under `.cursor/`.
+Portable engineering guidance is split from LMS-AI-specific addenda.
 
 ## Directory structure
 
-```
+```text
 .cursor/
   rules/
-    generic/          # Portable rules (no LMS-AI repo paths as primary content)
-    lms-ai/           # LMS-AI rule addenda / overrides
+    generic/          # Managed copies from standards/ — do not edit in place
+    lms-ai/           # LMS-AI overlay (never drift-checked)
   skills/
-    generic/          # Portable skills
-    lms-ai/           # LMS-AI skill addenda
-  README.md           # This file
+    generic/          # Managed copies from standards/
+    lms-ai/           # LMS-AI overlay
+  templates/ai-sdlc/  # Managed bootstrap templates (from standards/)
 ```
 
 ## What Cursor loads
 
-Cursor discovers **rules** under `.cursor/rules/` (including subfolders) and **skills** under `.cursor/skills/` (including subfolders).
-
 | Path | Content |
 |------|---------|
-| `.cursor/rules/generic/*.md` | Portable rules |
+| `.cursor/rules/generic/*.md` | Generic rules (materialized @ pin) |
 | `.cursor/rules/lms-ai/*.md` | LMS-AI rule addenda |
-| `.cursor/skills/generic/<name>/` | Portable skills |
-| `.cursor/skills/lms-ai/<name>/` or `*.md` | LMS-AI skill addenda |
+| `.cursor/skills/generic/<name>/` | Generic skills |
+| `.cursor/skills/lms-ai/<name>/` | LMS-AI skill addenda |
 
 ## Editing guidance
 
-1. **Generic content** — edit under `.cursor/rules/generic/` or `.cursor/skills/generic/`.
-2. **LMS-AI addenda** — edit under `.cursor/rules/lms-ai/` or `.cursor/skills/lms-ai/`.
+1. **Generic standards** — upstream PR to [org-ai-standards](https://github.com/tusharwagh/org-ai-standards), then `make standards-upgrade`. Do **not** edit `.cursor/rules/generic/` or `.cursor/skills/generic/` in place (CI fail mode).
+2. **LMS-AI conventions** — edit `.cursor/rules/lms-ai/` or `.cursor/skills/lms-ai/`.
+
+See [docs/template-standards/RUNBOOK-DIVERGED.md](../docs/template-standards/RUNBOOK-DIVERGED.md) if `make check-standards` reports diverged paths.
 
 ## Skill pairs
 
@@ -47,12 +47,9 @@ Cursor discovers **rules** under `.cursor/rules/` (including subfolders) and **s
 | `rules/generic/api-and-interface-design.md` | `rules/lms-ai/api-and-interface-design-lms-ai.md` |
 | `rules/generic/security-and-hardening.md` | `rules/lms-ai/security-and-hardening-lms-ai.md` |
 | `rules/generic/sonarqube-quality.md` | `rules/lms-ai/sonarqube-quality-lms-ai.md` |
-
-Standalone generic rules (no addendum): `code-simplification.md`, `doubt-driven-development.md`.
-
-| Generic rule | LMS-AI addendum |
-|--------------|-----------------|
 | `rules/generic/ai-sdlc-change-log.md` | `rules/lms-ai/ai-sdlc-change-log-lms-ai.md` |
 | `rules/generic/ai-sdlc-charter.md` | `rules/lms-ai/ai-sdlc-charter-lms-ai.md` |
 
-**AI SDLC template** (bootstrap other repos): `.cursor/templates/ai-sdlc/` — see `README.md` there. Live docs: `docs/ai-sdlc/CHARTER.md`, `docs/ai-sdlc/CHANGELOG.md`.
+Standalone generic rules: `code-simplification.md`, `doubt-driven-development.md`.
+
+Live governance: `docs/ai-sdlc/CHARTER.md`, `docs/ai-sdlc/CHANGELOG.md`.

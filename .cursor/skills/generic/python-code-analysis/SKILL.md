@@ -7,9 +7,9 @@ description: Runs static and dynamic code analysis for Python applications — r
 
 Analyze Python code **without changing behavior** unless fixing a verified defect. Prefer the project's configured tools over ad-hoc scripts.
 
-**LMS-AI project commands and markers:** [python-code-analysis-lms-ai.md](../../lms-ai/python-code-analysis-lms-ai.md)
+**Project overlay:** repo-specific commands, markers, and CI targets live under `.cursor/skills/<project>/` when present.
 
-**Related craft skills:** [clean-code-ddd-python](../clean-code-ddd-python/SKILL.md), [clean-code-ddd-lms-ai](../../lms-ai/clean-code-ddd-lms-ai/SKILL.md)
+**Related craft skills:** [clean-code-ddd-python](../clean-code-ddd-python/SKILL.md)
 
 ---
 
@@ -35,7 +35,7 @@ Analysis progress:
 - [ ] 3. Static — import-linter (architecture contracts)
 - [ ] 4. Dynamic — targeted pytest (unit → integration → e2e)
 - [ ] 5. Dynamic — hardening / security / performance (if touching writes or auth)
-- [ ] 6. Agent tests (if touching lms/agent/)
+- [ ] 6. Agent tests (if touching agent package)
 ```
 
 **Order:** static fixes are cheap; run them before long pytest suites. Re-run the full static pass after test-driven edits.
@@ -71,7 +71,7 @@ Analysis **without executing** the full application (types and linters may spawn
 - Enforces **architectural** boundaries (DDD bounded contexts), not style.
 - Violations mean wrong layer or cross-context leak — fix design, do not add ignores without ADR.
 
-### Optional static (not in LMS-AI CI by default)
+### Optional static (not in every project CI by default)
 
 | Tool | Use when |
 |------|----------|
@@ -155,7 +155,7 @@ def test_issue_start_requires_auth(bare_client):
 
 ## CI alignment
 
-Before push, run the same gates CI runs (see [python-code-analysis-lms-ai.md](../../lms-ai/python-code-analysis-lms-ai.md) for LMS-AI):
+Before push, run the same gates CI runs (see your project overlay under `.cursor/skills/<project>/` when present):
 
 1. `ruff check`
 2. `lint-imports`
@@ -202,4 +202,4 @@ Severity: **blocker** (CI red, security, data loss) vs **should fix** (style, mi
 
 ## Additional resources
 
-- LMS-AI Makefile targets, markers, CI: [python-code-analysis-lms-ai.md](../../lms-ai/python-code-analysis-lms-ai.md)
+- Project Makefile targets, markers, CI: see `.cursor/skills/<project>/` overlay when present.

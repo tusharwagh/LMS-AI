@@ -82,7 +82,7 @@ Apply [Twelve-Factor App](https://12factor.net/) discipline alongside IMDA §3 (
 | **XI. Logs** | `structlog` → stdout; Langfuse for tool/model spans with redacted args | Audit cadence; no PII in log files |
 | **XII. Admin** | `make migrate`, `make seed`, eval datasets — not mixed into request path | Admin tasks audited separately from agent traces |
 
-**Project-specific conventions:** see [imda-agentic-ai-governance-lms-ai.md](../../lms-ai/imda-agentic-ai-governance-lms-ai.md) when deploying LMS-AI.
+**Project-specific conventions:** see your project overlay under `.cursor/skills/<project>/` when deploying agents.
 
 For factor-by-factor review notes, see [reference.md](reference.md#twelve-factor-app-agentic-ai).
 
@@ -415,7 +415,7 @@ Practices:
 ### Automation bias mitigations
 
 - Contextual approval payloads (plain-language explanation + confidence, not chain-of-thought dumps)
-- **LMS-AI desk copy:** `pending_approval.summary` and `assistant_message` from `messages.py` — patron names, titles, barcodes; no UUIDs, tool names, or internal jargon (meaningful oversight for librarians)
+- **Desk copy:** `pending_approval.summary` and `assistant_message` from a dedicated messages module — plain language, no internal IDs or tool names (meaningful human oversight)
 - Periodic human review samples of auto-approved actions
 - Training on agent failure modes (hallucinated tools, stale policy, injection)
 
@@ -471,7 +471,7 @@ builder.add_conditional_edges("governance", route_on_decision)
 
 Use Langfuse scores/datasets for evals, `langgraph dev` test threads, and deterministic assertions on tool calls where possible. Correlate eval runs with production traces via shared `agent_id` and prompt version tags.
 
-**LMS-AI automated gate:** `make test-agent` with `AGENT_MOCK_LLM=true` — see [python-code-analysis-lms-ai.md](../../lms-ai/python-code-analysis-lms-ai.md). Static: ruff + import-linter on `lms/agent/` (no infrastructure imports).
+**Automated gate:** run project agent tests with mocked LLM — see project overlay for Makefile targets and static checks on the agent package.
 
 **Deployment:** phased rollout (user cohort / feature flag), continuous monitoring, versioned graph definitions. Follow **12-Factor V** — build and test in CI (`make ci-native`), promote immutable artifact, run processes separately; no hot-editing graph code in production.
 

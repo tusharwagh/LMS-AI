@@ -7,7 +7,7 @@ description: Applies Clean Code (Uncle Bob), SOLID, Implementation Patterns (Ken
 
 Synthesize Clean Code, **SOLID**, Kent Beck patterns, and Vaughn Vernon DDD into one workflow for this stack. Prefer **surgical changes** that match existing project conventions; do not impose patterns the codebase does not use.
 
-For LMS-AI-specific layout, import rules, and module map, also read [clean-code-ddd-lms-ai](../../lms-ai/clean-code-ddd-lms-ai/SKILL.md).
+For repo-specific layout, import rules, and module map, read your project overlay under `.cursor/skills/<project>/` when present.
 
 **Verification:** run static and dynamic analysis per [python-code-analysis](../python-code-analysis/SKILL.md). SonarQube-aligned quality gates: [sonarqube-quality.md](../../rules/generic/sonarqube-quality.md).
 
@@ -82,7 +82,7 @@ SOLID complements Clean Code and DDD: it governs **how modules collaborate** wit
 
 A class or module should have **one reason to change** — one actor or concern.
 
-| Good (LMS-AI) | Violation |
+| Good (example) | Violation |
 |---------------|-----------|
 | `CirculationOrchestrator` — checkout/return only | Router that validates JWT, runs SQL, and formats JSON |
 | `IssueEligibilityValidator` — issue rule checks | `IssueTools` embedding loan policy instead of delegating |
@@ -204,7 +204,7 @@ Do not combine unrelated prerequisite checks in one function when callers need d
 
 When guards or coordinators need user-visible text, extract **named message builders** (not inline strings):
 
-- One module per UX surface — LMS-AI: `lms/agent/messages.py`
+- One module per UX surface — e.g. `app/agent/messages.py` for staff-facing copy
 - Builders take **intent context** (`IntentAction`) and **query echo** (what the user typed)
 - Each builder returns a complete sentence: **issue statement + next action**
 - Callers stay thin: `return ToolResult(False, desk.missing_patron_for(action), {})`

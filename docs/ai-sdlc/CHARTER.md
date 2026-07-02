@@ -149,4 +149,4 @@ When modifying LMS-AI, AI agents **must**:
 | [runbook.md](../runbook.md) | Operations and agent env |
 | [go-live-checklist.md](../go-live-checklist.md) | Pre-production verification |
 | [standards/GOVERNANCE.md](../../standards/GOVERNANCE.md) | Template ownership, upgrade, contributions |
-| [template-standards-plan.md](../template-standards-plan.md) | Phased rollout (verify-first) |
+| [template-standards/README.md](../template-standards/README.md) | Submodule ops and CI |

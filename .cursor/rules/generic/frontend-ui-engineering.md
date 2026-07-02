@@ -327,4 +327,4 @@ After building UI:
 - [ ] Follows the project's design system (spacing, colors, typography)
 - [ ] No accessibility warnings in dev tools or axe-core
 
-**Project-specific UI addendum:** see [frontend-ui-engineering-lms-ai.md](../lms-ai/frontend-ui-engineering-lms-ai.md) when working on the LMS-AI staff desk.
+**Project-specific UI addendum:** see `.cursor/rules/<project>/` when working on project-specific UI.

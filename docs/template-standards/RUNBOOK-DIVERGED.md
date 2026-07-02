@@ -81,7 +81,7 @@ Config: `.standards-ci-policy` (`fail` | `warn`).
 ## 7. Verify locally
 
 ```bash
-make verify-phase5
+make verify-standards-ci
 ```
 
 ---
@@ -89,5 +89,4 @@ make verify-phase5
 ## Related
 
 - [template-standards/README.md](README.md) — ops hub
-- [PHASE5-RESULTS.md](PHASE5-RESULTS.md) — verification record
 - [standards/GOVERNANCE.md](../../standards/GOVERNANCE.md) §6–§7

@@ -309,4 +309,4 @@ After designing an API:
 - [ ] Naming follows consistent conventions across all endpoints
 - [ ] API documentation or types are committed alongside the implementation
 
-**Project-specific agent API addendum:** see [api-and-interface-design-lms-ai.md](../lms-ai/api-and-interface-design-lms-ai.md) for LMS-AI `/api/v1/agent/issue/*` contracts.
+**Project-specific API addendum:** see `.cursor/rules/<project>/` for repo-specific endpoint contracts.

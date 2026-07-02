@@ -468,4 +468,4 @@ After implementing security-relevant code:
 - [ ] Server-side URL fetches validated against an allowlist (no SSRF)
 - [ ] LLM/model output validated and encoded before use (if AI features present)
 
-**Project-specific env and controls:** see [security-and-hardening-lms-ai.md](../lms-ai/security-and-hardening-lms-ai.md) for LMS-AI `Settings` fields and shipped middleware.
+**Project-specific env and controls:** see `.cursor/rules/<project>/` for `Settings` fields and shipped middleware.

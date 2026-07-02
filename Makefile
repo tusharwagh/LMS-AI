@@ -1,5 +1,5 @@
 .PHONY: help install install-node build test lint ci ci-native ci-ship check-traceability \
-	check-standards standards-materialize standards-upgrade standards-contribute verify-phase3 verify-phase4 verify-phase5 \
+	check-standards standards-materialize standards-upgrade standards-contribute verify-standards-ci \
 	diagram \
 	migrate ddl seed seed-sql \
 	destroy-data destroy-schema destroy-db destroy destroy-all \
@@ -213,17 +213,9 @@ standards-contribute:
 	@chmod +x standards/scripts/standards-contribute.sh
 	@$(STANDARDS_ENV) OPEN=$(OPEN) ./standards/scripts/standards-contribute.sh
 
-verify-phase3:
-	@chmod +x scripts/verify-phase3.sh
-	@./scripts/verify-phase3.sh
-
-verify-phase4:
-	@chmod +x scripts/verify-phase4.sh
-	@./scripts/verify-phase4.sh
-
-verify-phase5:
-	@chmod +x scripts/verify-phase5.sh
-	@./scripts/verify-phase5.sh
+verify-standards-ci:
+	@chmod +x scripts/verify-standards-ci.sh
+	@./scripts/verify-standards-ci.sh
 
 ci-native: install lint staff-ui-build staff-ui-typecheck test-unit test-integration test-e2e test-e2e-playwright test-agent test-hardening test-performance check-standards
 

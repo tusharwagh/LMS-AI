@@ -4,7 +4,7 @@ Supplement to [SKILL.md](SKILL.md). Read when designing new bounded contexts or 
 
 ## Context map
 
-See project addendum [clean-code-ddd-lms-ai](../../lms-ai/clean-code-ddd-lms-ai/SKILL.md) for the LMS-AI bounded-context map.
+See your project overlay under `.cursor/skills/<project>/` for the bounded-context map when present.
 
 ## Entity vs value object (Python)
 
@@ -38,8 +38,8 @@ Commands are explicit dataclasses or typed parameters — not loose dicts.
 | New REST resource in existing context | Add to `{context}/api/router.py` + schemas |
 | New use case in existing context | Add to `{context}/application/service.py` or `commands/` |
 | New cross-context rule | Port in consumer `domain/ports.py`, adapter in provider `infrastructure/adapters/` |
-| Multi-step staff journey | New class in `lms/api/workflows/` |
-| Agent capability | Add tool in `lms/agent/tools.py` delegating to workflow/service |
+| Multi-step staff journey | New workflow module under `api/workflows/` |
+| Agent capability | Add tool delegating to workflow/service |
 
 ## LangGraph placement rule
 

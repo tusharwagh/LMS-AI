@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase 5 verification (fail mode on diverged managed paths).
+# Phase 5 verification — fail-mode CI policy (optional regression).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

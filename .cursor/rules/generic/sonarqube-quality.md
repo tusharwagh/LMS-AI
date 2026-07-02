@@ -155,7 +155,7 @@ Treat as **mandatory human review**, not auto-close:
 | Agent/LLM tests mock models | Config-driven mocks; assert routing not prose |
 | Security regressions | Dedicated hardening/security test suite |
 
-**Project-specific gates:** see [sonarqube-quality-lms-ai.md](../lms-ai/sonarqube-quality-lms-ai.md) for LMS-AI Makefile targets and agent desk smells.
+**Project-specific gates:** see `.cursor/rules/<project>/` for Makefile targets and project-specific smells.
 
 ---
 
