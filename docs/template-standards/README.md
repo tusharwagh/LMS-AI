@@ -20,7 +20,7 @@ How this repo consumes [org-ai-standards](https://github.com/tusharwagh/org-ai-s
 git submodule update --init standards
 make standards-materialize
 make check-standards
-make standards-upgrade VERSION=1.1.0   # after template release is on GitHub
+make standards-upgrade VERSION=1.1.3   # after template release is on GitHub
 make standards-contribute
 make verify-standards-ci              # optional regression (fail-mode policy)
 ```

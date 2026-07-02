@@ -38,6 +38,17 @@ Each entry uses this block (copy per change):
 
 ## Entries
 
+### 2026-07-02 — Template standards cleanup @ v1.1.3 (Phases 5–6 + doc refactor)
+
+| Field | Value |
+|-------|-------|
+| **Stage** | chore |
+| **Intent** | Complete Phase 5 fail-mode CI, Phase 6 scale-out validation, and post-rollout cleanup — spec/plan moved to org-ai-standards; LMS-AI keeps ops hub only |
+| **Changes** | `standards/` @ v1.1.3; `.standards-ci-policy=fail`; `make check-standards` in `ci-native` and CI workflow; removed rollout docs from LMS-AI; added `scripts/verify-standards-ci.sh`; slim `docs/template-standards/` ops hub; re-materialized generic `.cursor/` copies; template GOVERNANCE/RELEASE aligned with Phase 5 |
+| **Verification** | `make check-standards` clean; `make verify-standards-ci`; `make standards-upgrade VERSION=1.1.3` |
+| **Human gate** | pending |
+| **Follow-ups** | Push `org-ai-standards` tags before CI; optional second product repo bootstrap via `standards-init` |
+
 ### 2026-06-27 — Phase 3 template standards pilot (submodule @ v1.0.1)
 
 | Field | Value |

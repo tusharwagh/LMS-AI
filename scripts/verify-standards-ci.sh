@@ -8,7 +8,7 @@ FAIL=0
 
 log() { printf '%s\n' "$*"; }
 pass() { log "PASS  $1"; }
-fail() { log "FAIL  $1"; FAIL=1; }
+fail() { log "FAIL  $*"; FAIL=1; }
 
 POLICY="$(tr -d '[:space:]' < .standards-ci-policy 2>/dev/null || echo fail)"
 if [[ "$POLICY" != "fail" ]]; then
