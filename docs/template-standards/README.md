@@ -7,7 +7,8 @@ How this repo consumes the [org-ai-standards](https://github.com/tusharwagh/org-
 | Item | Location |
 |------|----------|
 | Submodule (reference @ tag) | `standards/` |
-| Pin | `.standards-version` (currently `1.0.1`) |
+| Pin | `.standards-version` (currently `1.0.2`) |
+| CI policy | `.standards-ci-policy` (`fail` — diverged blocks CI) |
 | Enabled profiles | `.standards-profiles` |
 | Managed copies | `.cursor/rules/generic/`, `.cursor/skills/generic/`, `.cursor/templates/ai-sdlc/` |
 | Project overlay | `.cursor/rules/lms-ai/`, `.cursor/skills/lms-ai/` |
@@ -18,11 +19,10 @@ How this repo consumes the [org-ai-standards](https://github.com/tusharwagh/org-
 ```bash
 git submodule update --init standards   # after clone
 make standards-materialize            # copy standards/ → .cursor/
-make check-standards                  # drift check (warn-only)
-make standards-upgrade VERSION=1.0.1  # bump pin + re-materialize
+make check-standards                  # drift check (fail on diverged)
+make standards-upgrade VERSION=1.0.2  # bump pin + re-materialize
 make standards-contribute             # issue body from drift (v1.0.2+)
-make verify-phase3                    # Phase 3 verification
-make verify-phase4                    # Phase 4 verification
+make verify-phase5                    # Phase 5 verification
 ```
 
 ## Rules
@@ -40,7 +40,7 @@ make verify-phase4                    # Phase 4 verification
 	url = https://github.com/tusharwagh/org-ai-standards.git
 ```
 
-Workflow: `.github/workflows/ci.yml` — `submodules: recursive`, warn-only `check-standards`.
+Workflow: `.github/workflows/ci.yml` — `submodules: recursive`, `check-standards` **fails on diverged** (stale/missing warn). See [RUNBOOK-DIVERGED.md](RUNBOOK-DIVERGED.md).
 
 **Release order:** template repo must be pushed (`git push origin main --tags`) **before** LMS-AI records a new submodule commit. See [CI troubleshooting](#ci-troubleshooting) and org-ai-standards [RELEASE.md](https://github.com/tusharwagh/org-ai-standards/blob/main/docs/RELEASE.md).
 
@@ -65,7 +65,8 @@ Use HTTPS in `.gitmodules`, not `../org-ai-standards`. Run `git submodule sync s
 | Doc | Purpose |
 |-----|---------|
 | [standards/GOVERNANCE.md](../../standards/GOVERNANCE.md) | Roles, change flow, contributions (submodule @ pin) |
-| [PHASE3-RESULTS.md](PHASE3-RESULTS.md) | Pilot verification + CI fix |
+| [RUNBOOK-DIVERGED.md](RUNBOOK-DIVERGED.md) | Fix diverged managed copies |
+| [PHASE5-RESULTS.md](PHASE5-RESULTS.md) | Fail mode verification |
 | [REFACTOR-AUDIT.md](REFACTOR-AUDIT.md) | What stays in LMS vs template repo |
 | [template-standards-plan.md](../template-standards-plan.md) | Rollout history (Phases 0–6) |
 | [template-standards-research.md](../template-standards-research.md) | Original spec |
@@ -76,4 +77,5 @@ Use HTTPS in `.gitmodules`, not `../org-ai-standards`. Run `git submodule sync s
 |-------|--------|
 | 0–3 | Complete (see [org-ai-standards](https://github.com/tusharwagh/org-ai-standards)) |
 | 4 Contribution loop | Complete @ v1.0.2 — [PHASE4-RESULTS.md](PHASE4-RESULTS.md) |
-| 5 Fail mode | Next |
+| 5 Fail mode | Complete — [PHASE5-RESULTS.md](PHASE5-RESULTS.md) |
+| 6 Scale-out | Complete @ v1.1.0 — [PHASE6-RESULTS.md](PHASE6-RESULTS.md) |

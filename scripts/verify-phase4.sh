@@ -37,19 +37,24 @@ else
   fail "V4.2"
 fi
 
-log "=== V4.3 diverged warns (non-blocking) ==="
+log "=== V4.3 diverged warns (non-blocking, legacy warn policy) ==="
 TARGET="$ROOT/.cursor/rules/generic/code-simplification.md"
 BACKUP="$(mktemp)"
 cp "$TARGET" "$BACKUP"
 echo "# drift test" >> "$TARGET"
 set +e
-make check-standards >/tmp/v4-warn.out 2>&1
+env STANDARDS_ROOT="$ROOT" STANDARDS_REFERENCE=standards \
+  STANDARDS_MANIFEST=standards/manifest.json \
+  STANDARDS_VERSION_FILE=.standards-version \
+  STANDARDS_LATEST_FILE=.standards-latest \
+  STANDARDS_PROFILES_FILE=.standards-profiles \
+  CI_POLICY=warn ./standards/scripts/check-standards.sh >/tmp/v4-warn.out 2>&1
 RC=$?
 set -e
 cp "$BACKUP" "$TARGET"
 rm "$BACKUP"
-if [[ "$RC" -eq 0 ]] && grep -q '"type": "diverged"' /tmp/v4-warn.out; then
-  pass "V4.3 warn-only on diverged"
+if [[ "$RC" -eq 2 ]] && grep -q '"type": "diverged"' /tmp/v4-warn.out; then
+  pass "V4.3 warn-only on diverged (CI_POLICY=warn)"
 else
   fail "V4.3" "rc=$RC"
   cat /tmp/v4-warn.out

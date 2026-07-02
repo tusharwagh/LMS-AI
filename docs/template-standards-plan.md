@@ -284,6 +284,8 @@ Detail: [template-standards/PHASE3-RESULTS.md](template-standards/PHASE3-RESULTS
 
 **Phase 5 complete** when V5.1–V5.3 pass and team has used runbook at least once.
 
+**Status: complete (2026-06-27).** See [PHASE5-RESULTS.md](template-standards/PHASE5-RESULTS.md) and [RUNBOOK-DIVERGED.md](template-standards/RUNBOOK-DIVERGED.md). Next: [Phase 6 — Scale-out](#phase-6--scale-out).
+
 ---
 
 ## Phase 6 — Scale-out
@@ -311,6 +313,8 @@ Detail: [template-standards/PHASE3-RESULTS.md](template-standards/PHASE3-RESULTS
 ### Exit criteria
 
 **Phase 6 complete** when second repo pilot passes V6.1–V6.3.
+
+**Status: complete (2026-06-27).** See [PHASE6-RESULTS.md](template-standards/PHASE6-RESULTS.md) and org-ai-standards v1.1.0.
 
 ---
 
@@ -369,7 +373,9 @@ Complete before locking `manifest.json`. LMS-AI mapping:
 4. ~~**Complete Phase 3**~~ — done 2026-06-27 (submodule pilot @ `v1.0.1`, [PHASE3-RESULTS](template-standards/PHASE3-RESULTS.md)).
 5. ~~**Refactor cleanup**~~ — done 2026-06-27 ([REFACTOR-AUDIT](template-standards/REFACTOR-AUDIT.md)).
 6. ~~**Start Phase 4**~~ — done 2026-06-27 ([PHASE4-RESULTS](template-standards/PHASE4-RESULTS.md), org-ai-standards v1.0.2).
-7. **Start Phase 5** — fail mode on diverged managed paths.
+7. ~~**Start Phase 5**~~ — done 2026-06-27 ([PHASE5-RESULTS](template-standards/PHASE5-RESULTS.md), [RUNBOOK-DIVERGED](template-standards/RUNBOOK-DIVERGED.md)).
+8. ~~**Start Phase 6**~~ — done 2026-06-27 ([PHASE6-RESULTS](template-standards/PHASE6-RESULTS.md), org-ai-standards v1.1.0).
+9. **Cleanup refactor** — move spec/plan docs, trim phase verification scripts (see [REFACTOR-AUDIT](template-standards/REFACTOR-AUDIT.md)).
 
 ---
 

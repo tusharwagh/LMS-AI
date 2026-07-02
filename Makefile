@@ -1,5 +1,5 @@
 .PHONY: help install install-node build test lint ci ci-native ci-ship check-traceability \
-	check-standards standards-materialize standards-upgrade standards-contribute verify-phase3 verify-phase4 \
+	check-standards standards-materialize standards-upgrade standards-contribute verify-phase3 verify-phase4 verify-phase5 \
 	diagram \
 	migrate ddl seed seed-sql \
 	destroy-data destroy-schema destroy-db destroy destroy-all \
@@ -19,12 +19,13 @@ PLAYWRIGHT_BROWSERS_PATH ?= $(CURDIR)/.playwright-browsers
 # Outside OneDrive — avoids corrupted SQLite shards and sync stalls during mypy.
 MYPY_CACHE_DIR ?= /tmp/lms-ai-mypy-cache
 export MYPY_CACHE_DIR
+STANDARDS_CI_POLICY := $(shell tr -d '[:space:]' < .standards-ci-policy 2>/dev/null || echo fail)
 STANDARDS_ENV = STANDARDS_ROOT=$(CURDIR) STANDARDS_REFERENCE=standards \
 	STANDARDS_MANIFEST=standards/manifest.json \
 	STANDARDS_VERSION_FILE=.standards-version \
 	STANDARDS_LATEST_FILE=.standards-latest \
 	STANDARDS_PROFILES_FILE=.standards-profiles \
-	CI_POLICY=warn
+	CI_POLICY=$(STANDARDS_CI_POLICY)
 
 IMAGE ?= lms-ai:local
 API_HOST ?= 127.0.0.1
@@ -220,7 +221,11 @@ verify-phase4:
 	@chmod +x scripts/verify-phase4.sh
 	@./scripts/verify-phase4.sh
 
-ci-native: install lint staff-ui-build staff-ui-typecheck test-unit test-integration test-e2e test-e2e-playwright test-agent test-hardening test-performance
+verify-phase5:
+	@chmod +x scripts/verify-phase5.sh
+	@./scripts/verify-phase5.sh
+
+ci-native: install lint staff-ui-build staff-ui-typecheck test-unit test-integration test-e2e test-e2e-playwright test-agent test-hardening test-performance check-standards
 
 ci-ship:
 	@chmod +x scripts/ci_commit_push.sh

@@ -43,7 +43,7 @@ These belong to the LMS project.
 | `scripts/standards-upgrade.sh` | Product upgrade wrapper |
 | `scripts/verify-phase3.sh` | Optional; can archive after refactor |
 | `scripts/check_pr_traceability.sh` | **Deployed** LMS script (`.github/workflows/`) |
-| `.github/` | LMS CI (includes warn-only standards step) |
+| `.github/` | LMS CI (`check-standards` fails on diverged since Phase 5) |
 | `Makefile` targets | `check-standards`, `standards-materialize`, `standards-upgrade` only |
 
 **Note:** Managed copies under `.cursor/` stay in git so Cursor works without a post-clone materialize step. They are not a second source of truth — `standards/` @ pin is.

@@ -90,7 +90,7 @@ jobs:
       - name: Docker build
         run: docker build -t lms-ai:ci .
 
-      - name: Check template standards drift (warn-only, Phase 3)
+      - name: Check template standards drift (fail on diverged, Phase 5)
         if: hashFiles('standards/manifest.json') != ''
         run: |
           chmod +x standards/scripts/check-standards.sh
@@ -100,10 +100,12 @@ jobs:
             STANDARDS_VERSION_FILE=.standards-version \
             STANDARDS_LATEST_FILE=.standards-latest \
             STANDARDS_PROFILES_FILE=.standards-profiles \
-            CI_POLICY=warn \
+            CI_POLICY="$(tr -d '[:space:]' < .standards-ci-policy 2>/dev/null || echo fail)" \
             ./standards/scripts/check-standards.sh
           rc=$?
           set -e
-          if [ "$rc" -eq 2 ]; then echo "check-standards: warn (allowed)"; exit 0; fi
+          if [ "$rc" -eq 2 ]; then
+            echo "check-standards: warn (stale/missing — non-blocking)"
+            exit 0
+          fi
           exit "$rc"
-        continue-on-error: true
