@@ -24,6 +24,11 @@ dependencies = [
     "langchain-core>=0.3.0",
     "litellm>=1.55.0",
     "langfuse>=4.0,<5",
+    "litellm-gateway @ git+https://github.com/tusharwagh/org-python-platform.git@v0.1.0#subdirectory=packages/litellm_gateway",
+    "langfuse-tracing @ git+https://github.com/tusharwagh/org-python-platform.git@v0.1.0#subdirectory=packages/langfuse_tracing",
+    "fastapi-platform-kit @ git+https://github.com/tusharwagh/org-python-platform.git@v0.1.0#subdirectory=packages/fastapi_platform",
+    "sqlalchemy-idempotency @ git+https://github.com/tusharwagh/org-python-platform.git@v0.1.0#subdirectory=packages/sqlalchemy_idempotency",
+    "agent-desk-starter @ git+https://github.com/tusharwagh/org-python-platform.git@v0.1.0#subdirectory=packages/agent_desk",
 ]
 
 [project.optional-dependencies]
@@ -44,6 +49,9 @@ dev = [
 
 [project.scripts]
 lms = "lms.main:main"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build]
 directory = "src"
@@ -88,7 +96,15 @@ mypy_path = "src"
 exclude = ["^\\.venv/", "^\\.mypy_cache/"]
 
 [[tool.mypy.overrides]]
-module = ["jose.*", "nemoguardrails.*"]
+module = [
+    "jose.*",
+    "nemoguardrails.*",
+    "litellm_gateway.*",
+    "langfuse_tracing.*",
+    "fastapi_platform.*",
+    "sqlalchemy_idempotency.*",
+    "agent_desk.*",
+]
 ignore_missing_imports = true
 
 # Skip deep traversal of heavy third-party trees (faster CI; avoids OneDrive

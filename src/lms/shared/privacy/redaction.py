@@ -1,16 +1,5 @@
-"""PII redaction for audit logs and traces."""
+"""PII redaction for audit logs and traces (org-python-platform)."""
 
-from __future__ import annotations
+from agent_desk.privacy import redact_for_audit
 
-import re
-
-_PII_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\b\d{3}-\d{2}-\d{4}\b"), "[SSN_REDACTED]"),
-    (re.compile(r"\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b"), "[CARD_REDACTED]"),
-]
-
-
-def redact_for_audit(text: str) -> str:
-    for pattern, replacement in _PII_PATTERNS:
-        text = pattern.sub(replacement, text)
-    return text
+__all__ = ["redact_for_audit"]

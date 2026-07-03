@@ -1,19 +1,25 @@
-import hashlib
-import json
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy.orm import Session
+from sqlalchemy_idempotency.service import (
+    IdempotencyPayloadMismatchError,
+    _payload_hash,
+)
+from sqlalchemy_idempotency.service import (
+    find_cached_response as _find_cached_response,
+)
+from sqlalchemy_idempotency.service import (
+    store_response as _store_response,
+)
 
-from lms.shared.idempotency.store import IDEMPOTENCY_TTL, IdempotencyRecord
+from lms.shared.idempotency.store import IdempotencyRecord
 
-
-class IdempotencyPayloadMismatchError(Exception):
-    """Raised when an idempotency key exists but the request payload hash differs."""
-
-
-def _payload_hash(payload: dict[str, Any]) -> str:
-    normalized = json.dumps(payload, sort_keys=True, default=str)
-    return hashlib.sha256(normalized.encode()).hexdigest()
+__all__ = [
+    "IdempotencyPayloadMismatchError",
+    "_payload_hash",
+    "find_cached_response",
+    "store_response",
+]
 
 
 def find_cached_response(
@@ -23,16 +29,16 @@ def find_cached_response(
     idempotency_key: str,
     payload: dict[str, Any],
 ) -> tuple[int, dict[str, Any]] | None:
-    row = (
-        session.query(IdempotencyRecord)
-        .filter_by(scope_key=scope_key, idempotency_key=idempotency_key)
-        .one_or_none()
+    return cast(
+        tuple[int, dict[str, Any]] | None,
+        _find_cached_response(
+            session,
+            IdempotencyRecord,
+            scope_key=scope_key,
+            idempotency_key=idempotency_key,
+            payload=payload,
+        ),
     )
-    if row is None:
-        return None
-    if row.payload_hash != _payload_hash(payload):
-        raise IdempotencyPayloadMismatchError(scope_key, idempotency_key)
-    return row.response_status, json.loads(row.response_body)
 
 
 def store_response(
@@ -44,15 +50,12 @@ def store_response(
     status_code: int,
     body: dict[str, Any],
 ) -> None:
-    from datetime import UTC, datetime
-
-    session.add(
-        IdempotencyRecord(
-            scope_key=scope_key,
-            idempotency_key=idempotency_key,
-            payload_hash=_payload_hash(payload),
-            response_status=status_code,
-            response_body=json.dumps(body),
-            expires_at=datetime.now(UTC) + IDEMPOTENCY_TTL,
-        )
+    _store_response(
+        session,
+        IdempotencyRecord,
+        scope_key=scope_key,
+        idempotency_key=idempotency_key,
+        payload=payload,
+        status_code=status_code,
+        body=body,
     )

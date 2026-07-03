@@ -131,6 +131,10 @@ def test_llm_intent_parser_passes_session_context(monkeypatch: pytest.MonkeyPatc
                 response=response,
                 endpoint=LlmEndpoint(provider="groq", model="groq/test", api_key="k"),
                 purpose="intent_parse",
+                cached=False,
+                fallback_index=0,
+                cost_usd=None,
+                usage=None,
             )
 
     monkeypatch.setattr(

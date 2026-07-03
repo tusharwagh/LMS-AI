@@ -1,3 +1,5 @@
+"""SQLAlchemy mixins (typed copy; mirrors fastapi_platform.db for mypy)."""
+
 import uuid
 from datetime import datetime
 

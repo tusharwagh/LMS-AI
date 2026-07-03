@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import TYPE_CHECKING
 
 from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+if TYPE_CHECKING:
+    from fastapi_platform.jwt import JwtSettings
+    from langfuse_tracing.settings import LangfuseTracingSettings
+    from litellm_gateway.settings import LlmGatewaySettings
 
 _DEFAULT_SECRET = "change-me-in-production"
 _DEFAULT_DATABASE_URL = "postgresql+psycopg://lms:lms@localhost:5432/lms"
@@ -129,6 +135,53 @@ class Settings(BaseSettings):
                     "agent is enabled in production"
                 )
         return self
+
+    def to_llm_gateway_settings(self) -> LlmGatewaySettings:
+        from litellm_gateway.settings import LlmGatewaySettings
+
+        return LlmGatewaySettings(
+            agent_mock_llm=self.agent_mock_llm,
+            llm_provider=self.llm_provider,
+            llm_model=self.llm_model,
+            llm_fallback_enabled=self.llm_fallback_enabled,
+            llm_fallback_provider=self.llm_fallback_provider,
+            llm_fallback_model=self.llm_fallback_model,
+            llm_providers=self.llm_providers,
+            llm_proxy_url=self.llm_proxy_url,
+            llm_proxy_api_key=self.llm_proxy_api_key,
+            llm_cache_enabled=self.llm_cache_enabled,
+            llm_rate_limit_enabled=self.llm_rate_limit_enabled,
+            llm_rate_limit_window_seconds=self.llm_rate_limit_window_seconds,
+            llm_rate_limit_max=self.llm_rate_limit_max,
+            llm_max_prompt_chars=self.llm_max_prompt_chars,
+            llm_max_tokens_cap=self.llm_max_tokens_cap,
+            deployment_prefix="lms",
+            groq_api_key=self.groq_api_key,
+            openai_api_key=self.openai_api_key,
+            anthropic_api_key=self.anthropic_api_key,
+            together_api_key=self.together_api_key,
+            hf_token=self.hf_token,
+            azure_api_key=self.azure_api_key,
+            azure_api_base=self.azure_api_base,
+        )
+
+    def to_langfuse_tracing_settings(self) -> LangfuseTracingSettings:
+        from langfuse_tracing.settings import LangfuseTracingSettings
+
+        return LangfuseTracingSettings(
+            langfuse_public_key=self.langfuse_public_key,
+            langfuse_secret_key=self.langfuse_secret_key,
+            langfuse_host=self.langfuse_host,
+        )
+
+    def to_jwt_settings(self) -> JwtSettings:
+        from fastapi_platform.jwt import JwtSettings
+
+        return JwtSettings(
+            app_secret_key=self.app_secret_key,
+            jwt_algorithm=self.jwt_algorithm,
+            jwt_access_token_expire_minutes=self.jwt_access_token_expire_minutes,
+        )
 
 
 @lru_cache

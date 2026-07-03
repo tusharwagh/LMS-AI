@@ -1,8 +1,3 @@
-from fastapi import APIRouter
+from fastapi_platform.health import health_router as router
 
-router = APIRouter()
-
-
-@router.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+__all__ = ["router"]
